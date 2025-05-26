@@ -1,11 +1,12 @@
+//formpage.tsx
 "use client";
-
+// ===================================== Import Statements =====================================
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-import { format, isValid, min, parse } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -29,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -42,103 +41,171 @@ import {
   sub_safetyCategoryData,
 } from "./form-data";
 
+// ===================================== Components =====================================
 // Form schema
-const formSchema = z.object({
-  date: z
-    .date({
-      required_error: "กรุณาเลือก วันที่",
-    })
-    .refine((date) => date <= new Date(), {
-      message: "วันที่ต้องไม่เกินวันนี้",
-    }),
-  employeeId: z.string().min(1, {
-    message: "กรุณากรอก รหัสพนักงาน",
-  }),
-  username: z.string().min(1, {
-    message: "กรุณาระบุ ชื่อ-นามสกุล",
-  }),
-  group: z.string().optional(),
-  type: z.enum(
-    list_department.map((item) => item.name) as [string, ...string[]],
-    {
-      required_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
-      invalid_type_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
-    }
-  ),
-  safetyCategory: z.string().optional(),
-  sub_safetyCategory: z.string().optional(),
-  observed_work: z.string().min(1, {
-    message: "กรุณากรอก งานที่สังเกตุ",
-  }),
-  depart_notice: z.string().min(1, {
-    message: "กรุณาเลือก สังกัดแผนกที่ถูกสังเกตุ",
-  }),
-  vehicleEquipment: z
-    .record(
-      z.string(),
-      z
-        .record(
-          z.string(),
-          z.record(z.string(), z.boolean().optional()).optional()
-        )
-        .optional()
-    )
-    .optional(),
-  selectedOptions: z
-    .array(
-      z.object({
-        id: z.number(),
-        name: z.string(),
+const formSchema = z
+  .object({
+    date: z
+      .date({
+        required_error: "กรุณาเลือก วันที่",
       })
-    )
-    .min(1, {
-      message: "กรุณาเลือกอย่างน้อย 1 รายการ",
-    })
-    .optional(),
-  safeActionCount: z.coerce.number().min(0).optional(),
-  actionType: z.enum(["ชมเชย", "เพิกเฉย"]).optional(),
-  unsafeActionCount: z.coerce.number().min(0).optional(),
-  actionTypeunsafe: z.enum(["ตักเตือน", "เพิกเฉย"]).optional(),
-  attachment: z
-    .any()
-    .refine((files) => {
-      // ตรวจสอบว่ามีไฟล์หรือไม่ (REQUIRED)
-      return files && files.length > 0;
-    }, "กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์")
-    .refine((files) => {
-      // ตรวจสอบขนาดไฟล์
-      if (files && files.length > 0) {
-        return Array.from(files).every(
-          (file) => (file as File).size <= 10 * 1024 * 1024 // 10MB
-        );
+      .refine((date) => date <= new Date(), {
+        message: "วันที่ต้องไม่เกินวันนี้",
+      }),
+    employeeId: z.string().min(1, {
+      message: "กรุณากรอก รหัสพนักงาน",
+    }),
+    username: z.string().min(1, {
+      message: "กรุณาระบุ ชื่อ-นามสกุล",
+    }),
+    group: z.string().optional(),
+    type: z.enum(
+      list_department.map((item) => item.name) as [string, ...string[]],
+      {
+        required_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
+        invalid_type_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
       }
-      return true;
-    }, "ไฟล์แต่ละไฟล์ต้องมีขนาดไม่เกิน 10MB")
-    .refine((files) => {
-      // ตรวจสอบประเภทไฟล์
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
+    ),
+    safetyCategory: z.string().optional(),
+    sub_safetyCategory: z.string().optional(),
+    observed_work: z.string().min(1, {
+      message: "กรุณากรอก งานที่สังเกตุ",
+    }),
+    depart_notice: z.string().min(1, {
+      message: "กรุณาเลือก สังกัดแผนกที่ถูกสังเกตุ",
+    }),
+    vehicleEquipment: z
+      .record(
+        z.string(),
+        z
+          .record(
+            z.string(),
+            z.record(z.string(), z.boolean().optional()).optional()
+          )
+          .optional()
+      )
+      .optional(),
+    selectedOptions: z
+      .array(
+        z.object({
+          id: z.number(),
+          name: z.string(),
+        })
+      )
+      .min(1, {
+        message: "กรุณาเลือกอย่างน้อย 1 รายการ",
+      })
+      .optional(),
+    safeActionCount: z.coerce.number().min(0).optional(),
+    actionType: z.enum(["ชมเชย", "เพิกเฉย"]).optional(),
+    unsafeActionCount: z.coerce.number().min(0).optional(),
+    actionTypeunsafe: z.enum(["ตักเตือน", "เพิกเฉย"]).optional(),
+    attachment: z
+      .any()
+      .refine((files) => {
+        // ตรวจสอบว่ามีไฟล์หรือไม่ (REQUIRED)
+        return files && files.length > 0;
+      }, "กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์")
+      .refine((files) => {
+        // ตรวจสอบขนาดไฟล์
+        if (files && files.length > 0) {
+          return Array.from(files).every((file) => {
+            const fileObj = file as File;
+            const isVideo = fileObj.type.startsWith("video/");
+            const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+            return fileObj.size <= maxSize;
+          });
+        }
+        return true;
+      }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 100MB")
+      .refine((files) => {
+        // ตรวจสอบประเภทไฟล์
+        const allowedTypes = [
+          // รูปภาพ
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+          "image/svg+xml",
 
-      if (files && files.length > 0) {
-        return Array.from(files).every((file) =>
-          allowedTypes.includes((file as File).type)
-        );
-      }
-      return true;
-    }, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP) และเอกสาร (PDF, DOC, DOCX)")
-    .refine((files) => {
-      // ตรวจสอบจำนวนไฟล์
-      return !files || files.length <= 5;
-    }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
-});
+          // เอกสาร
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+          // วีดิโอ
+          "video/mp4",
+          "video/mpeg",
+          "video/quicktime",
+          "video/x-msvideo", // .avi
+          "video/webm",
+          "video/x-ms-wmv", // .wmv
+          "video/3gpp", // .3gp
+          "video/x-flv", // .flv
+        ];
+
+        if (files && files.length > 0) {
+          return Array.from(files).every((file) =>
+            allowedTypes.includes((file as File).type)
+          );
+        }
+        return true;
+      }, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP, SVG), วีดิโอ (MP4, AVI, MOV, WebM) และเอกสาร (PDF, DOC, DOCX)")
+      .refine((files) => {
+        // ตรวจสอบจำนวนไฟล์
+        return !files || files.length <= 5;
+      }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
+    other: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // ถ้าเลือกหัวข้อที่ 8. อื่นๆ ต้องกรอกข้อมูลเพิ่มเติม
+
+    const selectedOptions: SelectedOption[] = data.selectedOptions || [];
+    if (
+      selectedOptions.some((item: SelectedOption) => item.id === 8) &&
+      (!data.other || !data.other.trim())
+    ) {
+      ctx.addIssue({
+        path: ["other"],
+        code: z.ZodIssueCode.custom,
+        message: "กรุณาระบุข้อมูลเพิ่มเติมหากเลือกหัวข้อ 'อื่นๆ'",
+      });
+    }
+  });
+
+// ====================================== interface =====================================
+
+interface Option {
+  id: number;
+  name: string;
+}
+
+interface SelectedOption {
+  id: number;
+  name: string;
+}
+
+interface SafetyCategory {
+  id: number;
+  name: string;
+  imagePath: string;
+  alt: string;
+}
+
+interface SubSafetyCategory {
+  id: number;
+  form_safety_id: number;
+  name: string;
+  imagePath: string;
+  alt: string;
+  type: "multiselect" | "option";
+  subject: string;
+  placeholder: string;
+  title?: string;
+  departcategory: Array<{ id: number; name: string }>;
+  option: Option[];
+}
 
 function SafetyObservationForm() {
   const { toast } = useToast();
@@ -147,6 +214,7 @@ function SafetyObservationForm() {
   const employeeName = searchParams.get("fullName");
   const depatment = searchParams.get("department");
   const group = searchParams.get("group");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
@@ -169,20 +237,32 @@ function SafetyObservationForm() {
       unsafeActionCount: undefined,
       selectedOptions: [],
       attachment: undefined,
+      other: "",
     },
     mode: "onTouched",
   });
 
   // Improved form submission with proper validation and feedback
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     console.log("Form Values:", values);
 
-    // Show success notification instead of alert
-    toast({
-      title: "ส่งข้อมูลสำเร็จ",
-      description: "ข้อมูลการสังเกตุความปลอดภัยถูกบันทึกเรียบร้อยแล้ว",
-      variant: "success",
-    });
+    setIsSubmitting(true);
+    try {
+      // Submit logic here
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      toast({
+        title: "ส่งข้อมูลสำเร็จ",
+        description: "ข้อมูลการสังเกตุความปลอดภัยถูกบันทึกเรียบร้อยแล้ว",
+      });
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Get form values
@@ -492,63 +572,127 @@ function SafetyObservationForm() {
           )}
 
           {/* Observed Work and Equipment Section */}
-          {form.watch("sub_safetyCategory") && (
+          {(form.watch("sub_safetyCategory") ||
+            form.watch("safetyCategory") === "4") && (
             <FormSection
               title={
-                sub_safetyCategoryData.find(
-                  (item) => item.id === Number(form.watch("sub_safetyCategory"))
-                )?.name || ""
+                selectedSafetyCategory === "4"
+                  ? safetyCategoryData.find((item) => item.id === 4)?.name || ""
+                  : sub_safetyCategoryData.find(
+                      (item) => item.id === Number(selectedSubCategory)
+                    )?.name || ""
               }
             >
-              <FormField
-                control={form.control}
-                name="observed_work"
-                render={({ field }) => (
-                  <FormItem className="space-y-3 mb-4">
-                    <FormLabel>
-                      งานที่สังเกตุ
-                      <RequiredMark />
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="งานที่สังเกตุ" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="depart_notice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      สังกัดแผนกที่ถูกสังเกตุ <RequiredMark />
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-3 mb-4">
+                <FormField
+                  control={form.control}
+                  name="observed_work"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {selectedSafetyCategory === "4"
+                          ? sub_safetyCategoryData.find(
+                              (item) => item.id === 10
+                            )?.subject || "งานที่สังเกตุ"
+                          : sub_safetyCategoryData.find(
+                              (item) => item.id === Number(selectedSubCategory)
+                            )?.subject || "งานที่สังเกตุ"}
+                        <RequiredMark />
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกสังกัดแผนกที่ถูกสังเกตุ" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder={
+                            selectedSafetyCategory === "4"
+                              ? sub_safetyCategoryData.find(
+                                  (item) => item.id === 10
+                                )?.placeholder || "ระบุพื้นที่พบเจอ"
+                              : sub_safetyCategoryData.find(
+                                  (item) =>
+                                    item.id === Number(selectedSubCategory)
+                                )?.placeholder || "งานที่สังเกตุ"
+                          }
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {sub_safetyCategoryData
-                          .filter(
-                            (item) =>
-                              item.id ===
-                              Number(form.watch("sub_safetyCategory"))
-                          )[0]
-                          ?.departcategory?.map((item) => (
-                            <SelectItem key={item.id} value={item.name}>
-                              {item.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="depart_notice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        สังกัดแผนกที่ถูกสังเกตุ <RequiredMark />
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="เลือกสังกัดแผนกที่ถูกสังเกตุ" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(() => {
+                            // ถ้าเลือก Safety Category 4 ให้ใช้ข้อมูลจาก id = 10
+                            if (selectedSafetyCategory === "4") {
+                              return sub_safetyCategoryData
+                                .find((item) => item.id === 10)
+                                ?.departcategory?.map((item) => (
+                                  <SelectItem key={item.id} value={item.name}>
+                                    {item.name}
+                                  </SelectItem>
+                                ));
+                            }
+
+                            // ถ้ามี Sub Category ที่เลือก ให้ใช้ข้อมูลจาก Sub Category
+                            if (selectedSubCategory) {
+                              return sub_safetyCategoryData
+                                .find(
+                                  (item) =>
+                                    item.id === Number(selectedSubCategory)
+                                )
+                                ?.departcategory?.map((item) => (
+                                  <SelectItem key={item.id} value={item.name}>
+                                    {item.name}
+                                  </SelectItem>
+                                ));
+                            }
+
+                            // ถ้าไม่มี Sub Category แต่มี Safety Category (fallback)
+                            if (selectedSafetyCategory) {
+                              const fallbackData = sub_safetyCategoryData.find(
+                                (item) =>
+                                  item.form_safety_id ===
+                                  Number(selectedSafetyCategory)
+                              );
+                              return fallbackData?.departcategory?.map(
+                                (item) => (
+                                  <SelectItem key={item.id} value={item.name}>
+                                    {item.name}
+                                  </SelectItem>
+                                )
+                              );
+                            }
+
+                            // ถ้าไม่มีข้อมูลเลย
+                            return (
+                              <SelectItem value="" disabled>
+                                กรุณาเลือก Category ก่อน
+                              </SelectItem>
+                            );
+                          })()}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Dynamic Options - Multi-Select or Single Select based on type */}
               <FormField
@@ -557,37 +701,42 @@ function SafetyObservationForm() {
                 render={({ field }) => {
                   const selectedValues = field.value || [];
 
-                  // หา sub category ที่เลือกอยู่
-                  const currentSubCategory = sub_safetyCategoryData.find(
-                    (item) => item.id === Number(selectedSubCategory)
-                  );
+                  // ถ้าเลือก safety category 4 ให้ใช้ข้อมูลจาก sub_safetyCategoryData id 10
+                  // ถ้าไม่ใช่ ให้ใช้ sub category ปกติ
+                  const currentSubCategory =
+                    selectedSafetyCategory === "4"
+                      ? sub_safetyCategoryData.find((item) => item.id === 10)
+                      : sub_safetyCategoryData.find(
+                          (item) => item.id === Number(selectedSubCategory)
+                        );
 
-                  // ถ้าไม่มี sub category ที่เลือก หรือไม่มี options ให้แสดง
+                  // ตรวจสอบว่ามีข้อมูลให้แสดงหรือไม่
                   if (
-                    !selectedSubCategory ||
-                    !currentSubCategory ||
-                    !currentSubCategory.option
+                    selectedSafetyCategory === "4"
+                      ? !currentSubCategory || !currentSubCategory.option
+                      : !selectedSubCategory ||
+                        !currentSubCategory ||
+                        !currentSubCategory.option
                   ) {
                     return (
                       <FormItem>
                         <FormLabel>เลือกรายการ</FormLabel>
                         <div className="text-sm text-gray-500 p-4 border rounded-md bg-gray-50">
-                          กรุณาเลือก Sub Category ก่อน
+                          {selectedSafetyCategory === "4"
+                            ? "ไม่พบข้อมูลตัวเลือก"
+                            : "กรุณาเลือก Sub Category ก่อน"}
                         </div>
                         <FormMessage />
                       </FormItem>
                     );
                   }
 
-                  // ตรวจสอบ type ว่าเป็น "select" (multi) หรือ "option" (single)
+                  // ตรวจสอบ type ว่าเป็น "multiselect" หรือ "option" (single)
                   const isMultiSelect =
+                    currentSubCategory &&
                     currentSubCategory.type === "multiselect";
 
                   // Handler สำหรับ Multi-Select (checkbox)
-                  interface Option {
-                    id: number;
-                    name: string;
-                  }
 
                   const handleCheckedChange = (
                     optionId: number,
@@ -604,11 +753,6 @@ function SafetyObservationForm() {
                   };
 
                   // Handler สำหรับ Single Select (radio)
-                  interface Option {
-                    id: number;
-                    name: string;
-                  }
-
                   const handleRadioChange = (
                     optionId: number,
                     optionName: string
@@ -628,7 +772,16 @@ function SafetyObservationForm() {
                   return (
                     <FormItem className="mt-4">
                       <FormLabel>
-                        เลือกรายการที่สังเกตุ{""}
+                        <span className="text-md font-semibold">
+                          {selectedSafetyCategory === "4"
+                            ? currentSubCategory?.title ||
+                              "ประเภทความเสี่ยง Unsafe condition"
+                            : sub_safetyCategoryData.find(
+                                (item) =>
+                                  item.id === Number(selectedSubCategory)
+                              )?.title || "เลือกรายการประเมินพฤติกรรม"}
+                        </span>
+
                         <RequiredMark />
                         {isMultiSelect ? (
                           <span className="text-xs text-blue-600 ml-2">
@@ -641,59 +794,82 @@ function SafetyObservationForm() {
                         )}
                       </FormLabel>
 
-                      <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-4">
-                        {currentSubCategory.option.map((option) => {
-                          const isSelected = selectedValues.some(
-                            (item) => item.id === option.id
-                          );
+                      <div className="space-y-3 h-auto overflow-y-auto border rounded-md p-4">
+                        {currentSubCategory &&
+                          currentSubCategory.option &&
+                          currentSubCategory.option.map((option) => {
+                            const isSelected = selectedValues.some(
+                              (item) => item.id === option.id
+                            );
 
-                          return (
-                            <div
-                              key={option.id}
-                              className="flex items-start space-x-3"
-                            >
-                              {isMultiSelect ? (
-                                // Multi-Select: ใช้ Checkbox
-                                <Checkbox
-                                  id={`option-${option.id}`}
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) =>
-                                    handleCheckedChange(
-                                      option.id,
-                                      option.name,
-                                      checked
-                                    )
-                                  }
-                                  className="mt-0.5 flex-shrink-0"
-                                />
-                              ) : (
-                                // Single Select: ใช้ Radio Button
-                                <input
-                                  type="radio"
-                                  id={`option-${option.id}`}
-                                  name="single-option"
-                                  checked={isSelected}
-                                  onChange={() =>
-                                    handleRadioChange(option.id, option.name)
-                                  }
-                                  className="mt-1 flex-shrink-0"
-                                />
-                              )}
-                              <label
-                                htmlFor={`option-${option.id}`}
-                                className="text-sm font-medium leading-relaxed cursor-pointer"
+                            return (
+                              <div
+                                key={option.id}
+                                className="flex items-start space-x-3"
                               >
-                                {option.name}
-                              </label>
-                            </div>
-                          );
-                        })}
+                                {isMultiSelect ? (
+                                  // Multi-Select: ใช้ Checkbox
+                                  <Checkbox
+                                    id={`option-${option.id}`}
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) =>
+                                      handleCheckedChange(
+                                        option.id,
+                                        option.name,
+                                        checked
+                                      )
+                                    }
+                                    className="mt-0.5 flex-shrink-0"
+                                  />
+                                ) : (
+                                  // Single Select: ใช้ Radio Button
+                                  <input
+                                    type="radio"
+                                    id={`option-${option.id}`}
+                                    name="single-option"
+                                    checked={isSelected}
+                                    onChange={() =>
+                                      handleRadioChange(option.id, option.name)
+                                    }
+                                    className="mt-1 flex-shrink-0"
+                                  />
+                                )}
+                                <label
+                                  htmlFor={`option-${option.id}`}
+                                  className="text-sm font-medium leading-relaxed cursor-pointer"
+                                >
+                                  {option.name}
+                                </label>
+                              </div>
+                            );
+                          })}
                       </div>
                       <FormMessage />
                     </FormItem>
                   );
                 }}
               />
+              {form.watch("selectedOptions")?.some((item) => item.id === 8) && (
+                <FormField
+                  control={form.control}
+                  name="other"
+                  render={({ field }) => (
+                    <FormItem className="mt-4">
+                      <FormLabel>
+                        หากเลือกหัวข้อที่ 8.อื่นๆ จงอธิบาย
+                        <RequiredMark />
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="กรุณาระบุข้อมูลเพิ่มเติม"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Safe Action Section */}
               <div className="flex flex-col md:flex-row gap-8 mt-4">
@@ -838,8 +1014,7 @@ function SafetyObservationForm() {
                 render={({ field }) => (
                   <FormItem className="space-y-3 my-6">
                     <FormLabel className="text-base font-semibold text-gray-800">
-                      แนบไฟล์
-                      <RequiredMark />
+                      แนบรูปพฤติกรรมที่สังเกตุ <RequiredMark />
                     </FormLabel>
                     <FormControl>
                       <div className="space-y-4">
@@ -860,12 +1035,12 @@ function SafetyObservationForm() {
                               ?.click()
                           }
                         >
-                          {/* Hidden File Input */}
+                          {/* Hidden File Input - เพิ่ม video/* ใน accept */}
                           <input
                             id="file-upload-input"
                             type="file"
                             multiple
-                            accept="image/*,.pdf,.doc,.docx"
+                            accept="image/*,video/*,.pdf,.doc,.docx"
                             onChange={(e) => {
                               const files = e.target.files;
                               field.onChange(files);
@@ -933,7 +1108,7 @@ function SafetyObservationForm() {
                                 </div>
                               </div>
                             ) : (
-                              // Default State
+                              // Default State - อัปเดตข้อความรองรับวีดิโอ
                               <div className="space-y-4">
                                 <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                                   <svg
@@ -955,7 +1130,12 @@ function SafetyObservationForm() {
                                     📎 เลือกไฟล์หรือลากไฟล์มาวาง
                                   </p>
                                   <p className="text-sm text-gray-500 mt-1">
-                                    รองรับไฟล์รูปภาพและเอกสาร ขนาดไม่เกิน 10MB
+                                    รองรับไฟล์รูปภาพ, วีดิโอ และเอกสาร
+                                    <br />
+                                    <span className="text-xs">
+                                      รูปภาพ/เอกสาร: ไม่เกิน 10MB | วีดิโอ:
+                                      ไม่เกิน 100MB
+                                    </span>
                                   </p>
                                 </div>
                               </div>
@@ -1021,23 +1201,29 @@ function SafetyObservationForm() {
 
                             <div className="grid gap-3 max-h-60 overflow-y-auto">
                               {Array.from(field.value).map((file, index) => {
-                                //
                                 const fileObj = file as File;
                                 const isImage =
                                   fileObj.type.startsWith("image/");
+                                const isVideo =
+                                  fileObj.type.startsWith("video/");
                                 const isPDF =
                                   fileObj.type === "application/pdf";
                                 const isDoc =
                                   fileObj.type.includes("word") ||
                                   fileObj.name.toLowerCase().endsWith(".doc") ||
                                   fileObj.name.toLowerCase().endsWith(".docx");
+
                                 const fileSize = (
                                   fileObj.size /
                                   1024 /
                                   1024
                                 ).toFixed(2);
-                                const isValidSize =
-                                  fileObj.size <= 10 * 1024 * 1024;
+
+                                // อัปเดตการตรวจสอบขนาดไฟล์ตามประเภท
+                                const maxSize = isVideo
+                                  ? 100 * 1024 * 1024
+                                  : 10 * 1024 * 1024;
+                                const isValidSize = fileObj.size <= maxSize;
 
                                 return (
                                   <div
@@ -1050,12 +1236,14 @@ function SafetyObservationForm() {
                                     )}
                                   >
                                     <div className="flex items-center space-x-4 flex-1 min-w-0">
-                                      {/* File Icon */}
+                                      {/* File Icon - เพิ่มไอคอนสำหรับวีดิโอ */}
                                       <div
                                         className={cn(
                                           "w-12 h-12 rounded-lg flex items-center justify-center text-xl font-semibold",
                                           isImage
                                             ? "bg-purple-100 text-purple-600"
+                                            : isVideo
+                                            ? "bg-orange-100 text-orange-600"
                                             : isPDF
                                             ? "bg-red-100 text-red-600"
                                             : isDoc
@@ -1065,6 +1253,8 @@ function SafetyObservationForm() {
                                       >
                                         {isImage
                                           ? "🖼️"
+                                          : isVideo
+                                          ? "🎬"
                                           : isPDF
                                           ? "📄"
                                           : isDoc
@@ -1075,7 +1265,7 @@ function SafetyObservationForm() {
                                       {/* File Info */}
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-gray-900 truncate">
-                                          {(file as File).name}
+                                          {fileObj.name}
                                         </p>
                                         <div className="flex items-center space-x-2 text-xs mt-1">
                                           <span
@@ -1092,9 +1282,17 @@ function SafetyObservationForm() {
                                             •
                                           </span>
                                           <span className="text-gray-500 uppercase text-xs">
-                                            {(file as File).type.split(
-                                              "/"
-                                            )[1] || "Unknown"}
+                                            {fileObj.type.split("/")[1] ||
+                                              "Unknown"}
+                                          </span>
+                                          {/* เพิ่มแสดงขีดจำกัดขนาดไฟล์ */}
+                                          <span className="text-gray-400">
+                                            •
+                                          </span>
+                                          <span className="text-gray-500 text-xs">
+                                            {isVideo
+                                              ? "สูงสุด 100MB"
+                                              : "สูงสุด 10MB"}
                                           </span>
                                           {!isValidSize && (
                                             <>
@@ -1215,13 +1413,11 @@ function SafetyObservationForm() {
                               📋 ข้อกำหนดไฟล์:
                             </span>
                             <span className="block">
-                              • ประเภท: JPG, PNG, GIF, WebP, PDF, DOC, DOCX
+                              • ประเภท: JPG, PNG, GIF, WebP, MP4, AVI, MOV,
+                              WebM, PDF, DOC, DOCX
                             </span>
                             <span className="block">
-                              • ขนาด: ไม่เกิน 10MB ต่อไฟล์
-                            </span>
-                            <span className="block">
-                              • จำนวน: สูงสุด 5 ไฟล์
+                              • ขนาด: ไม่เกิน 10MB ต่อไฟล์ (วีดิโอไม่เกิน 100MB)
                             </span>
                             <span className="block text-red-600 font-semibold">
                               • หมายเหตุ: จำเป็นต้องแนบไฟล์อย่างน้อย 1 ไฟล์
@@ -1247,10 +1443,10 @@ function SafetyObservationForm() {
                     }
                   });
                 }}
-                disabled={form.formState.isSubmitting}
-                className="w-full md:w-auto"
+                disabled={form.formState.isSubmitting || isSubmitting}
+                className="w-full md:w-auto hover:cursor-pointer transition-all duration-200 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg px-6 py-3 shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {form.formState.isSubmitting ? (
+                {form.formState.isSubmitting || isSubmitting ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>กำลังบันทึก...</span>

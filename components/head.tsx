@@ -42,7 +42,7 @@ const searchParams  = useSearchParams();
                     department: depatment || "",
                     group: group || "",
                   }).toString();
-                  router.push(`/menu?${params}`);
+                  router.push(`/?${params}`);
                 }}
         >
           <House className="h-5 w-5" />

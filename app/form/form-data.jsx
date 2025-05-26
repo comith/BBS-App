@@ -1,5 +1,8 @@
 // form-data.jsx
 
+import { pl } from "date-fns/locale";
+import { title } from "process";
+
 export const employeeData = [
   {
     employeerId: "5LD01234",
@@ -112,7 +115,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/maintenance.png",
     alt: "รูป PPE (ME)",
     type: "multiselect",
-    title: "สังกัดแผนกที่ถูกสังเกตุ / ประเภทอุปกรณ์ PEE ที่สังเกตุ",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"ประเภทอุปกรณ์ PPE ที่สังเกตุ",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MT" },
@@ -139,7 +144,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/electrical.png",
     alt: "รูป PPE (EE)",
     type: "multiselect",
-    title: "สังกัดแผนกที่ถูกสังเกตุ / ประเภทอุปกรณ์ PEE ที่สังเกตุ",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"ประเภทอุปกรณ์ PPE ที่สังเกตุ",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MT" },
@@ -163,21 +170,26 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/ppe basic.png",
     alt: "รูป PPE (EE)",
     type: "multiselect",
-    title: "สังกัดแผนกที่ถูกสังเกตุ / ประเภทอุปกรณ์ PEE ที่สังเกตุ",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"ประเภทอุปกรณ์ PPE ที่สังเกตุ",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MT" },
       { id: 3, name: "AUX" },
+      { id: 4, name: "SUB-VCS" },
+      { id: 5, name: "SUB-STN" },
+      { id: 6, name: "SUB-SDS" },
+      { id: 7, name: "SUB-3SL" },
+      { id: 8, name: "OE" },
+      { id: 9, name: "MO" },
     ],
     option: [
       { id: 1, name: "หมวกเซฟตี้" },
       { id: 2, name: "รองเท้าเซฟตี้" },
       { id: 3, name: "เสื้อสะท้อนแสง" },
       { id: 4, name: "อุปกรณ์ป้องกันดวงตา" },
-      { id: 5, name: "อุปกรณ์ป้องกันการตก" },
-      { id: 6, name: "อุปกรณ์ป้องกันระบบทางเดินหายใจ" },
-      { id: 7, name: "อุปกรณ์ป้องกันมือหรือผิวหนัง" },
-      { id: 8, name: "อุปกรณ์ป้องกันไฟฟ้า" },
+      { id: 5, name: "อุปกรณ์ป้องกันระบบทางเดินหายใจ" },
     ],
   },
   {
@@ -187,8 +199,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/maintenance.png",
     alt: "รูป Maintenance (Tool/Equipment)",
     type: "multiselect",
-    title:
-      "สังเกตุ การใช้อุปกรณ์ เครื่องมือต่างๆในการทำงาน Tools/ Machine/ Equipment",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"สังเกตุ การใช้อุปกรณ์ เครื่องมือต่างๆในการทำงาน Tools/ Machine/ Equipment",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MT" },
@@ -197,6 +210,7 @@ export const sub_safetyCategoryData = [
       { id: 5, name: "SUB-STN" },
       { id: 6, name: "SUB-SDS" },
       { id: 7, name: "SUB-3SL" },
+      { id: 8, name: "MO" },
     ],
     option: [
       {
@@ -221,8 +235,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/electrical.png",
     alt: "รูป Electrical (Tool/Equipment)",
     type: "multiselect",
-    title:
-      "สังเกตุ การใช้อุปกรณ์ เครื่องมือต่างๆในการทำงาน Tools/ Machine/ Equipment",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"สังเกตุ การใช้อุปกรณ์ เครื่องมือต่างๆในการทำงาน Tools/ Machine/ Equipment",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },
@@ -247,7 +262,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/truck.png",
     alt: "รูป ยานพาหนะเครื่องจักรที่สังเกตุ",
     type: "multiselect",
-    title: "สังเกตุ  อุปกรณ์ ต่างๆของยานพาหนะและเครื่องจักร",
+    subject: "ประเภทเครื่องจักรที่สังเกตุ / หมายเลขเครื่องจักร",
+    placeholder: "เช่น รถยนต์ SHE13 / รถเครน ITH1 / รถบรรทุก STN25 / รถเฮี้ยบ MT01 ",
+    title:"สังเกตุ  อุปกรณ์ ต่างๆของยานพาหนะและเครื่องจักร",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },
@@ -269,6 +286,7 @@ export const sub_safetyCategoryData = [
       { id: 4, name: "ไฟไซเรน" },
       { id: 5, name: "สติกเกอร์สะท้อนแสง และหมายเลข" },
       { id: 6, name: "ถังดับเพลิง / Spill kits" },
+      { id: 7, name: "ยางกันกระแทก" },
     ],
   },
   {
@@ -278,8 +296,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/maintenance.png",
     alt: "รูป พฤติกรรมที่สังเกตุ",
     type: "multiselect",
-    title:
-      "การทำงานบน Line of fire หรือ การกระทำที่ไม่ปลอดภัย Unsafe Action (งานซ่อมบำรุงและงานก่อสร้าง)",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"การทำงานบน Line of fire หรือ การกระทำที่ไม่ปลอดภัย Unsafe Action (งานซ่อมบำรุงและงานก่อสร้าง)",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },
@@ -309,11 +328,11 @@ export const sub_safetyCategoryData = [
       { id: 6, name: "ทำงานเร่งรีบ ลัดขั้นตอน" },
       { id: 7, name: "หยอกล้อกันในการทำงานที่มีความเสี่ยง" },
       { id: 8, name: "เล่นมือถือขณะทำงานหรือสูบบุหรี่ในพื้นที่อันตราย" },
-      { id: 9, name: "ไม่มีการตัดจ่ายพลังงานขณะทำงาน" },
+      { id: 9, name: "การตัดจ่ายพลังงานขณะทำงาน" },
       { id: 10, name: "ใช้เครื่องมือผิดประเภท หรือเครื่องมือที่ชำรุด" },
       {
         id: 11,
-        name: "ไม่ติดตั้งป้ายเตือนบ่งบอกสถานะอันตราย หรือปิดกันพื้นที่ขณะทำงาน",
+        name: "การติดตั้งป้ายเตือนบ่งบอกสถานะอันตราย หรือปิดกันพื้นที่ขณะทำงาน",
       },
     ],
   },
@@ -324,8 +343,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/electrical.png",
     alt: "รูป Electrical (Tool/Equipment)",
     type: "multiselect",
-    title:
-      "สังเกตุ การใช้อุปกรณ์ เครื่องมือต่างๆในการทำงาน Tools/ Machine/ Equipment",
+    subject: "งานที่สังเกตุ",
+    placeholder: "ระบุงานที่สังเกตุ",
+    title:"การทำงานบน Line of fire หรือ การกระทำที่ไม่ปลอดภัย Unsafe Action (งานไฟฟ้า)",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },
@@ -333,14 +353,22 @@ export const sub_safetyCategoryData = [
       { id: 4, name: "AUX" },
     ],
     option: [
-      { id: 1, name: "แขวน Tag-out / Log-out" },
+      { id: 1, name: "ทำงานอยู่ใต้พื้นที่เสี่ยงที่อาจมีของตกหล่นทับ หรือพื้นที่เปียกแฉะ" },
       {
         id: 2,
-        name: "สภาพความพร้อมของอุปกรณ์เครื่องมืองานไฟฟ้า เช่นไม้ชักฟิว ฯลฯ",
+        name: "ยืนอยู่บนขอบหรืออยู่ในตำแหน่งที่เสี่ยงต่อการตกจากที่สูง",
       },
-      { id: 3, name: "สภาพตู้ไฟและระบบตัดไฟอัตโนมัติ" },
-      { id: 4, name: "สภาพสายไฟ สายกราวน์ของเครื่องมือ หรืออุปกรณ์ต่างๆ" },
-      { id: 5, name: "การติด Tag ระบุหมายเลขหรือชี้บ่งสถานะ" },
+      { id: 3, name: "ทำงานเร่งรีบ ลัดขั้นตอน" },
+      { id: 4, name: "หยอกล้อกันในการทำงานที่มีความเสี่ยง" },
+      { id: 5, name: "เล่นมือถือขณะทำงานหรือสูบบุหรี่ในพื้นที่อันตราย" },
+      { id: 6, name: "การตัดจ่ายพลังงานหรือกระแสไฟฟ้าขณะทำงาน" },
+      { id: 7, name: "ใช้เครื่องมือผิดประเภท หรือเครื่องมือที่ชำรุด" },
+      {
+        id: 8,
+        name: "การติดตั้งป้ายเตือนบ่งบอกสถานะอันตราย หรือปิดกันพื้นที่ขณะทำงาน",
+      },
+      { id: 9, name: "การสื่อการการตัดจ่ายกระแสไฟ" },
+      { id: 10, name: "การตรวจเช็คกระแสไฟฟ้าค้างในสาย Test voltage" },
     ],
   },
   {
@@ -350,7 +378,9 @@ export const sub_safetyCategoryData = [
     imagePath: "/img/cars.png",
     alt: "รูป ยานพาหนะเครื่องจักรที่สังเกตุ",
     type: "multiselect",
-    title: "สังเกตุ  อุปกรณ์ ต่างๆของยานพาหนะและเครื่องจักร",
+    subject: "ประเภทเครื่องจักรที่สังเกตุ / หมายเลขเครื่องจักร",
+    placeholder: "เช่น รถยนต์ SHE13 / รถเครน ITH1 / รถบรรทุก STN25 / รถเฮี้ยบ MT01 ",
+    title:"สังกัดแผนกที่ถูกสังเกตุ / การขับขี่เครื่องจักรและยานพาหนะ",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },
@@ -365,13 +395,14 @@ export const sub_safetyCategoryData = [
     option: [
       {
         id: 1,
-        name: "สภาพเครื่องจักรโดยรอบ เช่น ตัวโครงสร้าง กระจก ลมยาง ฯลฯ",
+        name: "SPEED LIMIT / การใช้ความเร็วในการขับที่ทางราบ 30 กม/ชม",
       },
-      { id: 2, name: "ระบบไฟส่องสว่าง" },
-      { id: 3, name: "ธงสะท้อนแสง" },
-      { id: 4, name: "ไฟไซเรน" },
-      { id: 5, name: "สติกเกอร์สะท้อนแสง และหมายเลข" },
-      { id: 6, name: "ถังดับเพลิง / Spill kits" },
+      { id: 2, name: "SPEED LIMIT / การใช้ความเร็วในการขับที่ทางลาดชัน 25 กม/ชม" },
+      { id: 3, name: "SAFE DISTANCE / การเว้นระยะห่างในการขับขี่ 35 เมตร" },
+      { id: 4, name: "KYT / การหยุดทำ KYT ก่อนเข้าทางร่วมทางแยก" },
+      { id: 5, name: "GEAR CHANGE / การเปลี่ยนเกียร์กลางเนิน" },
+      { id: 6, name: "OVERTAKE / การแซงในพื้นที่อันตราย" },
+      { id: 7, name: "การกระทำอันตราย Line of fire" }
     ],
   },
   {
@@ -380,8 +411,10 @@ export const sub_safetyCategoryData = [
     name: "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)",
     imagePath: "/img/condition.png",
     alt: "Plan/Unsafe Condition (UC)",
-    type: "multiselect",
-    title: " ประเภทความเสี่ยง Unsafe condition",
+    type: "option",
+    subject: "พื้นที่พบเจอ",
+    placeholder: "ระบุพื้นที่พบเจอ",
+    title:"ประเภทความเสี่ยง Unsafe condition",
     departcategory: [
       { id: 1, name: "CV" },
       { id: 2, name: "MO" },

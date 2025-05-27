@@ -215,6 +215,7 @@ function SafetyObservationForm() {
   const depatment = searchParams.get("department");
   const group = searchParams.get("group");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
@@ -243,21 +244,78 @@ function SafetyObservationForm() {
   });
 
   // Improved form submission with proper validation and feedback
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("Form Values:", values);
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    // ตรวจสอบ form errors ก่อนส่ง
+    const isValid = handleFormErrors();
+    if (!isValid) {
+      return; // หยุดการส่งถ้ามี errors
+    }
 
     setIsSubmitting(true);
+
     try {
-      // Submit logic here
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      // เตรียมข้อมูลสำหรับส่งไป API
+      const submissionData = {
+        date: data.date || new Date().toISOString(),
+        employeeId: data.employeeId,
+        username: data.username,
+        group: data.group,
+        type: data.type,
+        safetyCategory: data.safetyCategory,
+        sub_safetyCategory: data.sub_safetyCategory,
+        observed_work: data.observed_work,
+        depart_notice: data.depart_notice,
+        vehicleEquipment: data.vehicleEquipment || {},
+        selectedOptions: data.selectedOptions || [],
+        safeActionCount: data.safeActionCount || 0,
+        actionType: data.actionType || "",
+        unsafeActionCount: data.unsafeActionCount || 0,
+        actionTypeunsafe: data.actionTypeunsafe || "",
+        attachment: data.attachment || {},
+        other: data.other || "",
+      };
+
+      console.log("Submitting data:", submissionData);
+
+      // ส่งข้อมูลไป API
+      const response = await fetch("/api/post", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to submit data");
+      }
+
+      // แสดงข้อความสำเร็จพร้อม record ID
       toast({
         title: "ส่งข้อมูลสำเร็จ",
-        description: "ข้อมูลการสังเกตุความปลอดภัยถูกบันทึกเรียบร้อยแล้ว",
+        description: `ข้อมูลการสังเกตความปลอดภัยถูกบันทึกเรียบร้อยแล้ว${
+          result.data?.recordId ? ` (ID: ${result.data.recordId})` : ""
+        }`,
       });
+
+      // รีเซ็ต form หลังส่งสำเร็จ (ถ้าต้องการ)
+      form.reset();
+
+      // เพิ่มการ redirect หรือ action อื่นๆ ตามต้องการ
+      // router.push('/success-page');
+
+      console.log("Submission successful:", result);
     } catch (error) {
+      console.error("Submission error:", error);
+
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+        description:
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
         variant: "destructive",
       });
     } finally {
@@ -327,7 +385,11 @@ function SafetyObservationForm() {
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
       }
+
+      return false; // Return false if there are errors
     }
+
+    return true; // Return true if no errors
   };
 
   return (

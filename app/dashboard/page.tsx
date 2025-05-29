@@ -1,7 +1,8 @@
+//dashboard/page.tsx
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   format,
   isAfter,
@@ -28,7 +29,6 @@ import {
   Eye,
   Search,
   Filter,
-  Download,
   ChevronDown,
   ChevronUp,
   CalendarIcon,
@@ -42,7 +42,7 @@ import {
   Check,
   Ban,
   Building2,
-  Settings
+  Settings,
 } from "lucide-react";
 import {
   Select,
@@ -68,7 +68,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -285,78 +284,35 @@ const CustomCalendar = ({
   );
 };
 
-// Mock data
-const mockReports: Report[] = [
-  {
-    id: 1,
-    date: new Date("2024-01-15"),
-    employeeId: "5LD01234",
-    employeeName: "สมชาย ใจดี",
-    department: "ITH-CV",
-    group: "CV1",
-    safetyCategory: "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE",
-    subCategory: "PPE งานซ่อมบำรุง และงานก่อสร้าง",
-    observedWork: "ซ่อมเครื่องจักรในโรงงาน",
-    observedDepartment: "CV",
-    status: "pending",
-    safeCount: 5,
-    unsafeCount: 2,
-    selectedOptions: ["หมวกเซฟตี้", "รองเท้าเซฟตี้"],
-    attachment: ["image1.jpg", "image2.jpg"],
-    adminNote: null,
-    approvedDate: null,
-    approvedBy: null,
-    submittedDate: new Date("2024-01-15T09:30:00"),
-    priority: "normal",
-  },
-  {
-    id: 2,
-    date: new Date("2024-01-10"),
-    employeeId: "5LD05678",
-    employeeName: "สมหญิง รักษาความปลอดภัย",
-    department: "ITH-MT",
-    group: "MT1",
-    safetyCategory: "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร",
-    subCategory: "อุปกรณ์ ต่างๆของยานพาหนะและเครื่องจักร",
-    observedWork: "การขับรถเครนในพื้นที่ก่อสร้าง",
-    observedDepartment: "MT",
-    status: "pending",
-    safeCount: 3,
-    unsafeCount: 1,
-    selectedOptions: ["ระบบไฟส่องสว่าง", "ธงสะท้อนแสง"],
-    attachment: ["video1.mp4"],
-    adminNote: null,
-    approvedDate: null,
-    approvedBy: null,
-    submittedDate: new Date("2024-01-10T14:20:00"),
-    priority: "high",
-  },
-  {
-    id: 3,
-    date: new Date("2024-01-08"),
-    employeeId: "5LD09999",
-    employeeName: "สมศักดิ์ ดีใจ",
-    department: "ITH-AUX",
-    group: "AUX1",
-    safetyCategory: "การกระทำที่ไม่ปลอดภัย",
-    subCategory: "พฤติกรรมการทำงานไฟฟ้า",
-    observedWork: "งานติดตั้งระบบไฟฟ้า",
-    observedDepartment: "AUX",
-    status: "approved",
-    safeCount: 2,
-    unsafeCount: 4,
-    selectedOptions: ["การตัดจ่ายพลังงานหรือกระแสไฟฟ้าขณะทำงาน"],
-    attachment: ["report1.pdf"],
-    adminNote: "รายงานดีมาก มีรายละเอียดครบถ้วน",
-    approvedDate: new Date("2024-01-09"),
-    approvedBy: "ผจก.ความปลอดภัย",
-    submittedDate: new Date("2024-01-08T11:15:00"),
-    priority: "high",
-  },
-];
+interface ApiReport {
+  record_id: string;
+  date: string;
+  employee_id: string;
+  fullname: string;
+  group: string;
+  depart: string;
+  safetycategory_id: string;
+  sub_safetycategory_id: string;
+  observed_Work: string;
+  department_notice: string;
+  vehicleEquipment: any;
+  selectedOptions: any[];
+  safeActionCount: number;
+  actionType: string;
+  unsafeActionCount: number;
+  actionTypeunsafe: string;
+  attachment: any[];
+  other: string;
+  status: string;
+  // ✅ เพิ่ม fields ใหม่สำหรับ approval data
+  adminNote?: string;
+  approvedDate?: string;
+  approvedBy?: string;
+}
 
 interface Report {
   id: number;
+  recordId: string; // ✅ เพิ่มฟิลด์นี้
   date: Date;
   employeeId: string;
   employeeName: string;
@@ -440,9 +396,77 @@ const getPriorityInfo = (priority: string) => {
   }
 };
 
+const transformApiDataToDashboardReport = (
+  apiData: ApiReport[],
+  categories: any[],
+  subCategories: any[]
+): Report[] => {
+  return apiData.map((item, index) => {
+    // หา category name จาก ID
+    const category = categories.find(
+      (cat) => cat.id === parseInt(item.safetycategory_id)
+    );
+    const subCategory = subCategories.find(
+      (sub) => sub.id === parseInt(item.sub_safetycategory_id)
+    );
+
+    // กำหนด priority จาก unsafe count
+    let priority: "low" | "normal" | "high" = "normal";
+    if (item.unsafeActionCount >= 3) {
+      priority = "high";
+    } else if (item.unsafeActionCount === 0) {
+      priority = "low";
+    }
+
+    // แปลง selectedOptions
+    const selectedOptionsArray = Array.isArray(item.selectedOptions)
+      ? item.selectedOptions.map((opt) =>
+          typeof opt === "string" ? opt : opt.name || "ไม่ระบุ"
+        )
+      : [];
+
+    // ต้องการส่งไปทั้ง id และ name ของไฟล์แนบ
+    const attachmentArray = Array.isArray(item.attachment)
+      ? item.attachment.map((file) => {
+          return typeof file === "string"
+            ? file
+            : file.name || "ไม่ระบุ";
+        })
+      : [];
+
+    return {
+      id: index + 1,
+      recordId: item.record_id, // ✅ ใช้ recordId จริงจาก API
+      date: new Date(item.date),
+      employeeId: item.employee_id,
+      employeeName: item.fullname,
+      department: item.depart,
+      group: item.group,
+      safetyCategory:
+        category?.name || `Category ID: ${item.safetycategory_id}`,
+      subCategory: subCategory?.name || null,
+      observedWork: item.observed_Work || "ไม่ระบุ",
+      observedDepartment: item.department_notice || item.group || "ไม่ระบุ",
+      status:
+        item.status && item.status.trim() !== ""
+          ? (item.status as "approved" | "pending" | "rejected")
+          : "pending",
+      safeCount: Number(item.safeActionCount) || 0,
+      unsafeCount: Number(item.unsafeActionCount) || 0,
+      selectedOptions: selectedOptionsArray,
+      attachment: attachmentArray,
+      adminNote: item.adminNote || null,
+      approvedDate: item.approvedDate ? new Date(item.approvedDate) : null,
+      approvedBy: item.approvedBy || null,
+      submittedDate: new Date(item.date),
+      priority: priority,
+    };
+  });
+};
+
 function AdminDashboard() {
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [filteredReports, setFilteredReports] = useState<Report[]>(mockReports);
+  const [reports, setReports] = useState<Report[]>([]);
+  // Removed duplicate filteredReports state, use useMemo version below
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -452,6 +476,14 @@ function AdminDashboard() {
   const [openAccordions, setOpenAccordions] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState("reports");
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const departmentList = useMemo(
+    () => [...new Set(reports.map((r) => r.department))].sort(),
+    [reports]
+  );
 
   // Date range states
   const [dateRange, setDateRange] = useState<{
@@ -468,61 +500,63 @@ function AdminDashboard() {
   const [adminNote, setAdminNote] = useState("");
 
   // Statistics
-  const stats = {
-    total: reports.length,
-    pending: reports.filter((r) => r.status === "pending").length,
-    approved: reports.filter((r) => r.status === "approved").length,
-    rejected: reports.filter((r) => r.status === "rejected").length,
-    highPriority: reports.filter(
-      (r) => r.priority === "high" && r.status === "pending"
-    ).length,
-    totalSafeActions: reports.reduce((sum, r) => sum + r.safeCount, 0),
-    totalUnsafeActions: reports.reduce((sum, r) => sum + r.unsafeCount, 0),
-    todayReports: reports.filter(
-      (r) =>
-        startOfDay(r.submittedDate).getTime() ===
-        startOfDay(new Date()).getTime()
-    ).length,
-  };
-
-  const departments = [
-    "ITH-CV",
-    "ITH-MT",
-    "ITH-AUX",
-    "ITH-MO",
-    "ITH-OE",
-    "SUB-VCS",
-    "SUB-STN",
-    "SUB-SDS",
-    "SUB-3SL",
-  ];
+  const stats = useMemo(
+    () => ({
+      total: reports.length,
+      pending: reports.filter((r) => r.status === "pending").length,
+      approved: reports.filter((r) => r.status === "approved").length,
+      rejected: reports.filter((r) => r.status === "rejected").length,
+      highPriority: reports.filter(
+        (r) => r.priority === "high" && r.status === "pending"
+      ).length,
+      totalSafeActions: reports.reduce((sum, r) => sum + r.safeCount, 0),
+      totalUnsafeActions: reports.reduce((sum, r) => sum + r.unsafeCount, 0),
+      todayReports: reports.filter(
+        (r) =>
+          startOfDay(r.submittedDate).getTime() ===
+          startOfDay(new Date()).getTime()
+      ).length,
+    }),
+    [reports]
+  );
 
   // Toggle accordion
-  const toggleAccordion = (reportId: number) => {
-    const newOpenAccordions = new Set(openAccordions);
-    if (newOpenAccordions.has(reportId)) {
-      newOpenAccordions.delete(reportId);
-    } else {
-      newOpenAccordions.add(reportId);
-    }
-    setOpenAccordions(newOpenAccordions);
-  };
+  const toggleAccordion = useCallback(
+    (reportId: number) => {
+      const newOpenAccordions = new Set(openAccordions);
+      if (newOpenAccordions.has(reportId)) {
+        newOpenAccordions.delete(reportId);
+      } else {
+        newOpenAccordions.add(reportId);
+      }
+      setOpenAccordions(newOpenAccordions);
+    },
+    [openAccordions]
+  );
 
-  // Clear date range
-  const clearDateRange = () => {
+  const handleApprovalAction = useCallback(
+    (action: "approve" | "reject", report: Report) => {
+      setSelectedReport(report);
+      setApprovalAction(action);
+      setAdminNote("");
+      setIsApprovalModalOpen(true);
+    },
+    []
+  );
+
+  const clearDateRange = useCallback(() => {
     setDateRange({ from: undefined, to: undefined });
-  };
+  }, []);
 
-  // Quick date presets
-  const setQuickDateRange = (days: number) => {
+  const setQuickDateRange = useCallback((days: number) => {
     const today = new Date();
     const fromDate = new Date();
     fromDate.setDate(today.getDate() - days);
     setDateRange({ from: fromDate, to: today });
-  };
+  }, []);
 
   // Filter and Search
-  useEffect(() => {
+  const filteredReports = useMemo(() => {
     let filtered = reports;
 
     // Filter by status
@@ -595,7 +629,7 @@ function AdminDashboard() {
       return b.submittedDate.getTime() - a.submittedDate.getTime();
     });
 
-    setFilteredReports(filtered);
+    return filtered;
   }, [
     reports,
     statusFilter,
@@ -605,49 +639,148 @@ function AdminDashboard() {
     dateRange,
   ]);
 
-  // Handle approval/rejection
-  const handleApprovalAction = (
-    action: "approve" | "reject",
-    report: Report
-  ) => {
-    setSelectedReport(report);
-    setApprovalAction(action);
-    setAdminNote("");
-    setIsApprovalModalOpen(true);
-  };
-
-  const submitApprovalAction = () => {
+  const submitApprovalAction = async () => {
     if (!selectedReport || !approvalAction) return;
 
-    const updatedReports = reports.map((report) => {
-      if (report.id === selectedReport.id) {
-        return {
-          ...report,
-          status:
-            approvalAction === "approve"
-              ? ("approved" as const)
-              : ("rejected" as const),
-          adminNote: adminNote.trim() || null,
-          approvedDate: new Date(),
-          approvedBy: "ผจก.ความปลอดภัย", // In real app, get from auth
-        };
-      }
-      return report;
-    });
+    setIsSubmittingApproval(true);
 
-    setReports(updatedReports);
-    setIsApprovalModalOpen(false);
-    setSelectedReport(null);
-    setApprovalAction(null);
-    setAdminNote("");
+    try {
+      console.log("🔄 Submitting approval action:", {
+        recordId: selectedReport.recordId,
+        action: approvalAction,
+        note: adminNote.trim() || null,
+      });
+
+      const response = await fetch("/api/approve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: selectedReport.recordId,
+          status: approvalAction === "approve" ? "approved" : "rejected",
+          adminNote: adminNote.trim() || null,
+          approvedBy: "SHE",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to update approval status"
+        );
+      }
+
+      const result = await response.json();
+      console.log("✅ Approval API response:", result);
+
+      // อัพเดต local state
+      const updatedReports = reports.map((report) => {
+        if (report.id === selectedReport.id) {
+          return {
+            ...report,
+            status:
+              approvalAction === "approve"
+                ? ("approved" as const)
+                : ("rejected" as const),
+            adminNote: adminNote.trim() || null,
+            approvedDate: new Date(result.data.approvedDate),
+            approvedBy: result.data.approvedBy,
+          };
+        }
+        return report;
+      });
+
+      setReports(updatedReports);
+      setIsApprovalModalOpen(false);
+      setSelectedReport(null);
+      setApprovalAction(null);
+      setAdminNote("");
+
+      // ✅ แสดง success message
+      const actionText =
+        approvalAction === "approve" ? "อนุมัติ" : "ไม่อนุมัติ";
+      setSuccessMessage(`${actionText}รายงาน #${selectedReport.id} สำเร็จแล้ว`);
+
+      // ซ่อน success message หลัง 3 วินาที
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (error) {
+      console.error("❌ Error updating approval status:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "เกิดข้อผิดพลาดในการอัพเดตสถานะ"
+      );
+    } finally {
+      setIsSubmittingApproval(false);
+    }
   };
 
   // Mock function to fetch reports
   const fetchReports = async () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setReports(mockReports);
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      console.log("🔄 Fetching all reports for admin dashboard...");
+
+      const [recordResponse, categoryResponse, subCategoryResponse] =
+        await Promise.all([
+          fetch("/api/get?type=record"),
+          fetch("/api/get?type=category"),
+          fetch("/api/get?type=subcategory"),
+        ]);
+
+      if (!recordResponse.ok) {
+        throw new Error(`HTTP error! status: ${recordResponse.status}`);
+      }
+
+      const [apiData, categoryData, subCategoryData] = await Promise.all([
+        recordResponse.json(),
+        categoryResponse.json(),
+        subCategoryResponse.json(),
+      ]);
+
+      console.log("✅ API Response received:", {
+        totalRecords: apiData,
+        categories: categoryData,
+        subCategories: subCategoryData,
+      });
+
+      if (!Array.isArray(apiData)) {
+        throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
+      }
+
+      const transformedReports = transformApiDataToDashboardReport(
+        apiData,
+        categoryData,
+        subCategoryData
+      );
+
+      console.log("📊 Transformed reports for dashboard:", {
+        count: transformedReports.length,
+        pending: transformedReports.filter((r) => r.status === "pending")
+          .length,
+        approved: transformedReports.filter((r) => r.status === "approved")
+          .length,
+        rejected: transformedReports.filter((r) => r.status === "rejected")
+          .length,
+      });
+
+      setReports(transformedReports);
+    } catch (error) {
+      console.error("❌ Error fetching reports:", error);
+      setError(
+        error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+      );
+
+      // ✅ ไม่ใช้ mock data แล้ว - ให้เป็น empty array
+      setReports([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -657,6 +790,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
+
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -678,26 +812,52 @@ function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-            <Button
-              onClick={fetchReports}
-              disabled={isLoading}
-              className="bg-orange-500 hover:bg-orange-600"
-            >
-              {isLoading ? "กำลังโหลด..." : "รีเฟรช"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                router.push("/managecategory")
-              }
-            >
-                <Settings/>
-
-            </Button>
+              <Button
+                onClick={fetchReports}
+                disabled={isLoading}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                {isLoading ? "กำลังโหลด..." : "รีเฟรช"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/managecategory")}
+              >
+                <Settings />
+              </Button>
             </div>
           </div>
         </div>
       </div>
+
+      {error && !isLoading && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="py-4 text-center">
+              <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+              <p className="text-red-600 mb-2">{error}</p>
+              <Button
+                onClick={fetchReports}
+                size="sm"
+                className="bg-red-500 hover:bg-red-600"
+              >
+                ลองใหม่อีกครั้ง
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="py-4 text-center">
+              <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
+              <p className="text-green-700 font-medium">{successMessage}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Tabs
@@ -712,77 +872,99 @@ function AdminDashboard() {
 
           <TabsContent value="reports" className="space-y-6">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        รอการอนุมัติ
-                      </p>
-                      <p className="text-2xl font-bold text-yellow-600">
-                        {stats.pending}
-                      </p>
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="animate-pulse">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded mb-2 w-20"></div>
+                            <div className="h-8 bg-gray-200 rounded w-12"></div>
+                          </div>
+                          <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          รอการอนุมัติ
+                        </p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {stats.pending}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <Clock className="h-6 w-6 text-yellow-600" />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-yellow-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">ด่วน</p>
-                      <p className="text-2xl font-bold text-red-600">
-                        {stats.highPriority}
-                      </p>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          ด่วน
+                        </p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {stats.highPriority}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <AlertCircle className="h-6 w-6 text-red-600" />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                      <AlertCircle className="h-6 w-6 text-red-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        วันนี้
-                      </p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {stats.todayReports}
-                      </p>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          วันนี้
+                        </p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {stats.todayReports}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-blue-600" />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-blue-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        รายงานทั้งหมด
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {stats.total}
-                      </p>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          รายงานทั้งหมด
+                        </p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {stats.total}
+                        </p>
+                      </div>
+                      <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-gray-600" />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-gray-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Filters */}
             <Card>
@@ -829,7 +1011,8 @@ function AdminDashboard() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">ทุกแผนก</SelectItem>
-                          {departments.map((dept) => (
+                          {/* ✅ แก้ไขให้ถูกต้อง */}
+                          {departmentList.map((dept) => (
                             <SelectItem key={dept} value={dept}>
                               {dept}
                             </SelectItem>
@@ -1168,7 +1351,7 @@ function AdminDashboard() {
                                     ไฟล์แนบ
                                   </p>
                                   <p className="font-medium text-blue-600">
-                                    {report.attachment.length} ไฟล์
+                                    {report.attachment} ไฟล์
                                   </p>
                                 </div>
                               </div>
@@ -1253,7 +1436,10 @@ function AdminDashboard() {
                           <div
                             className="bg-green-500 h-2 rounded-full"
                             style={{
-                              width: `${(stats.approved / stats.total) * 100}%`,
+                              width:
+                                stats.total > 0
+                                  ? `${(stats.approved / stats.total) * 100}%`
+                                  : "0%",
                             }}
                           ></div>
                         </div>
@@ -1271,7 +1457,10 @@ function AdminDashboard() {
                           <div
                             className="bg-yellow-500 h-2 rounded-full"
                             style={{
-                              width: `${(stats.pending / stats.total) * 100}%`,
+                              width:
+                                stats.total > 0
+                                  ? `${(stats.pending / stats.total) * 100}%`
+                                  : "0%",
                             }}
                           ></div>
                         </div>
@@ -1287,7 +1476,10 @@ function AdminDashboard() {
                           <div
                             className="bg-red-500 h-2 rounded-full"
                             style={{
-                              width: `${(stats.rejected / stats.total) * 100}%`,
+                              width:
+                                stats.total > 0
+                                  ? `${(stats.rejected / stats.total) * 100}%`
+                                  : "0%",
                             }}
                           ></div>
                         </div>
@@ -1350,22 +1542,34 @@ function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {departments.slice(0, 5).map((dept) => {
-                      const count = reports.filter(
-                        (r) => r.department === dept
-                      ).length;
-                      return (
-                        <div
-                          key={dept}
-                          className="flex justify-between items-center"
-                        >
-                          <span className="text-sm text-gray-600">{dept}</span>
-                          <span className="text-sm font-medium">
-                            {count} รายการ
-                          </span>
-                        </div>
-                      );
-                    })}
+                    {departmentList.length > 0 ? (
+                      departmentList
+                        .slice(0, 5)
+                        .map((dept) => {
+                          const count = reports.filter(
+                            (r) => r.department === dept
+                          ).length;
+                          if (count === 0) return null; // ไม่แสดงแผนกที่ไม่มีข้อมูล
+                          return (
+                            <div
+                              key={dept}
+                              className="flex justify-between items-center"
+                            >
+                              <span className="text-sm text-gray-600">
+                                {dept}
+                              </span>
+                              <span className="text-sm font-medium">
+                                {count} รายการ
+                              </span>
+                            </div>
+                          );
+                        })
+                        .filter(Boolean) // กรอง null ออก
+                    ) : (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        ยังไม่มีข้อมูลรายงาน
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1440,19 +1644,32 @@ function AdminDashboard() {
             <Button
               variant="outline"
               onClick={() => setIsApprovalModalOpen(false)}
+              disabled={isSubmittingApproval}
             >
               ยกเลิก
             </Button>
             <Button
               onClick={submitApprovalAction}
-              disabled={approvalAction === "reject" && !adminNote.trim()}
+              disabled={
+                (approvalAction === "reject" && !adminNote.trim()) ||
+                isSubmittingApproval
+              }
               className={
                 approvalAction === "approve"
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-red-600 hover:bg-red-700"
               }
             >
-              {approvalAction === "approve" ? "อนุมัติ" : "ไม่อนุมัติ"}
+              {isSubmittingApproval ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  กำลังประมวลผล...
+                </>
+              ) : approvalAction === "approve" ? (
+                "อนุมัติ"
+              ) : (
+                "ไม่อนุมัติ"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

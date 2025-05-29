@@ -378,6 +378,29 @@ interface Report {
   approvedBy: string | null;
 }
 
+interface ApiReport {
+  record_id: string;
+  date: string;
+  employee_id: string;
+  fullname: string;
+  group: string;
+  depart: string;
+  safetycategory_id: string;
+  sub_safetycategory_id: string;
+  observed_Work: string;
+  department_notice: string;
+  vehicleEquipment: any;
+  selectedOptions: any[];
+  safeActionCount: number;
+  actionType: string;
+  unsafeActionCount: number;
+  actionTypeunsafe: string;
+  attachment: any[];
+  other: string;
+  status: string;
+}
+
+
 const getStatusInfo = (status: string) => {
   switch (status) {
     case "approved":
@@ -413,16 +436,96 @@ const getStatusInfo = (status: string) => {
 
 function EmployeeReportStatus() {
   const searchParams = useSearchParams();
-  const employeeId = searchParams.get("employeeId") || "5LD01234";
-  const employeeName = searchParams.get("fullName") || "สมชาย ใจดี";
+  const employeeId = searchParams.get("employeeId");
+  const employeeName = searchParams.get("fullName");
 
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [filteredReports, setFilteredReports] = useState<Report[]>(mockReports);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [openAccordions, setOpenAccordions] = useState<Set<number>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [subCategories, setSubCategories] = useState<any[]>([]);
+
+  const fetchCategoriesAndSubCategories = async () => {
+    try {
+      const [categoryResponse, subCategoryResponse] = await Promise.all([
+        fetch("/api/get?type=category"),
+        fetch("/api/get?type=subcategory"),
+      ]);
+
+      const categoryData = await categoryResponse.json();
+      const subCategoryData = await subCategoryResponse.json();
+
+      setCategories(categoryData);
+      setSubCategories(subCategoryData);
+
+      console.log("Categories loaded:", categoryData);
+      console.log("SubCategories loaded:", subCategoryData);
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    }
+  };
+
+  const transformApiDataToReportWithCategories = (
+    apiData: ApiReport[],
+    employeeId: string,
+    categories: any[],
+    subCategories: any[]
+  ): Report[] => {
+    console.log("Transforming API data with categories:", {
+      totalRecords: apiData.length,
+      employeeId,
+      categoriesCount: categories.length,
+      subCategoriesCount: subCategories.length,
+    });
+
+    const filtered = apiData.filter((item) => item.employee_id === employeeId);
+    console.log("Filtered records for employee:", filtered.length);
+
+    return filtered.map((item, index) => {
+      // หา category name จาก ID
+      const category = categories.find(
+        (cat) => cat.id === parseInt(item.safetycategory_id)
+      );
+      const subCategory = subCategories.find(
+        (sub) => sub.id === parseInt(item.sub_safetycategory_id)
+      );
+
+      return {
+        id: index + 1,
+        date: new Date(item.date),
+        safetyCategory:
+          category?.name || `Category ID: ${item.safetycategory_id}`,
+        subCategory: subCategory?.name || null,
+        observedWork: item.observed_Work || "ไม่ระบุ",
+        department: item.department_notice || item.group || "ไม่ระบุ",
+        status:
+          item.status && item.status.trim() !== ""
+            ? (item.status as "approved" | "pending" | "rejected")
+            : "pending",
+        safeCount: Number(item.safeActionCount) || 0,
+        unsafeCount: Number(item.unsafeActionCount) || 0,
+        adminNote: null,
+        approvedDate: null,
+        approvedBy: null,
+      };
+    });
+  };
+
+  const calculateStats = (reports: Report[]) => {
+    return {
+      total: reports.length,
+      approved: reports.filter((r) => r.status === "approved").length,
+      pending: reports.filter((r) => r.status === "pending").length,
+      rejected: reports.filter((r) => r.status === "rejected").length,
+      totalSafeActions: reports.reduce((sum, r) => sum + r.safeCount, 0),
+      totalUnsafeActions: reports.reduce((sum, r) => sum + r.unsafeCount, 0),
+    };
+  };
 
   // Date range states
   const [dateRange, setDateRange] = useState<{
@@ -432,14 +535,7 @@ function EmployeeReportStatus() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // สถิติโดยรวม
-  const stats = {
-    total: reports.length,
-    approved: reports.filter((r) => r.status === "approved").length,
-    pending: reports.filter((r) => r.status === "pending").length,
-    rejected: reports.filter((r) => r.status === "rejected").length,
-    totalSafeActions: reports.reduce((sum, r) => sum + r.safeCount, 0),
-    totalUnsafeActions: reports.reduce((sum, r) => sum + r.unsafeCount, 0),
-  };
+  const stats = calculateStats(reports);
 
   // Toggle accordion
   const toggleAccordion = (reportId: number) => {
@@ -509,20 +605,113 @@ function EmployeeReportStatus() {
   }, [reports, statusFilter, searchTerm, dateRange]);
 
   // Mock function to fetch reports
+
   const fetchReports = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setReports(mockReports);
-    setIsLoading(false);
+    setError(null);
+
+    try {
+      console.log("🔄 Fetching reports for employee:", employeeId);
+
+      // เรียกข้อมูลทั้งหมดพร้อมกัน
+      const [recordResponse, categoryResponse, subCategoryResponse] =
+        await Promise.all([
+          fetch("/api/get?type=record"),
+          fetch("/api/get?type=category"),
+          fetch("/api/get?type=subcategory"),
+        ]);
+
+      if (!recordResponse.ok) {
+        throw new Error(`HTTP error! status: ${recordResponse.status}`);
+      }
+
+      const [apiData, categoryData, subCategoryData] = await Promise.all([
+        recordResponse.json(),
+        categoryResponse.json(),
+        subCategoryResponse.json(),
+      ]);
+
+      console.log("✅ API Response received:", {
+        totalRecords: apiData.length,
+        categories: categoryData.length,
+        subCategories: subCategoryData.length,
+      });
+
+      if (!Array.isArray(apiData)) {
+        throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
+      }
+
+      const transformedReports = transformApiDataToReportWithCategories(
+        apiData,
+        employeeId || "",
+        categoryData,
+        subCategoryData
+      );
+
+      console.log("📊 Transformed reports:", {
+        count: transformedReports.length,
+      });
+
+      setReports(transformedReports);
+
+      if (transformedReports.length === 0) {
+        setError("ไม่พบรายงานของพนักงานคนนี้");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching reports:", error);
+      setError(
+        error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล"
+      );
+      // ใช้ mock data เป็น fallback เฉพาะตอน development
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔄 Using mock data as fallback");
+        setReports(mockReports);
+      } else {
+        setReports([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchReports();
-  }, []);
+    if (employeeId) {
+      fetchReports();
+    }
+  }, [employeeId]);
+
+  if (!employeeId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card>
+          <CardContent className="py-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <p className="text-red-600">
+              ไม่พบรหัสพนักงาน กรุณาเข้าถึงหน้านี้ผ่านลิงก์ที่ถูกต้อง
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {error && !isLoading && (
+        <Card className="mb-6">
+          <CardContent className="py-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button
+              onClick={fetchReports}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              ลองใหม่อีกครั้ง
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">

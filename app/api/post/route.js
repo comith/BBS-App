@@ -1,21 +1,46 @@
-import { appendToSheet } from '../config'; // Adjust the import path as necessary
+//api/post/route.js
+import { appendToSheet } from '../config';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    // รับข้อมูลจาก request body
+    // รับข้อมูลจาก JSON เท่านั้น
+    console.log('📥 Receiving request...');
+    
     const data = await request.json();
     
-    // สร้าง ID สำหรับการบันทึก (ถ้าต้องการ)
+    console.log('✅ Data received:', {
+      employeeId: data.employeeId,
+      username: data.username,
+      hasUploadedFiles: !!data.uploadedFiles,
+      uploadedFilesCount: data.uploadedFiles?.length || 0
+    });
+    
+    // สร้าง ID สำหรับการบันทึก
     const recordId = `BBS_${Date.now()}`;
     
     // จัดเตรียมข้อมูลสำหรับ Google Sheet
-    // แปลง selectedOptions เป็น string เพื่อเก็บใน sheet
     const selectedOptionsText = data.selectedOptions?.map(option => option.name).join(', ') || '';
-    
-    // แปลง vehicleEquipment และ attachment เป็น JSON string
     const vehicleEquipmentText = JSON.stringify(data.vehicleEquipment || {});
-    const attachmentText = JSON.stringify(data.attachment || {});
+    
+    // 🔥 จัดการข้อมูลไฟล์ - เก็บเป็น JSON ของ file IDs
+    let attachmentText = '[]';
+    
+    if (data.uploadedFiles && Array.isArray(data.uploadedFiles) && data.uploadedFiles.length > 0) {
+      const fileData = data.uploadedFiles.map(file => ({
+        id: file.id,
+        name: file.name,
+        webViewLink: file.webViewLink || '',
+        savedDate: new Date().toISOString()
+      }));
+      
+      attachmentText = JSON.stringify(fileData);
+      
+      console.log('📎 Files to save:', {
+        count: fileData.length,
+        files: fileData.map(f => ({ id: f.id, name: f.name }))
+      });
+    }
     
     // สร้าง array ของข้อมูลที่จะส่งไป Google Sheet
     const row = [
@@ -35,23 +60,30 @@ export async function POST(request) {
       data.actionType || '',              // N: Action Type
       data.unsafeActionCount || 0,        // O: Unsafe Action Count
       data.actionTypeunsafe || '',        // P: Action Type Unsafe
-      attachmentText,                     // Q: Attachment (JSON)
+      attachmentText,                     // Q: Attachment (JSON with file IDs)
       data.other || ''                    // R: Other
     ];
 
-    // เรียกใช้ฟังก์ชันเพิ่มข้อมูลลง Google Sheet ชื่อ "data_bbs"
+    console.log('💾 Saving to Google Sheet...');
+
+    // บันทึกลง Google Sheet
     await appendToSheet('record!A:R', [row]);
+
+    const responseData = {
+      recordId: recordId,
+      totalFiles: data.uploadedFiles?.length || 0,
+      successCount: data.uploadedFiles?.length || 0,
+    };
+
+    console.log('✅ Save successful:', responseData);
 
     return NextResponse.json({ 
       message: 'Data added successfully',
-      data: {
-        ...data,
-        recordId: recordId  // ส่ง record ID กลับไปในการตอบกลับ
-      }
+      data: responseData
     }, { status: 201 });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('❌ API Error:', error);
     return NextResponse.json(
       { message: 'Error adding data to sheet', error: error.message },
       { status: 500 }

@@ -34,12 +34,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
 // Data constants - move to separate file in a real application
-import {
-  list_department,
-  list_group,
-  safetyCategoryData,
-  sub_safetyCategoryData,
-} from "./form-data";
+import { list_department, list_group, safetyCategoryData } from "./form-data";
 
 // ===================================== Components =====================================
 // Form schema
@@ -104,10 +99,20 @@ const formSchema = z
       .any()
       .refine((files) => {
         // ตรวจสอบว่ามีไฟล์หรือไม่ (REQUIRED)
-        return files && files.length > 0;
+        if (Array.isArray(files)) {
+          return files.length > 0 && files.some((f) => f.status === "success");
+        } else {
+          return files && files.length > 0;
+        }
       }, "กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์")
       .refine((files) => {
         // ตรวจสอบขนาดไฟล์
+
+        if (Array.isArray(files)) {
+          // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+          return true;
+        }
+
         if (files && files.length > 0) {
           return Array.from(files).every((file) => {
             const fileObj = file as File;
@@ -119,6 +124,11 @@ const formSchema = z
         return true;
       }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 100MB")
       .refine((files) => {
+        if (Array.isArray(files)) {
+          // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+          return true;
+        }
+
         // ตรวจสอบประเภทไฟล์
         const allowedTypes = [
           // รูปภาพ
@@ -154,16 +164,23 @@ const formSchema = z
       }, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP, SVG), วีดิโอ (MP4, AVI, MOV, WebM) และเอกสาร (PDF, DOC, DOCX)")
       .refine((files) => {
         // ตรวจสอบจำนวนไฟล์
+        if (Array.isArray(files)) {
+          return files.length <= 5;
+        }
+
         return !files || files.length <= 5;
       }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
     other: z.string().optional(),
+    attachid: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // ถ้าเลือกหัวข้อที่ 8. อื่นๆ ต้องกรอกข้อมูลเพิ่มเติม
 
     const selectedOptions: SelectedOption[] = data.selectedOptions || [];
     if (
-      selectedOptions.some((item: SelectedOption) => item.id === 8) &&
+      selectedOptions.some(
+        (item: SelectedOption) => item.id === 72 || item.name === "8. อื่นๆ"
+      ) &&
       (!data.other || !data.other.trim())
     ) {
       ctx.addIssue({
@@ -195,7 +212,7 @@ interface SafetyCategory {
 
 interface SubSafetyCategory {
   id: number;
-  form_safety_id: number;
+  category_id: number;
   name: string;
   imagePath: string;
   alt: string;
@@ -203,7 +220,7 @@ interface SubSafetyCategory {
   subject: string;
   placeholder: string;
   title?: string;
-  departcategory: Array<{ id: number; name: string }>;
+  departcategory_id: Array<{ id: number; shortname: string }>;
   option: Option[];
 }
 
@@ -215,11 +232,140 @@ function SafetyObservationForm() {
   const depatment = searchParams.get("department");
   const group = searchParams.get("group");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
+  const [sub_safetyCategoryData, setSubSafetyCategoryData] = React.useState<
+    SubSafetyCategory[]
+  >([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [uploadedFiles, setUploadedFiles] = React.useState<
+    Array<{
+      id: string;
+      name: string;
+      webViewLink: string;
+      originalFile: File;
+      status: "uploading" | "success" | "error";
+      error?: string;
+    }>
+  >([]);
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  const uploadFileImmediately = async (file: File) => {
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
+
+    // เพิ่มไฟล์ใน state พร้อมสถานะ uploading
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        name: file.name,
+        webViewLink: "",
+        originalFile: file,
+        status: "uploading",
+      },
+    ]);
+
+    try {
+      // สร้าง FormData สำหรับส่งไฟล์
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("filename", file.name);
+
+      // ส่งไฟล์ไป API upload
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log("Upload result:", result);
+
+      if (!response.ok) {
+        throw new Error(result.message || "Upload failed");
+      }
+
+      // อัปเดตสถานะเป็น success
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                ...item,
+                id: result.file.id,
+                webViewLink: result.file.webViewLink,
+                status: "success" as const,
+              }
+            : item
+        )
+      );
+
+      toast({
+        title: "อัปโหลดสำเร็จ",
+        description: `ไฟล์ ${file.name} ถูกอัปโหลดเรียบร้อยแล้ว`,
+      });
+
+      return result.file;
+    } catch (error) {
+      console.error("Upload error:", error);
+
+      // อัปเดตสถานะเป็น error
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                ...item,
+                status: "error" as const,
+                error: error instanceof Error ? error.message : "Upload failed",
+              }
+            : item
+        )
+      );
+
+      toast({
+        title: "อัปโหลดล้มเหลว",
+        description: `ไม่สามารถอัปโหลดไฟล์ ${file.name} ได้`,
+        variant: "destructive",
+      });
+
+      throw error;
+    }
+  };
 
   React.useEffect(() => {
+    setIsLoading(true);
     window.scrollTo(0, 0);
+
+    const fetchData = async (): Promise<void> => {
+      // Simulate fetching data if needed
+      const response: Response = await fetch("/api/get?type=subcategory", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data: ApiData = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          typeof data.message === "string"
+            ? data.message
+            : "Failed to fetch subcategories"
+        );
+      }
+      // Assuming the API returns an array of sub-safety categories
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid data format received from API");
+      }
+      setSubSafetyCategoryData(data);
+      setIsLoading(false);
+    };
+
+    // Optionally call fetchData here if needed
+    fetchData();
   }, []);
+
+  interface ApiData {
+    // Define the expected structure of the API response here
+    // Example:
+    // items: Array<{ id: number; name: string }>;
+    [key: string]: unknown;
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -238,10 +384,26 @@ function SafetyObservationForm() {
       unsafeActionCount: undefined,
       selectedOptions: [],
       attachment: undefined,
+      attachid: "",
       other: "",
     },
     mode: "onTouched",
   });
+
+  React.useEffect(() => {
+    const successfulFiles = uploadedFiles.filter((f) => f.status === "success");
+
+    // อัปเดต form field เฉพาะเมื่อมีไฟล์ที่สำเร็จ
+    if (successfulFiles.length > 0) {
+      form.setValue("attachment", successfulFiles);
+    } else if (uploadedFiles.length === 0) {
+      // ถ้าไม่มีไฟล์เลย ให้ clear field
+      form.setValue("attachment", undefined);
+    }
+
+    // Trigger validation
+    form.trigger("attachment");
+  }, [uploadedFiles, form]);
 
   // Improved form submission with proper validation and feedback
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
@@ -254,61 +416,128 @@ function SafetyObservationForm() {
     setIsSubmitting(true);
 
     try {
-      // เตรียมข้อมูลสำหรับส่งไป API
-      const submissionData = {
-        date: data.date || new Date().toISOString(),
-        employeeId: data.employeeId,
-        username: data.username,
-        group: data.group,
-        type: data.type,
-        safetyCategory: data.safetyCategory,
-        sub_safetyCategory: data.sub_safetyCategory,
-        observed_work: data.observed_work,
-        depart_notice: data.depart_notice,
-        vehicleEquipment: data.vehicleEquipment || {},
-        selectedOptions: data.selectedOptions || [],
-        safeActionCount: data.safeActionCount || 0,
-        actionType: data.actionType || "",
-        unsafeActionCount: data.unsafeActionCount || 0,
-        actionTypeunsafe: data.actionTypeunsafe || "",
-        attachment: data.attachment || {},
-        other: data.other || "",
-      };
+      // 🔥 เช็คจากไฟล์ที่อัปโหลดสำเร็จแล้ว แทนที่จะเช็คจาก data.attachment
+      const successfulFiles = uploadedFiles.filter(
+        (f) => f.status === "success"
+      );
+      const hasUploadedFiles = successfulFiles.length > 0;
 
-      console.log("Submitting data:", submissionData);
-
-      // ส่งข้อมูลไป API
-      const response = await fetch("/api/post", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submissionData),
+      console.log("🔍 Submit check:", {
+        totalUploadedFiles: uploadedFiles.length,
+        successfulFiles: successfulFiles.length,
+        hasUploadedFiles: hasUploadedFiles,
+        fileIds: successfulFiles.map((f) => f.id),
       });
 
-      const result = await response.json();
+      if (hasUploadedFiles) {
+        // 🔥 กรณีมีไฟล์ที่อัปโหลดสำเร็จแล้ว: ส่งเป็น JSON พร้อม file IDs
+        const submissionData = {
+          date: data.date ? data.date.toISOString() : new Date().toISOString(),
+          employeeId: data.employeeId || "",
+          username: data.username || "",
+          group: data.group || "",
+          type: data.type || "",
+          safetyCategory: data.safetyCategory || "",
+          sub_safetyCategory: data.sub_safetyCategory || "",
+          observed_work: data.observed_work || "",
+          depart_notice: data.depart_notice || "",
+          safeActionCount: data.safeActionCount || 0,
+          actionType: data.actionType || "",
+          unsafeActionCount: data.unsafeActionCount || 0,
+          actionTypeunsafe: data.actionTypeunsafe || "",
+          other: data.other || "",
+          vehicleEquipment: data.vehicleEquipment || {},
+          selectedOptions: data.selectedOptions || [],
+          // ✅ ส่ง file IDs ทั้งหมดที่อัปโหลดสำเร็จ
+          uploadedFiles: successfulFiles.map((f) => ({
+            id: f.id,
+            name: f.name,
+            webViewLink: f.webViewLink,
+          })),
+        };
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to submit data");
+        console.log("📤 Submitting with files:", {
+          fileCount: submissionData.uploadedFiles.length,
+          files: submissionData.uploadedFiles,
+        });
+
+        // ส่งข้อมูลเป็น JSON
+        const response = await fetch("/api/post", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submissionData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to submit data");
+        }
+
+        // แสดงข้อความสำเร็จ
+        toast({
+          title: "ส่งข้อมูลสำเร็จ",
+          description: `ข้อมูลและไฟล์ถูกบันทึกเรียบร้อยแล้ว
+        Record ID: ${result.data?.recordId || "N/A"}
+        ไฟล์ที่บันทึก: ${successfulFiles.length} ไฟล์`,
+        });
+
+        console.log("✅ Submission successful with uploaded files:", result);
+      } else {
+        // 🔥 กรณีไม่มีไฟล์: ส่งข้อมูลอย่างเดียว
+        const submissionData = {
+          date: data.date ? data.date.toISOString() : new Date().toISOString(),
+          employeeId: data.employeeId,
+          username: data.username,
+          group: data.group,
+          type: data.type,
+          safetyCategory: data.safetyCategory,
+          sub_safetyCategory: data.sub_safetyCategory,
+          observed_work: data.observed_work,
+          depart_notice: data.depart_notice,
+          vehicleEquipment: data.vehicleEquipment || {},
+          selectedOptions: data.selectedOptions || [],
+          safeActionCount: data.safeActionCount || 0,
+          actionType: data.actionType || "",
+          unsafeActionCount: data.unsafeActionCount || 0,
+          actionTypeunsafe: data.actionTypeunsafe || "",
+          uploadedFiles: [], // ไม่มีไฟล์
+          other: data.other || "",
+        };
+
+        console.log("📤 Submitting without files");
+
+        const response = await fetch("/api/post", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submissionData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to submit data");
+        }
+
+        toast({
+          title: "ส่งข้อมูลสำเร็จ",
+          description: `ข้อมูลการสังเกตความปลอดภัยถูกบันทึกเรียบร้อยแล้ว${
+            result.data?.recordId ? ` (ID: ${result.data.recordId})` : ""
+          }`,
+        });
+
+        console.log("✅ Submission successful without files:", result);
       }
 
-      // แสดงข้อความสำเร็จพร้อม record ID
-      toast({
-        title: "ส่งข้อมูลสำเร็จ",
-        description: `ข้อมูลการสังเกตความปลอดภัยถูกบันทึกเรียบร้อยแล้ว${
-          result.data?.recordId ? ` (ID: ${result.data.recordId})` : ""
-        }`,
-      });
-
-      // รีเซ็ต form หลังส่งสำเร็จ (ถ้าต้องการ)
+      // 🔄 รีเซ็ตหลังจากส่งสำเร็จ
       form.reset();
-
-      // เพิ่มการ redirect หรือ action อื่นๆ ตามต้องการ
-      // router.push('/success-page');
-
-      console.log("Submission successful:", result);
+      setUploadedFiles([]);
     } catch (error) {
-      console.error("Submission error:", error);
+      console.error("❌ Submission error:", error);
 
       toast({
         title: "เกิดข้อผิดพลาด",
@@ -341,7 +570,7 @@ function SafetyObservationForm() {
   // Filter subcategories based on selected category
   const filteredSubCategories = selectedSafetyCategory
     ? sub_safetyCategoryData.filter(
-        (item) => item.form_safety_id === Number(selectedSafetyCategory)
+        (item) => item.category_id === Number(selectedSafetyCategory)
       )
     : [];
 
@@ -391,6 +620,14 @@ function SafetyObservationForm() {
 
     return true; // Return true if no errors
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl m-auto bg-white p-3">
@@ -704,9 +941,12 @@ function SafetyObservationForm() {
                             if (selectedSafetyCategory === "4") {
                               return sub_safetyCategoryData
                                 .find((item) => item.id === 10)
-                                ?.departcategory?.map((item) => (
-                                  <SelectItem key={item.id} value={item.name}>
-                                    {item.name}
+                                ?.departcategory_id?.map((item) => (
+                                  <SelectItem
+                                    key={item.id}
+                                    value={item.shortname}
+                                  >
+                                    {item.shortname}
                                   </SelectItem>
                                 ));
                             }
@@ -716,11 +956,15 @@ function SafetyObservationForm() {
                               return sub_safetyCategoryData
                                 .find(
                                   (item) =>
-                                    item.id === Number(selectedSubCategory)
+                                    item.category_id ===
+                                    Number(selectedSubCategory)
                                 )
-                                ?.departcategory?.map((item) => (
-                                  <SelectItem key={item.id} value={item.name}>
-                                    {item.name}
+                                ?.departcategory_id?.map((item) => (
+                                  <SelectItem
+                                    key={item.id}
+                                    value={item.shortname}
+                                  >
+                                    {item.shortname}
                                   </SelectItem>
                                 ));
                             }
@@ -729,13 +973,16 @@ function SafetyObservationForm() {
                             if (selectedSafetyCategory) {
                               const fallbackData = sub_safetyCategoryData.find(
                                 (item) =>
-                                  item.form_safety_id ===
+                                  item.category_id ===
                                   Number(selectedSafetyCategory)
                               );
-                              return fallbackData?.departcategory?.map(
+                              return fallbackData?.departcategory_id?.map(
                                 (item) => (
-                                  <SelectItem key={item.id} value={item.name}>
-                                    {item.name}
+                                  <SelectItem
+                                    key={item.id}
+                                    value={item.shortname}
+                                  >
+                                    {item.shortname}
                                   </SelectItem>
                                 )
                               );
@@ -911,7 +1158,9 @@ function SafetyObservationForm() {
                   );
                 }}
               />
-              {form.watch("selectedOptions")?.some((item) => item.id === 8) && (
+              {form
+                .watch("selectedOptions")
+                ?.some((item) => item.name === "8. อื่นๆ") && (
                 <FormField
                   control={form.control}
                   name="other"
@@ -1087,7 +1336,7 @@ function SafetyObservationForm() {
                             "hover:border-blue-400 hover:bg-blue-50/50",
                             form.formState.errors.attachment
                               ? "border-red-300 bg-red-50/30"
-                              : field.value && field.value.length > 0
+                              : uploadedFiles.length > 0
                               ? "border-green-400 bg-green-50/30"
                               : "border-gray-300 bg-gray-50/50"
                           )}
@@ -1097,25 +1346,115 @@ function SafetyObservationForm() {
                               ?.click()
                           }
                         >
-                          {/* Hidden File Input - เพิ่ม video/* ใน accept */}
+                          {/* Hidden File Input */}
                           <input
                             id="file-upload-input"
                             type="file"
                             multiple
                             accept="image/*,video/*,.pdf,.doc,.docx"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               const files = e.target.files;
-                              field.onChange(files);
-                              form.trigger("attachment");
+                              if (!files || files.length === 0) return;
+
+                              // ตรวจสอบจำนวนไฟล์ทั้งหมด
+                              if (uploadedFiles.length + files.length > 5) {
+                                toast({
+                                  title: "ไฟล์เกินจำนวนที่อนุญาต",
+                                  description: "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              setIsUploading(true);
+
+                              // อัปโหลดไฟล์ทีละไฟล์
+                              const uploadPromises = Array.from(files).map(
+                                async (file) => {
+                                  // ตรวจสอบขนาดไฟล์
+                                  const isVideo =
+                                    file.type.startsWith("video/");
+                                  const maxSize = isVideo
+                                    ? 100 * 1024 * 1024
+                                    : 10 * 1024 * 1024;
+
+                                  if (file.size > maxSize) {
+                                    toast({
+                                      title: "ไฟล์ใหญ่เกินไป",
+                                      description: `ไฟล์ ${
+                                        file.name
+                                      } ใหญ่เกิน ${isVideo ? "100MB" : "10MB"}`,
+                                      variant: "destructive",
+                                    });
+                                    return null;
+                                  }
+
+                                  // ตรวจสอบประเภทไฟล์
+                                  const allowedTypes = [
+                                    "image/jpeg",
+                                    "image/jpg",
+                                    "image/png",
+                                    "image/gif",
+                                    "image/webp",
+                                    "image/svg+xml",
+                                    "application/pdf",
+                                    "application/msword",
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "video/mp4",
+                                    "video/mpeg",
+                                    "video/quicktime",
+                                    "video/x-msvideo",
+                                    "video/webm",
+                                    "video/x-ms-wmv",
+                                    "video/3gpp",
+                                    "video/x-flv",
+                                  ];
+
+                                  if (!allowedTypes.includes(file.type)) {
+                                    toast({
+                                      title: "ประเภทไฟล์ไม่ถูกต้อง",
+                                      description: `ไฟล์ ${file.name} ไม่ใช่ประเภทที่รองรับ`,
+                                      variant: "destructive",
+                                    });
+                                    return null;
+                                  }
+
+                                  try {
+                                    return await uploadFileImmediately(file);
+                                  } catch (error) {
+                                    return null;
+                                  }
+                                }
+                              );
+
+                              // รอให้อัปโหลดทั้งหมดเสร็จ
+                              await Promise.all(uploadPromises);
+                              setIsUploading(false);
+                              // รีเซ็ต input
+                              e.target.value = "";
                             }}
                             className="hidden"
-                            required
                           />
 
-                          {/* Upload Icon & Content */}
+                          {/* Upload Content */}
                           <div className="text-center">
-                            {field.value && field.value.length > 0 ? (
-                              // Success State
+                            {isUploading ? (
+                              // Uploading State
+                              <div className="space-y-4">
+                                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                                <div>
+                                  <p className="text-lg font-semibold text-blue-700">
+                                    🔄 กำลังอัปโหลด...
+                                  </p>
+                                  <p className="text-sm text-blue-600 mt-1">
+                                    กรุณารอสักครู่
+                                  </p>
+                                </div>
+                              </div>
+                            ) : uploadedFiles.length > 0 ? (
+                              // Files Uploaded State
                               <div className="space-y-4">
                                 <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
                                   <svg
@@ -1134,43 +1473,16 @@ function SafetyObservationForm() {
                                 </div>
                                 <div>
                                   <p className="text-lg font-semibold text-green-700">
-                                    ✨ เลือกไฟล์เรียบร้อยแล้ว!
+                                    ✨ มีไฟล์แนบแล้ว!
                                   </p>
                                   <p className="text-sm text-green-600 mt-1">
-                                    {field.value.length} ไฟล์ |
-                                    คลิกเพื่อเปลี่ยนไฟล์
-                                  </p>
-                                </div>
-                              </div>
-                            ) : form.formState.errors.attachment ? (
-                              // Error State
-                              <div className="space-y-4">
-                                <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                                  <svg
-                                    className="w-8 h-8 text-red-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                                    />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <p className="text-lg font-semibold text-red-700">
-                                    ⚠️ กรุณาเลือกไฟล์
-                                  </p>
-                                  <p className="text-sm text-red-600 mt-1">
-                                    จำเป็นต้องแนบไฟล์อย่างน้อย 1 ไฟล์
+                                    {uploadedFiles.length} ไฟล์ |
+                                    คลิกเพื่อเพิ่มไฟล์
                                   </p>
                                 </div>
                               </div>
                             ) : (
-                              // Default State - อัปเดตข้อความรองรับวีดิโอ
+                              // Default State
                               <div className="space-y-4">
                                 <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                                   <svg
@@ -1192,7 +1504,7 @@ function SafetyObservationForm() {
                                     📎 เลือกไฟล์หรือลากไฟล์มาวาง
                                   </p>
                                   <p className="text-sm text-gray-500 mt-1">
-                                    รองรับไฟล์รูปภาพ, วีดิโอ และเอกสาร
+                                    ไฟล์จะถูกอัปโหลดทันทีเมื่อเลือก
                                     <br />
                                     <span className="text-xs">
                                       รูปภาพ/เอกสาร: ไม่เกิน 10MB | วีดิโอ:
@@ -1219,40 +1531,32 @@ function SafetyObservationForm() {
                                     d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                                   />
                                 </svg>
-                                {field.value && field.value.length > 0
-                                  ? "เปลี่ยนไฟล์"
+                                {uploadedFiles.length > 0
+                                  ? "เพิ่มไฟล์"
                                   : "เลือกไฟล์"}
                               </span>
                             </div>
                           </div>
-
-                          {/* Decorative Elements */}
-                          <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <svg
-                              className="w-6 h-6 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </div>
                         </div>
 
-                        {/* File List - Modern Card Style */}
-                        {field.value && field.value.length > 0 && (
+                        {/* Uploaded Files List */}
+                        {uploadedFiles.length > 0 && (
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <h4 className="text-sm font-semibold text-gray-700">
-                                📁 ไฟล์ที่เลือก ({field.value.length} ไฟล์)
+                                📁 ไฟล์ที่อัปโหลด (
+                                {
+                                  uploadedFiles.filter(
+                                    (f) => f.status === "success"
+                                  ).length
+                                }
+                                /{uploadedFiles.length})
                               </h4>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  field.onChange(null);
+                                  setUploadedFiles([]);
+                                  field.onChange([]);
                                   form.trigger("attachment");
                                 }}
                                 className="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1 rounded-full hover:bg-red-50 transition-colors"
@@ -1262,43 +1566,36 @@ function SafetyObservationForm() {
                             </div>
 
                             <div className="grid gap-3 max-h-60 overflow-y-auto">
-                              {Array.from(field.value).map((file, index) => {
-                                const fileObj = file as File;
-                                const isImage =
-                                  fileObj.type.startsWith("image/");
-                                const isVideo =
-                                  fileObj.type.startsWith("video/");
-                                const isPDF =
-                                  fileObj.type === "application/pdf";
+                              {uploadedFiles.map((uploadedFile, index) => {
+                                const file = uploadedFile.originalFile;
+                                const isImage = file.type.startsWith("image/");
+                                const isVideo = file.type.startsWith("video/");
+                                const isPDF = file.type === "application/pdf";
                                 const isDoc =
-                                  fileObj.type.includes("word") ||
-                                  fileObj.name.toLowerCase().endsWith(".doc") ||
-                                  fileObj.name.toLowerCase().endsWith(".docx");
+                                  file.type.includes("word") ||
+                                  file.name.toLowerCase().endsWith(".doc") ||
+                                  file.name.toLowerCase().endsWith(".docx");
 
                                 const fileSize = (
-                                  fileObj.size /
+                                  file.size /
                                   1024 /
                                   1024
                                 ).toFixed(2);
 
-                                // อัปเดตการตรวจสอบขนาดไฟล์ตามประเภท
-                                const maxSize = isVideo
-                                  ? 100 * 1024 * 1024
-                                  : 10 * 1024 * 1024;
-                                const isValidSize = fileObj.size <= maxSize;
-
                                 return (
                                   <div
-                                    key={index}
+                                    key={uploadedFile.id}
                                     className={cn(
                                       "flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
-                                      isValidSize
+                                      uploadedFile.status === "success"
                                         ? "bg-white border-green-200 hover:border-green-300"
+                                        : uploadedFile.status === "uploading"
+                                        ? "bg-blue-50 border-blue-200"
                                         : "bg-red-50 border-red-300"
                                     )}
                                   >
                                     <div className="flex items-center space-x-4 flex-1 min-w-0">
-                                      {/* File Icon - เพิ่มไอคอนสำหรับวีดิโอ */}
+                                      {/* File Icon */}
                                       <div
                                         className={cn(
                                           "w-12 h-12 rounded-lg flex items-center justify-center text-xl font-semibold",
@@ -1327,14 +1624,17 @@ function SafetyObservationForm() {
                                       {/* File Info */}
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-gray-900 truncate">
-                                          {fileObj.name}
+                                          {file.name}
                                         </p>
                                         <div className="flex items-center space-x-2 text-xs mt-1">
                                           <span
                                             className={cn(
                                               "px-2 py-1 rounded-full font-medium",
-                                              isValidSize
+                                              uploadedFile.status === "success"
                                                 ? "bg-green-100 text-green-700"
+                                                : uploadedFile.status ===
+                                                  "uploading"
+                                                ? "bg-blue-100 text-blue-700"
                                                 : "bg-red-100 text-red-700"
                                             )}
                                           >
@@ -1344,34 +1644,41 @@ function SafetyObservationForm() {
                                             •
                                           </span>
                                           <span className="text-gray-500 uppercase text-xs">
-                                            {fileObj.type.split("/")[1] ||
+                                            {file.type.split("/")[1] ||
                                               "Unknown"}
                                           </span>
-                                          {/* เพิ่มแสดงขีดจำกัดขนาดไฟล์ */}
-                                          <span className="text-gray-400">
-                                            •
-                                          </span>
-                                          <span className="text-gray-500 text-xs">
-                                            {isVideo
-                                              ? "สูงสุด 100MB"
-                                              : "สูงสุด 10MB"}
-                                          </span>
-                                          {!isValidSize && (
+                                          {uploadedFile.status ===
+                                            "uploading" && (
+                                            <>
+                                              <span className="text-gray-400">
+                                                •
+                                              </span>
+                                              <span className="text-blue-600 font-semibold">
+                                                อัปโหลด...
+                                              </span>
+                                            </>
+                                          )}
+                                          {uploadedFile.status === "error" && (
                                             <>
                                               <span className="text-gray-400">
                                                 •
                                               </span>
                                               <span className="text-red-600 font-semibold">
-                                                ⚠️ ไฟล์ใหญ่เกินไป
+                                                ล้มเหลว
                                               </span>
                                             </>
                                           )}
                                         </div>
                                       </div>
 
-                                      {/* File Status */}
+                                      {/* Status Icon */}
                                       <div className="flex-shrink-0">
-                                        {isValidSize ? (
+                                        {uploadedFile.status === "uploading" ? (
+                                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                          </div>
+                                        ) : uploadedFile.status ===
+                                          "success" ? (
                                           <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                             <svg
                                               className="w-4 h-4 text-green-600"
@@ -1411,22 +1718,25 @@ function SafetyObservationForm() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const newFiles = Array.from(
-                                          field.value
-                                        ).filter((_, i) => i !== index);
-                                        const dataTransfer = new DataTransfer();
-                                        newFiles.forEach((f) =>
-                                          dataTransfer.items.add(f as File)
+                                        setUploadedFiles((prev) =>
+                                          prev.filter((_, i) => i !== index)
                                         );
+                                        const remainingFiles =
+                                          uploadedFiles.filter(
+                                            (_, i) => i !== index
+                                          );
                                         field.onChange(
-                                          dataTransfer.files.length > 0
-                                            ? dataTransfer.files
-                                            : null
+                                          remainingFiles.filter(
+                                            (f) => f.status === "success"
+                                          )
                                         );
                                         form.trigger("attachment");
                                       }}
                                       className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-all duration-200 flex-shrink-0 group"
                                       title="ลบไฟล์นี้"
+                                      disabled={
+                                        uploadedFile.status === "uploading"
+                                      }
                                     >
                                       <svg
                                         className="w-5 h-5 group-hover:scale-110 transition-transform"
@@ -1451,7 +1761,7 @@ function SafetyObservationForm() {
                       </div>
                     </FormControl>
 
-                    {/* ✅ แก้ไข FormDescription - ใช้ span แทน div */}
+                    {/* File Requirements */}
                     <div className="mt-4">
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-start space-x-3">
@@ -1482,7 +1792,7 @@ function SafetyObservationForm() {
                               • ขนาด: ไม่เกิน 10MB ต่อไฟล์ (วีดิโอไม่เกิน 100MB)
                             </span>
                             <span className="block text-red-600 font-semibold">
-                              • หมายเหตุ: จำเป็นต้องแนบไฟล์อย่างน้อย 1 ไฟล์
+                              • หมายเหตุ: ไฟล์จะถูกอัปโหลดทันทีเมื่อเลือก
                             </span>
                           </div>
                         </div>

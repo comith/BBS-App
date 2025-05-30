@@ -177,6 +177,9 @@ export async function GET(request) {
     case "record":
       result = await fetchAndFormatData("record!A1:S", "record");
       break;
+    case "employee":
+      result = await fetchAndFormatData("employee!A1:F", "employee");
+      break;
     case "category":
       result = await fetchAndFormatData("category_data!A1:D", "category");
       break;

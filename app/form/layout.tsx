@@ -1,5 +1,6 @@
 import type React from "react"
 import { Header } from "@/components/head"
+import { Toaster } from "@/components/ui/toaster"
 // import { Sidebar } from "@/components/sidebar"
 
 export default function DashboardLayout({
@@ -13,6 +14,7 @@ export default function DashboardLayout({
       <div className="flex flex-col w-full mx-auto">
         <Header />
         {children}
+        <Toaster />
       </div>
     </div>
   )

@@ -478,10 +478,9 @@ function SafetyObservationForm() {
 
         // แสดงข้อความสำเร็จ
         toast({
-          title: "ส่งข้อมูลสำเร็จ",
-          description: `ข้อมูลและไฟล์ถูกบันทึกเรียบร้อยแล้ว
-        Record ID: ${result.data?.recordId || "N/A"}
-        ไฟล์ที่บันทึก: ${successfulFiles.length} ไฟล์`,
+          title: "บันทึกข้อมูลสำเร็จ",
+          variant: "success",
+          description: "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว",
         });
 
         console.log("✅ Submission successful with uploaded files:", result);
@@ -525,6 +524,7 @@ function SafetyObservationForm() {
 
         toast({
           title: "ส่งข้อมูลสำเร็จ",
+          variant: "success",
           description: `ข้อมูลการสังเกตความปลอดภัยถูกบันทึกเรียบร้อยแล้ว${
             result.data?.recordId ? ` (ID: ${result.data.recordId})` : ""
           }`,

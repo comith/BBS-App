@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   format,
   isAfter,
@@ -43,6 +44,7 @@ import {
   Ban,
   Building2,
   Settings,
+  House,
 } from "lucide-react";
 import {
   Select,
@@ -326,7 +328,11 @@ interface Report {
   safeCount: number;
   unsafeCount: number;
   selectedOptions: string[];
-  attachment: string[];
+  attachment: Array<{
+    id: string;
+    name: string;
+    webViewLink: string;
+  }>;
   adminNote: string | null;
   approvedDate: Date | null;
   approvedBy: string | null;
@@ -425,12 +431,17 @@ const transformApiDataToDashboardReport = (
         )
       : [];
 
-    // ต้องการส่งไปทั้ง id และ name ของไฟล์แนบ
+    // ส่งค่าไฟล์แนบเป็นอาเรย์ของอ็อบเจกต์
     const attachmentArray = Array.isArray(item.attachment)
       ? item.attachment.map((file) => {
-          return typeof file === "string"
-            ? file
-            : file.name || "ไม่ระบุ";
+          if (typeof file === "string") {
+            return { id: "", name: file, webViewLink: "" };
+          }
+          return {
+            id: file.id || "",
+            name: file.name || "ไม่ระบุ",
+            webViewLink: file.webViewLink || "",
+          };
         })
       : [];
 
@@ -479,6 +490,13 @@ function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  const sheid = searchParams.get("employeeId");
+  const employeeId = searchParams.get("employeeId");
+  const employeeName = searchParams.get("fullName");
+  const depatment = searchParams.get("department");
+  const group = searchParams.get("group");
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -543,6 +561,13 @@ function AdminDashboard() {
     },
     []
   );
+
+  const closeApprovalModal = useCallback(() => {
+    setIsApprovalModalOpen(false);
+    setSelectedReport(null);
+    setApprovalAction(null);
+    setAdminNote("");
+  }, []);
 
   const clearDateRange = useCallback(() => {
     setDateRange({ from: undefined, to: undefined });
@@ -660,7 +685,7 @@ function AdminDashboard() {
           recordId: selectedReport.recordId,
           status: approvalAction === "approve" ? "approved" : "rejected",
           adminNote: adminNote.trim() || null,
-          approvedBy: "SHE",
+          approvedBy: sheid || "SHE", // ใช้ sheid ถ้ามี ไม่งั้นใช้ "unknown"
         }),
       });
 
@@ -783,6 +808,538 @@ function AdminDashboard() {
     }
   };
 
+  const exportToCSV = useCallback(() => {
+    // สร้าง CSV header
+    const headers = [
+      "รหัสรายงาน",
+      "วันที่ส่ง",
+      "รหัสพนักงาน",
+      "ชื่อพนักงาน",
+      "แผนก",
+      "กลุ่ม",
+      "หมวดหมู่ความปลอดภัย",
+      "หมวดหมู่ย่อย",
+      "งานที่สังเกต",
+      "แผนกที่สังเกต",
+      "จำนวน Safe",
+      "จำนวน Unsafe",
+      "สถานะ",
+      "ความสำคัญ",
+      "รายการที่เลือก",
+      "จำนวนไฟล์แนบ",
+      "หมายเหตุผู้อนุมัติ",
+      "วันที่อนุมัติ",
+      "ผู้อนุมัติ",
+    ];
+
+    // สร้าง CSV data จาก filteredReports
+    const csvData = filteredReports.map((report) => [
+      report.id,
+      format(report.submittedDate, "dd/MM/yyyy HH:mm"),
+      report.employeeId,
+      report.employeeName,
+      report.department,
+      report.group,
+      report.safetyCategory,
+      report.subCategory || "",
+      report.observedWork,
+      report.observedDepartment,
+      report.safeCount,
+      report.unsafeCount,
+      getStatusInfo(report.status).label,
+      getPriorityInfo(report.priority).label,
+      report.selectedOptions.join("; "),
+      report.attachment.length,
+      report.adminNote || "",
+      report.approvedDate
+        ? format(report.approvedDate, "dd/MM/yyyy HH:mm")
+        : "",
+      report.approvedBy || "",
+    ]);
+
+    // รวม header กับ data
+    const allData = [headers, ...csvData];
+
+    // แปลงเป็น CSV string
+    const csvContent = allData
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\n");
+
+    // สร้าง filename ตามช่วงวันที่
+    let filename = "BBS_Reports";
+    if (dateRange.from && dateRange.to) {
+      filename += `_${format(dateRange.from, "dd-MM-yyyy")}_to_${format(
+        dateRange.to,
+        "dd-MM-yyyy"
+      )}`;
+    } else if (dateRange.from) {
+      filename += `_from_${format(dateRange.from, "dd-MM-yyyy")}`;
+    }
+    filename += ".csv";
+
+    // Download file
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [filteredReports, dateRange]);
+
+  const MonthlyReportSummary = React.memo(
+    ({ reports }: { reports: Report[] }) => {
+      const [selectedMonth, setSelectedMonth] = useState(new Date());
+
+      // ฟังก์ชันคำนวณสัปดาห์ในเดือน
+      const getWeeksInMonth = (date: Date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        const weeks = [];
+        let current = new Date(firstDay);
+
+        // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
+        while (current.getDay() !== 1) {
+          current.setDate(current.getDate() - 1);
+        }
+
+        let weekNumber = 1;
+        while (current <= lastDay) {
+          const weekStart = new Date(current);
+          const weekEnd = new Date(current);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+
+          weeks.push({
+            number: weekNumber,
+            start: weekStart,
+            end: weekEnd > lastDay ? lastDay : weekEnd,
+            label: `สัปดาห์ที่ ${weekNumber}`,
+          });
+
+          current.setDate(current.getDate() + 7);
+          weekNumber++;
+        }
+
+        return weeks;
+      };
+
+      // ฟิลเตอร์รายงานตามเดือนที่เลือก
+      const monthlyReports = useMemo(() => {
+        const year = selectedMonth.getFullYear();
+        const month = selectedMonth.getMonth();
+
+        return reports.filter((report) => {
+          const reportDate = report.submittedDate;
+          return (
+            reportDate.getFullYear() === year && reportDate.getMonth() === month
+          );
+        });
+      }, [reports, selectedMonth]);
+
+      // สร้างข้อมูลสรุปตามสัปดาห์และกลุ่ม
+      const weeklySummary = useMemo(() => {
+        const weeks = getWeeksInMonth(selectedMonth);
+        const groups = [...new Set(monthlyReports.map((r) => r.group))].sort();
+
+        return weeks.map((week) => {
+          const weekReports = monthlyReports.filter((report) => {
+            const reportDate = startOfDay(report.submittedDate);
+            return (
+              reportDate >= startOfDay(week.start) &&
+              reportDate <= endOfDay(week.end)
+            );
+          });
+
+          const groupStats = groups.map((group) => {
+            const groupReports = weekReports.filter((r) => r.group === group);
+            return {
+              group,
+              total: groupReports.length,
+              approved: groupReports.filter((r) => r.status === "approved")
+                .length,
+              pending: groupReports.filter((r) => r.status === "pending")
+                .length,
+              rejected: groupReports.filter((r) => r.status === "rejected")
+                .length,
+            };
+          });
+
+          return {
+            ...week,
+            totalReports: weekReports.length,
+            groupStats,
+          };
+        });
+      }, [monthlyReports, selectedMonth]);
+
+      // สถิติรวมของเดือน
+      const monthlyStats = useMemo(() => {
+        const groups = [...new Set(monthlyReports.map((r) => r.group))].sort();
+
+        return {
+          totalReports: monthlyReports.length,
+          totalApproved: monthlyReports.filter((r) => r.status === "approved")
+            .length,
+          totalPending: monthlyReports.filter((r) => r.status === "pending")
+            .length,
+          totalRejected: monthlyReports.filter((r) => r.status === "rejected")
+            .length,
+          groupSummary: groups
+            .map((group) => {
+              const groupReports = monthlyReports.filter(
+                (r) => r.group === group
+              );
+              return {
+                group,
+                total: groupReports.length,
+                approved: groupReports.filter((r) => r.status === "approved")
+                  .length,
+                pending: groupReports.filter((r) => r.status === "pending")
+                  .length,
+                rejected: groupReports.filter((r) => r.status === "rejected")
+                  .length,
+                approvalRate:
+                  groupReports.length > 0
+                    ? Math.round(
+                        (groupReports.filter((r) => r.status === "approved")
+                          .length /
+                          groupReports.length) *
+                          100
+                      )
+                    : 0,
+              };
+            })
+            .sort((a, b) => b.total - a.total),
+        };
+      }, [monthlyReports]);
+
+      const monthNames = [
+        "มกราคม",
+        "กุมภาพันธ์",
+        "มีนาคม",
+        "เมษายน",
+        "พฤษภาคม",
+        "มิถุนายน",
+        "กรกฎาคม",
+        "สิงหาคม",
+        "กันยายน",
+        "ตุลาคม",
+        "พฤศจิกายน",
+        "ธันวาคม",
+      ];
+
+      const changeMonth = (direction: "prev" | "next") => {
+        setSelectedMonth((prev) => {
+          const newDate = new Date(prev);
+          if (direction === "prev") {
+            newDate.setMonth(newDate.getMonth() - 1);
+          } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+          }
+          return newDate;
+        });
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Month Selector */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeMonth("prev")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <h3 className="text-lg font-semibold">
+                {monthNames[selectedMonth.getMonth()]}{" "}
+                {selectedMonth.getFullYear()}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeMonth("next")}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="text-sm text-gray-600">
+              รายงานทั้งหมด: {monthlyStats.totalReports} รายการ
+            </div>
+          </div>
+
+          {/* Monthly Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">
+                {monthlyStats.totalReports}
+              </div>
+              <div className="text-sm text-blue-700">รายงานทั้งหมด</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                {monthlyStats.totalApproved}
+              </div>
+              <div className="text-sm text-green-700">อนุมัติแล้ว</div>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">
+                {monthlyStats.totalPending}
+              </div>
+              <div className="text-sm text-yellow-700">รอการอนุมัติ</div>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">
+                {monthlyStats.totalRejected}
+              </div>
+              <div className="text-sm text-red-700">ไม่อนุมัติ</div>
+            </div>
+          </div>
+
+          {/* Group Summary */}
+          <div>
+            <h4 className="text-md font-semibold mb-3">สรุปตามกลุ่ม</h4>
+            <div className="space-y-2">
+              {monthlyStats.groupSummary.map((group, index) => (
+                <div key={group.group} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-sm font-medium">{group.group}</div>
+                      <Badge variant="secondary" className="text-xs">
+                        {group.approvalRate}% อนุมัติ
+                      </Badge>
+                    </div>
+                    <div className="flex space-x-4 text-sm">
+                      <span className="text-gray-600">
+                        ทั้งหมด: {group.total}
+                      </span>
+                      <span className="text-green-600">
+                        อนุมัติ: {group.approved}
+                      </span>
+                      <span className="text-yellow-600">
+                        รอ: {group.pending}
+                      </span>
+                      <span className="text-red-600">
+                        ไม่อนุมัติ: {group.rejected}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full flex">
+                      {group.total > 0 && (
+                        <>
+                          <div
+                            className="bg-green-500 h-full"
+                            style={{
+                              width: `${(group.approved / group.total) * 100}%`,
+                            }}
+                          />
+                          <div
+                            className="bg-yellow-500 h-full"
+                            style={{
+                              width: `${(group.pending / group.total) * 100}%`,
+                            }}
+                          />
+                          <div
+                            className="bg-red-500 h-full"
+                            style={{
+                              width: `${(group.rejected / group.total) * 100}%`,
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Weekly Breakdown */}
+          <div>
+            <h4 className="text-md font-semibold mb-3">สรุปรายสัปดาห์</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left p-3 font-medium">สัปดาห์</th>
+                    <th className="text-left p-3 font-medium">ช่วงวันที่</th>
+                    <th className="text-center p-3 font-medium">
+                      รายงานทั้งหมด
+                    </th>
+                    {[...new Set(monthlyReports.map((r) => r.group))]
+                      .sort()
+                      .map((group) => (
+                        <th key={group} className="text-center p-3 font-medium">
+                          {group}
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklySummary.map((week, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="p-3 font-medium">{week.label}</td>
+                      <td className="p-3 text-gray-600">
+                        {format(week.start, "dd/MM")} -{" "}
+                        {format(week.end, "dd/MM")}
+                      </td>
+                      <td className="p-3 text-center font-medium">
+                        {week.totalReports}
+                      </td>
+                      {[...new Set(monthlyReports.map((r) => r.group))]
+                        .sort()
+                        .map((group) => {
+                          const groupStat = week.groupStats.find(
+                            (g) => g.group === group
+                          );
+                          return (
+                            <td key={group} className="p-3 text-center">
+                              {groupStat ? (
+                                <div className="space-y-1">
+                                  <div className="font-medium">
+                                    {groupStat.total}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    <span className="text-green-600">
+                                      {groupStat.approved}
+                                    </span>
+                                    /
+                                    <span className="text-yellow-600">
+                                      {groupStat.pending}
+                                    </span>
+                                    /
+                                    <span className="text-red-600">
+                                      {groupStat.rejected}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-2 text-xs text-gray-500 flex items-center space-x-4">
+              <span>📊 รูปแบบ: ทั้งหมด</span>
+              <span className="text-green-600">🟢 อนุมัติ</span>
+              <span className="text-yellow-600">🟡 รอการอนุมัติ</span>
+              <span className="text-red-600">🔴 ไม่อนุมัติ</span>
+            </div>
+          </div>
+
+          {/* Export Monthly Report Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={() =>
+                exportMonthlyReport(weeklySummary, monthlyStats, selectedMonth)
+              }
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Export รายงานประจำเดือน
+            </Button>
+          </div>
+        </div>
+      );
+    }
+  );
+
+  MonthlyReportSummary.displayName = "MonthlyReportSummary";
+
+  const exportMonthlyReport = (
+    weeklySummary: any[],
+    monthlyStats: any,
+    selectedMonth: Date
+  ) => {
+    const monthNames = [
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม",
+    ];
+
+    // สร้าง CSV สำหรับรายงานประจำเดือน
+    const monthName = monthNames[selectedMonth.getMonth()];
+    const year = selectedMonth.getFullYear();
+
+    const headers = [
+      "สัปดาห์",
+      "ช่วงวันที่",
+      "รายงานทั้งหมด",
+      ...monthlyStats.groupSummary.map((g: any) => `${g.group} (ทั้งหมด)`),
+      ...monthlyStats.groupSummary.map((g: any) => `${g.group} (อนุมัติ)`),
+    ];
+
+    const csvData = weeklySummary.map((week) => [
+      week.label,
+      `${format(week.start, "dd/MM/yyyy")} - ${format(week.end, "dd/MM/yyyy")}`,
+      week.totalReports,
+      ...monthlyStats.groupSummary.map((g: any) => {
+        const stat = week.groupStats.find((gs: any) => gs.group === g.group);
+        return stat ? stat.total : 0;
+      }),
+      ...monthlyStats.groupSummary.map((g: any) => {
+        const stat = week.groupStats.find((gs: any) => gs.group === g.group);
+        return stat ? stat.approved : 0;
+      }),
+    ]);
+
+    // เพิ่มแถวสรุปรวม
+    csvData.push([
+      "รวมทั้งเดือน",
+      "",
+      monthlyStats.totalReports,
+      ...monthlyStats.groupSummary.map((g: any) => g.total),
+      ...monthlyStats.groupSummary.map((g: any) => g.approved),
+    ]);
+
+    const allData = [headers, ...csvData];
+    const csvContent = allData
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\n");
+
+    const filename = `BBS_Monthly_Report_${monthName}_${year}.csv`;
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     fetchReports();
   }, []);
@@ -811,7 +1368,7 @@ function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col md:flex-row gap-3 justify-center items-center space-x-2">
               <Button
                 onClick={fetchReports}
                 disabled={isLoading}
@@ -819,12 +1376,29 @@ function AdminDashboard() {
               >
                 {isLoading ? "กำลังโหลด..." : "รีเฟรช"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push("/managecategory")}
-              >
-                <Settings />
-              </Button>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/managecategory")}
+                >
+                  <Settings />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      employeeId: employeeId || "",
+                      fullName: employeeName || "",
+                      department: depatment || "",
+                      group: group || "",
+                    }).toString();
+                    router.push(`/?${params}`);
+                  }}
+                >
+                  <House className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -915,14 +1489,14 @@ function AdminDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">
-                          ด่วน
+                          อนุมัติแล้ว
                         </p>
-                        <p className="text-2xl font-bold text-red-600">
-                          {stats.highPriority}
+                        <p className="text-2xl font-bold text-green-600">
+                          {stats.approved}
                         </p>
                       </div>
-                      <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                        <AlertCircle className="h-6 w-6 text-red-600" />
+                      <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <Check className="h-6 w-6 text-green-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -1021,7 +1595,7 @@ function AdminDashboard() {
                       </Select>
                     </div>
                     <div className="w-full lg:w-48">
-                      <Select
+                      {/* <Select
                         value={priorityFilter}
                         onValueChange={setPriorityFilter}
                       >
@@ -1035,7 +1609,7 @@ function AdminDashboard() {
                           <SelectItem value="normal">ปกติ</SelectItem>
                           <SelectItem value="low">ต่ำ</SelectItem>
                         </SelectContent>
-                      </Select>
+                      </Select> */}
                     </div>
                   </div>
 
@@ -1141,6 +1715,16 @@ function AdminDashboard() {
                         ล้างวันที่
                       </Button>
                     )}
+
+                    <Button
+                      onClick={exportToCSV}
+                      disabled={filteredReports.length === 0}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Export ({filteredReports.length})
+                    </Button>
 
                     {/* Show filtered results count */}
                     <div className="text-sm text-gray-600 whitespace-nowrap">
@@ -1351,7 +1935,7 @@ function AdminDashboard() {
                                     ไฟล์แนบ
                                   </p>
                                   <p className="font-medium text-blue-600">
-                                    {report.attachment} ไฟล์
+                                    {report.attachment.length} ไฟล์
                                   </p>
                                 </div>
                               </div>
@@ -1419,6 +2003,18 @@ function AdminDashboard() {
 
           <TabsContent value="analytics" className="space-y-6">
             {/* Analytics Content */}
+            <Card className="py-4 px-0  md:p-6">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5" />
+                  <span>สรุปรายเดือน</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MonthlyReportSummary reports={reports} />
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="py-6">
                 <CardHeader>
@@ -1579,7 +2175,14 @@ function AdminDashboard() {
       </div>
 
       {/* Approval/Rejection Modal */}
-      <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
+      <Dialog
+        open={isApprovalModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeApprovalModal();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
@@ -1643,7 +2246,7 @@ function AdminDashboard() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsApprovalModalOpen(false)}
+              onClick={() => closeApprovalModal()}
               disabled={isSubmittingApproval}
             >
               ยกเลิก
@@ -1677,7 +2280,7 @@ function AdminDashboard() {
 
       {/* Report Detail Modal */}
       {selectedReport && !isApprovalModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#00000094] flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1796,12 +2399,15 @@ function AdminDashboard() {
                   </p>
                   <div className="mt-2 space-y-1">
                     {selectedReport.attachment.map((file, index) => (
-                      <div
+                      <a
                         key={index}
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-sm text-blue-600 hover:underline cursor-pointer"
                       >
-                        📎 {file}
-                      </div>
+                        📎 {file.name}
+                      </a>
                     ))}
                   </div>
                 </div>
@@ -1864,7 +2470,7 @@ function AdminDashboard() {
                     onClick={() =>
                       handleApprovalAction("reject", selectedReport)
                     }
-                    variant="destructive"
+                    // variant="destructive"
                   >
                     <Ban className="h-4 w-4 mr-2" />
                     ไม่อนุมัติ

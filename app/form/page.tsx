@@ -32,11 +32,89 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { list_department } from "./form-data";
 
-// Data constants - move to separate file in a real application
-import { list_department, list_group, safetyCategoryData } from "./form-data";
 
-// ===================================== Components =====================================
+// ====================================== interface =====================================
+
+interface Option {
+  id: number;
+  name: string;
+}
+
+interface SelectedOption {
+  id: number;
+  name: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  imagePath: string;
+  alt: string;
+}
+
+interface SubSafetyCategory {
+  id: number;
+  category_id: number;
+  name: string;
+  imagePath: string;
+  alt: string;
+  type: "multiselect" | "option";
+  subject: string;
+  placeholder: string;
+  title?: string;
+  departcategory_id: Array<{ id: number; shortname: string }>;
+  option: Option[];
+}
+
+interface Group  {
+  id: number;
+  name: string;
+  group: string;
+};
+
+interface Department  {
+  id: number;
+  name: string;
+  group: string;
+  shortname?: string;
+};
+
+
+function SafetyObservationForm() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const employeeId = searchParams.get("employeeId");
+  const employeeName = searchParams.get("fullName");
+  const depatment = searchParams.get("department");
+  const group = searchParams.get("group");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [sub_safetyCategoryData, setSubSafetyCategoryData] = React.useState<
+    SubSafetyCategory[]
+  >([]);
+  const [list_department, setListDepartment] = React.useState<Department[]>([]);
+  const [list_group, setListGroup] = React.useState<Group[]>([]);
+  const [safetyCategoryData, setSafetyCategoryData] = React.useState<Category[]>([]);
+
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [uploadedFiles, setUploadedFiles] = React.useState<
+    Array<{
+      id: string;
+      name: string;
+      webViewLink: string;
+      originalFile: File;
+      status: "uploading" | "success" | "error";
+      error?: string;
+    }>
+  >([]);
+  const [isUploading, setIsUploading] = React.useState(false);
+
+
+
+
+  // ===================================== Components =====================================
+
 // Form schema
 const formSchema = z
   .object({
@@ -55,7 +133,9 @@ const formSchema = z
     }),
     group: z.string().optional(),
     type: z.enum(
-      list_department.map((item) => item.name) as [string, ...string[]],
+      list_department.length > 0
+        ? [list_department[0].name, ...list_department.slice(1).map((item) => item.name)] as [string, ...string[]]
+        : [""] as [string, ...string[]],
       {
         required_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
         invalid_type_error: "กรุณาเลือก สังกัด บริษัท / แผนก",
@@ -172,6 +252,8 @@ const formSchema = z
       }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
     other: z.string().optional(),
     attachid: z.string().optional(),
+    codeemployee: z.string().optional(),
+    levelOfSafety: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // ถ้าเลือกหัวข้อที่ 8. อื่นๆ ต้องกรอกข้อมูลเพิ่มเติม
@@ -190,63 +272,7 @@ const formSchema = z
       });
     }
   });
-
-// ====================================== interface =====================================
-
-interface Option {
-  id: number;
-  name: string;
-}
-
-interface SelectedOption {
-  id: number;
-  name: string;
-}
-
-interface SafetyCategory {
-  id: number;
-  name: string;
-  imagePath: string;
-  alt: string;
-}
-
-interface SubSafetyCategory {
-  id: number;
-  category_id: number;
-  name: string;
-  imagePath: string;
-  alt: string;
-  type: "multiselect" | "option";
-  subject: string;
-  placeholder: string;
-  title?: string;
-  departcategory_id: Array<{ id: number; shortname: string }>;
-  option: Option[];
-}
-
-function SafetyObservationForm() {
-  const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
-  const depatment = searchParams.get("department");
-  const group = searchParams.get("group");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [sub_safetyCategoryData, setSubSafetyCategoryData] = React.useState<
-    SubSafetyCategory[]
-  >([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [uploadedFiles, setUploadedFiles] = React.useState<
-    Array<{
-      id: string;
-      name: string;
-      webViewLink: string;
-      originalFile: File;
-      status: "uploading" | "success" | "error";
-      error?: string;
-    }>
-  >([]);
-  const [isUploading, setIsUploading] = React.useState(false);
+  
 
   const uploadFileImmediately = async (file: File) => {
     const tempId = `temp_${Date.now()}_${Math.random()}`;
@@ -328,44 +354,60 @@ function SafetyObservationForm() {
     }
   };
 
+  const fetchDepartments = async (): Promise<Department[]> => {
+    const response = await fetch("/api/get?type=department");
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  };
+
+  const fetchGroups = async (): Promise<Group[]> => {
+    const response = await fetch("/api/get?type=group");
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  };
+
+  const fetchCategories = async (): Promise<Category[]> => {
+    const response = await fetch("/api/get?type=category");
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  };
+
+  const fetchSubSafetyCategories = async (): Promise<SubSafetyCategory[]> => {
+    const response = await fetch("/api/get?type=subcategory");
+    const data = await response.json();
+    console.log("Fetched sub safety categories:", data);
+    return Array.isArray(data) ? data : [];
+  };
+
   React.useEffect(() => {
     setIsLoading(true);
     window.scrollTo(0, 0);
 
-    const fetchData = async (): Promise<void> => {
-      // Simulate fetching data if needed
-      const response: Response = await fetch("/api/get?type=subcategory", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data: ApiData = await response.json();
-      if (!response.ok) {
-        throw new Error(
-          typeof data.message === "string"
-            ? data.message
-            : "Failed to fetch subcategories"
-        );
+    const loadAllData = async () => {
+      setIsLoading(true);
+      try {
+        const [departments, groups, categories, subSafetyCategories] =
+          await Promise.all([
+            fetchDepartments(),
+            fetchGroups(),
+            fetchCategories(),
+            fetchSubSafetyCategories(),
+          ]);
+
+        setListDepartment(departments);
+        setListGroup(groups);
+        setSafetyCategoryData(categories);
+        setSubSafetyCategoryData(subSafetyCategories);
+      } catch (error) {
+        // handle error
+      } finally {
+        setIsLoading(false);
       }
-      // Assuming the API returns an array of sub-safety categories
-      if (!Array.isArray(data)) {
-        throw new Error("Invalid data format received from API");
-      }
-      setSubSafetyCategoryData(data);
-      setIsLoading(false);
     };
 
-    // Optionally call fetchData here if needed
-    fetchData();
+    loadAllData();
   }, []);
 
-  interface ApiData {
-    // Define the expected structure of the API response here
-    // Example:
-    // items: Array<{ id: number; name: string }>;
-    [key: string]: unknown;
-  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -386,6 +428,8 @@ function SafetyObservationForm() {
       attachment: undefined,
       attachid: "",
       other: "",
+      codeemployee: "",
+      levelOfSafety: "",
     },
     mode: "onTouched",
   });
@@ -454,6 +498,8 @@ function SafetyObservationForm() {
             name: f.name,
             webViewLink: f.webViewLink,
           })),
+          codeemployee: data.codeemployee || "",
+          levelOfSafety: data.levelOfSafety || "",
         };
 
         console.log("📤 Submitting with files:", {
@@ -601,9 +647,7 @@ function SafetyObservationForm() {
 
       toast({
         title: "กรุณาตรวจสอบข้อมูล",
-        description: `พบข้อผิดพลาด ${
-          criticalErrors.length
-        } รายการ: ${criticalErrors.join(", ")}`,
+        description: `ท่านได้กรอกข้อมูลไม่ครบถ้วน`,
         variant: "destructive",
       });
 
@@ -773,8 +817,9 @@ function SafetyObservationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {list_group
-                            .filter((item) => item.depart === selectedType)
+                          {
+                          list_group
+                            .filter((item) => item.group === selectedType)
                             .map((item) => (
                               <SelectItem key={item.id} value={item.name}>
                                 {item.name}
@@ -812,7 +857,6 @@ function SafetyObservationForm() {
                               field.value === String(category.id)
                                 ? undefined
                                 : String(category.id);
-
                             field.onChange(newValue);
 
                             // Clear sub category and options when main category changes
@@ -953,10 +997,10 @@ function SafetyObservationForm() {
 
                             // ถ้ามี Sub Category ที่เลือก ให้ใช้ข้อมูลจาก Sub Category
                             if (selectedSubCategory) {
-                              return sub_safetyCategoryData
+                              return  sub_safetyCategoryData
                                 .find(
                                   (item) =>
-                                    item.category_id ===
+                                    item.id ===
                                     Number(selectedSubCategory)
                                 )
                                 ?.departcategory_id?.map((item) => (
@@ -973,7 +1017,7 @@ function SafetyObservationForm() {
                             if (selectedSafetyCategory) {
                               const fallbackData = sub_safetyCategoryData.find(
                                 (item) =>
-                                  item.category_id ===
+                                  item.id ===
                                   Number(selectedSafetyCategory)
                               );
                               return fallbackData?.departcategory_id?.map(
@@ -1001,6 +1045,59 @@ function SafetyObservationForm() {
                     </FormItem>
                   )}
                 />
+                {group === "SHE" && (
+                  <div className="flex flex-col md:flex-row md:col-span-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="codeemployee"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            รหัสพนักงานที่ถูกสังเกตุ (ถ้ามี)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder="ระบุรหัสพนักงานที่ถูกสังเกตุ เช่น 5LD01234"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="levelOfSafety"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ระดับความปลอดภัย</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="เลือกระดับความปลอดภัย" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {["PPE", "เสี่งสูง", "อุบัติเหตุ"].map(
+                                (level) => (
+                                  <SelectItem key={level} value={level}>
+                                    {level}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Dynamic Options - Multi-Select or Single Select based on type */}

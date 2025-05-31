@@ -45,6 +45,7 @@ import {
   Building2,
   Settings,
   House,
+  DollarSign,
 } from "lucide-react";
 import {
   Select,
@@ -940,7 +941,9 @@ function AdminDashboard() {
         return reports.filter((report) => {
           const reportDate = report.submittedDate;
           return (
-            reportDate.getFullYear() === year && reportDate.getMonth() === month
+            reportDate.getFullYear() === year &&
+            reportDate.getMonth() === month &&
+            report.department !== "ITH-OE"
           );
         });
       }, [reports, selectedMonth]);
@@ -1264,6 +1267,1512 @@ function AdminDashboard() {
 
   MonthlyReportSummary.displayName = "MonthlyReportSummary";
 
+  const IndividualReportSummary = React.memo(
+    ({ reports }: { reports: Report[] }) => {
+      const [selectedMonth, setSelectedMonth] = useState(new Date());
+      const [viewType, setViewType] = useState<"monthly" | "weekly">("monthly");
+
+      // กรองข้อมูลเฉพาะแผนก ITH-OE และตามเดือนที่เลือก
+      const ithOeReports = useMemo(() => {
+        const year = selectedMonth.getFullYear();
+        const month = selectedMonth.getMonth();
+
+        return reports.filter((report) => {
+          const reportDate = report.submittedDate;
+          return (
+            report.department === "ITH-OE" &&
+            reportDate.getFullYear() === year &&
+            reportDate.getMonth() === month
+          );
+        });
+      }, [reports, selectedMonth]);
+
+      // ฟังก์ชันคำนวณสัปดาห์ในเดือน
+      const getWeeksInMonth = (date: Date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        const weeks = [];
+        let current = new Date(firstDay);
+
+        // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
+        while (current.getDay() !== 1) {
+          current.setDate(current.getDate() - 1);
+        }
+
+        let weekNumber = 1;
+        while (current <= lastDay) {
+          const weekStart = new Date(current);
+          const weekEnd = new Date(current);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+
+          weeks.push({
+            number: weekNumber,
+            start: weekStart,
+            end: weekEnd > lastDay ? lastDay : weekEnd,
+            label: `สัปดาห์ที่ ${weekNumber}`,
+          });
+
+          current.setDate(current.getDate() + 7);
+          weekNumber++;
+        }
+
+        return weeks;
+      };
+
+      // สรุปข้อมูลรายบุคคล (รายเดือน)
+      const individualSummary = useMemo(() => {
+        const individuals = [...new Set(ithOeReports.map((r) => r.employeeId))];
+
+        return individuals
+          .map((employeeId) => {
+            const employeeReports = ithOeReports.filter(
+              (r) => r.employeeId === employeeId
+            );
+            const employeeName = employeeReports[0]?.employeeName || employeeId;
+
+            return {
+              employeeId,
+              employeeName,
+              total: employeeReports.length,
+              approved: employeeReports.filter((r) => r.status === "approved")
+                .length,
+              pending: employeeReports.filter((r) => r.status === "pending")
+                .length,
+              rejected: employeeReports.filter((r) => r.status === "rejected")
+                .length,
+              totalSafe: employeeReports.reduce(
+                (sum, r) => sum + r.safeCount,
+                0
+              ),
+              totalUnsafe: employeeReports.reduce(
+                (sum, r) => sum + r.unsafeCount,
+                0
+              ),
+              approvalRate:
+                employeeReports.length > 0
+                  ? Math.round(
+                      (employeeReports.filter((r) => r.status === "approved")
+                        .length /
+                        employeeReports.length) *
+                        100
+                    )
+                  : 0,
+            };
+          })
+          .sort((a, b) => b.total - a.total);
+      }, [ithOeReports]);
+
+      // สรุปข้อมูลรายสัปดาห์
+      const weeklySummary = useMemo(() => {
+        const weeks = getWeeksInMonth(selectedMonth);
+        const individuals = [...new Set(ithOeReports.map((r) => r.employeeId))];
+
+        return weeks.map((week) => {
+          const weekReports = ithOeReports.filter((report) => {
+            const reportDate = startOfDay(report.submittedDate);
+            return (
+              reportDate >= startOfDay(week.start) &&
+              reportDate <= endOfDay(week.end)
+            );
+          });
+
+          const individualStats = individuals
+            .map((employeeId) => {
+              const employeeReports = weekReports.filter(
+                (r) => r.employeeId === employeeId
+              );
+              const employeeName =
+                ithOeReports.find((r) => r.employeeId === employeeId)
+                  ?.employeeName || employeeId;
+
+              return {
+                employeeId,
+                employeeName,
+                total: employeeReports.length,
+                approved: employeeReports.filter((r) => r.status === "approved")
+                  .length,
+                pending: employeeReports.filter((r) => r.status === "pending")
+                  .length,
+                rejected: employeeReports.filter((r) => r.status === "rejected")
+                  .length,
+                totalSafe: employeeReports.reduce(
+                  (sum, r) => sum + r.safeCount,
+                  0
+                ),
+                totalUnsafe: employeeReports.reduce(
+                  (sum, r) => sum + r.unsafeCount,
+                  0
+                ),
+              };
+            })
+            .filter((stat) => stat.total > 0); // แสดงเฉพาะคนที่มีรายงานในสัปดาห์นั้น
+
+          return {
+            ...week,
+            totalReports: weekReports.length,
+            individualStats,
+          };
+        });
+      }, [ithOeReports, selectedMonth]);
+
+      const monthNames = [
+        "มกราคม",
+        "กุมภาพันธ์",
+        "มีนาคม",
+        "เมษายน",
+        "พฤษภาคม",
+        "มิถุนายน",
+        "กรกฎาคม",
+        "สิงหาคม",
+        "กันยายน",
+        "ตุลาคม",
+        "พฤศจิกายน",
+        "ธันวาคม",
+      ];
+
+      const changeMonth = (direction: "prev" | "next") => {
+        setSelectedMonth((prev) => {
+          const newDate = new Date(prev);
+          if (direction === "prev") {
+            newDate.setMonth(newDate.getMonth() - 1);
+          } else {
+            newDate.setMonth(newDate.getMonth() + 1);
+          }
+          return newDate;
+        });
+      };
+
+      const exportIndividualReport = () => {
+        const monthName = monthNames[selectedMonth.getMonth()];
+        const year = selectedMonth.getFullYear();
+
+        if (viewType === "monthly") {
+          const headers = [
+            "รหัสพนักงาน",
+            "ชื่อพนักงาน",
+            "รายงานทั้งหมด",
+            "อนุมัติแล้ว",
+            "รอการอนุมัติ",
+            "ไม่อนุมัติ",
+            "เปอร์เซ็นต์การอนุมัติ",
+            "Safe Actions",
+            "Unsafe Actions",
+          ];
+
+          const csvData = individualSummary.map((individual) => [
+            individual.employeeId,
+            individual.employeeName,
+            individual.total,
+            individual.approved,
+            individual.pending,
+            individual.rejected,
+            `${individual.approvalRate}%`,
+            individual.totalSafe,
+            individual.totalUnsafe,
+          ]);
+
+          const allData = [headers, ...csvData];
+          const csvContent = allData
+            .map((row) =>
+              row
+                .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+                .join(",")
+            )
+            .join("\n");
+
+          const filename = `ITH-OE_Individual_Monthly_Report_${monthName}_${year}.csv`;
+          const blob = new Blob(["\uFEFF" + csvContent], {
+            type: "text/csv;charset=utf-8;",
+          });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          link.setAttribute("href", url);
+          link.setAttribute("download", filename);
+          link.style.visibility = "hidden";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          // Export weekly data
+          const headers = [
+            "สัปดาห์",
+            "ช่วงวันที่",
+            "รหัสพนักงาน",
+            "ชื่อพนักงาน",
+            "รายงานทั้งหมด",
+            "อนุมัติแล้ว",
+            "รอการอนุมัติ",
+            "ไม่อนุมัติ",
+            "Safe Actions",
+            "Unsafe Actions",
+          ];
+
+          interface WeeklyIndividualStat {
+            employeeId: string;
+            employeeName: string;
+            total: number;
+            approved: number;
+            pending: number;
+            rejected: number;
+            totalSafe: number;
+            totalUnsafe: number;
+          }
+
+          interface WeekSummary {
+            label: string;
+            start: Date;
+            end: Date;
+            totalReports: number;
+            individualStats: WeeklyIndividualStat[];
+          }
+
+          const csvData: (string | number)[][] = [];
+          weeklySummary.forEach((week) => {
+            week.individualStats.forEach((individual) => {
+              csvData.push([
+                week.label,
+                `${format(week.start, "dd/MM/yyyy")} - ${format(
+                  week.end,
+                  "dd/MM/yyyy"
+                )}`,
+                individual.employeeId,
+                individual.employeeName,
+                individual.total,
+                individual.approved,
+                individual.pending,
+                individual.rejected,
+                individual.totalSafe,
+                individual.totalUnsafe,
+              ]);
+            });
+          });
+
+          // Remove duplicate interface and csvData declaration
+
+          weeklySummary.forEach((week: WeekSummary) => {
+            week.individualStats.forEach((individual: WeeklyIndividualStat) => {
+              csvData.push([
+                week.label,
+                `${format(week.start, "dd/MM/yyyy")} - ${format(
+                  week.end,
+                  "dd/MM/yyyy"
+                )}`,
+                individual.employeeId,
+                individual.employeeName,
+                individual.total,
+                individual.approved,
+                individual.pending,
+                individual.rejected,
+                individual.totalSafe,
+                individual.totalUnsafe,
+              ]);
+            });
+          });
+
+          const allData: (string | number)[][] = [headers, ...csvData];
+          const csvContent = allData
+            .map((row) =>
+              row
+                .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+                .join(",")
+            )
+            .join("\n");
+
+          const filename = `ITH-OE_Individual_Weekly_Report_${monthName}_${year}.csv`;
+          const blob = new Blob(["\uFEFF" + csvContent], {
+            type: "text/csv;charset=utf-8;",
+          });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          link.setAttribute("href", url);
+          link.setAttribute("download", filename);
+          link.style.visibility = "hidden";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Month Selector and View Type Toggle */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeMonth("prev")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <h3 className="text-lg font-semibold">
+                รายงานรายบุคคล ITH-OE - {monthNames[selectedMonth.getMonth()]}{" "}
+                {selectedMonth.getFullYear()}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeMonth("next")}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <Button
+                  variant={viewType === "monthly" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewType("monthly")}
+                  className="text-xs"
+                >
+                  รายเดือน
+                </Button>
+                <Button
+                  variant={viewType === "weekly" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewType("weekly")}
+                  className="text-xs"
+                >
+                  รายสัปดาห์
+                </Button>
+              </div>
+              <div className="text-sm text-gray-600">
+                รายงานทั้งหมด: {ithOeReports.length} รายการ จาก{" "}
+                {individualSummary.length} คน
+              </div>
+            </div>
+          </div>
+
+          {/* Monthly View */}
+          {viewType === "monthly" && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left p-3 font-medium">รหัสพนักงาน</th>
+                    <th className="text-left p-3 font-medium">ชื่อพนักงาน</th>
+                    <th className="text-center p-3 font-medium">
+                      รายงานทั้งหมด
+                    </th>
+                    <th className="text-center p-3 font-medium">อนุมัติแล้ว</th>
+                    <th className="text-center p-3 font-medium">
+                      รอการอนุมัติ
+                    </th>
+                    <th className="text-center p-3 font-medium">ไม่อนุมัติ</th>
+                    <th className="text-center p-3 font-medium">% อนุมัติ</th>
+                    <th className="text-center p-3 font-medium">Safe</th>
+                    <th className="text-center p-3 font-medium">Unsafe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {individualSummary.length > 0 ? (
+                    individualSummary.map((individual, index) => (
+                      <tr key={individual.employeeId} className="border-b">
+                        <td className="p-3 font-medium">
+                          {individual.employeeId}
+                        </td>
+                        <td className="p-3">{individual.employeeName}</td>
+                        <td className="p-3 text-center font-medium">
+                          {individual.total}
+                        </td>
+                        <td className="p-3 text-center text-green-600 font-medium">
+                          {individual.approved}
+                        </td>
+                        <td className="p-3 text-center text-yellow-600 font-medium">
+                          {individual.pending}
+                        </td>
+                        <td className="p-3 text-center text-red-600 font-medium">
+                          {individual.rejected}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge
+                            className={
+                              individual.approvalRate >= 80
+                                ? "bg-green-100 text-green-800"
+                                : individual.approvalRate >= 60
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }
+                          >
+                            {individual.approvalRate}%
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-center text-green-600 font-medium">
+                          {individual.totalSafe}
+                        </td>
+                        <td className="p-3 text-center text-red-600 font-medium">
+                          {individual.totalUnsafe}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="p-6 text-center text-gray-500">
+                        ไม่มีข้อมูลรายงานสำหรับแผนก ITH-OE ในเดือนนี้
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Weekly View */}
+          {viewType === "weekly" && (
+            <div className="space-y-4">
+              {weeklySummary.map((week, weekIndex) => (
+                <div key={weekIndex} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold text-lg">
+                      {week.label} ({format(week.start, "dd/MM")} -{" "}
+                      {format(week.end, "dd/MM")})
+                    </h4>
+                    <Badge variant="outline">
+                      รายงานทั้งหมด: {week.totalReports} รายการ
+                    </Badge>
+                  </div>
+
+                  {week.individualStats.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="text-left p-2 font-medium">
+                              รหัสพนักงาน
+                            </th>
+                            <th className="text-left p-2 font-medium">
+                              ชื่อพนักงาน
+                            </th>
+                            <th className="text-center p-2 font-medium">
+                              รายงาน
+                            </th>
+                            <th className="text-center p-2 font-medium">
+                              อนุมัติ
+                            </th>
+                            <th className="text-center p-2 font-medium">รอ</th>
+                            <th className="text-center p-2 font-medium">
+                              ไม่อนุมัติ
+                            </th>
+                            <th className="text-center p-2 font-medium">
+                              Safe
+                            </th>
+                            <th className="text-center p-2 font-medium">
+                              Unsafe
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {week.individualStats.map((individual, index) => (
+                            <tr
+                              key={individual.employeeId}
+                              className="border-b"
+                            >
+                              <td className="p-2 font-medium">
+                                {individual.employeeId}
+                              </td>
+                              <td className="p-2">{individual.employeeName}</td>
+                              <td className="p-2 text-center font-medium">
+                                {individual.total}
+                              </td>
+                              <td className="p-2 text-center text-green-600">
+                                {individual.approved}
+                              </td>
+                              <td className="p-2 text-center text-yellow-600">
+                                {individual.pending}
+                              </td>
+                              <td className="p-2 text-center text-red-600">
+                                {individual.rejected}
+                              </td>
+                              <td className="p-2 text-center text-green-600">
+                                {individual.totalSafe}
+                              </td>
+                              <td className="p-2 text-center text-red-600">
+                                {individual.totalUnsafe}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      ไม่มีรายงานในสัปดาห์นี้
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Export Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={exportIndividualReport}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              disabled={
+                viewType === "monthly"
+                  ? individualSummary.length === 0
+                  : weeklySummary.every((w) => w.individualStats.length === 0)
+              }
+            >
+              <FileText className="h-4 w-4" />
+              Export รายงาน{viewType === "monthly"
+                ? "รายเดือน"
+                : "รายสัปดาห์"}{" "}
+              ITH-OE
+            </Button>
+          </div>
+        </div>
+      );
+    }
+  );
+
+  IndividualReportSummary.displayName = "IndividualReportSummary";
+
+  const PayrollReportSummary = React.memo(
+  ({ reports }: { reports: Report[] }) => {
+    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    interface SheViolation {
+      employee_code: string;
+      date: string;
+      level_accident?: string;
+      // เพิ่ม field อื่นๆ ตามที่ API ส่งมา
+      [key: string]: any;
+    }
+    const [sheViolations, setSheViolations] = useState<SheViolation[]>([]);
+    const [isLoadingShe, setIsLoadingShe] = useState(false);
+
+    // ฟังก์ชันคำนวณช่วงสัปดาห์
+    const getWeekRange = (date: Date) => {
+      const currentDate = new Date(date);
+      const dayOfWeek = currentDate.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // จันทร์เป็นวันแรกของสัปดาห์
+
+      const monday = new Date(currentDate);
+      monday.setDate(currentDate.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      return { start: monday, end: sunday };
+    };
+
+    // โหลดข้อมูลการรายงานจาก SHE
+    const fetchSheViolations = async () => {
+      setIsLoadingShe(true);
+      try {
+        // เรียก API สำหรับข้อมูล SHE violations
+        const response = await fetch("/api/get?type=she_violations");
+        if (response.ok) {
+          const data = await response.json();
+          setSheViolations(data);
+        }
+      } catch (error) {
+        console.error("Error fetching SHE violations:", error);
+      } finally {
+        setIsLoadingShe(false);
+      }
+    };
+
+    const getWeeksInMonth = (date: Date) => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      const weeks = [];
+      let current = new Date(firstDay);
+
+      // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
+      while (current.getDay() !== 1) {
+        current.setDate(current.getDate() - 1);
+      }
+
+      let weekNumber = 1;
+      while (current <= lastDay) {
+        const weekStart = new Date(current);
+        const weekEnd = new Date(current);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        weeks.push({
+          number: weekNumber,
+          start: weekStart,
+          end: weekEnd > lastDay ? lastDay : weekEnd,
+          label: `สัปดาห์ที่ ${weekNumber}`,
+        });
+
+        current.setDate(current.getDate() + 7);
+        weekNumber++;
+      }
+
+      return weeks;
+    };
+
+    // คำนวณข้อมูล Payroll สำหรับเดือนที่เลือก
+    const payrollData = useMemo(() => {
+      const year = selectedMonth.getFullYear();
+      const month = selectedMonth.getMonth();
+
+      // กรองรายงาน BBS ในเดือนนี้
+      const monthlyReports = reports.filter((report) => {
+        const reportDate = new Date(report.submittedDate);
+        return (
+          reportDate.getFullYear() === year && reportDate.getMonth() === month
+        );
+      });
+
+      const weeksInMonth = getWeeksInMonth(selectedMonth);
+
+      // แยกการประมวลผลตามแผนก
+      const ithOeEmployees = [
+        ...new Set(
+          reports
+            .filter((r) => r.department === "ITH-OE")
+            .map((r) => r.employeeId)
+        ),
+      ].map((employeeId) => {
+        const employeeReports = reports.filter(
+          (r) => r.employeeId === employeeId
+        );
+        return {
+          employeeId,
+          employeeName: employeeReports[0]?.employeeName || employeeId,
+          department: employeeReports[0]?.department || "",
+          group: employeeReports[0]?.group || "",
+          paymentType: "individual", // คิดรายบุคคล
+        };
+      });
+
+      // สำหรับแผนกอื่นๆ จัดกลุ่มตาม group
+      const otherDepartmentGroups = [
+        ...new Set(
+          reports
+            .filter((r) => r.department !== "ITH-OE")
+            .map((r) => `${r.department}-${r.group}`)
+        ),
+      ].map((groupKey) => {
+        const [department, group] = groupKey.split("-");
+        const groupReports = reports.filter(
+          (r) => r.department === department && r.group === group
+        );
+        const groupEmployees = [
+          ...new Set(groupReports.map((r) => r.employeeId)),
+        ];
+
+        return {
+          groupId: groupKey,
+          groupName: `${department} - ${group}`,
+          department,
+          group,
+          employeeCount: groupEmployees.length,
+          employees: groupEmployees.map((empId) => {
+            const emp = groupReports.find((r) => r.employeeId === empId);
+            return {
+              employeeId: empId,
+              employeeName: emp?.employeeName || empId,
+            };
+          }),
+          paymentType: "group", // คิดรายกลุ่ม
+        };
+      });
+
+      // ประมวลผล ITH-OE (รายบุคคล)
+      const ithOeResults = ithOeEmployees.map((employee) => {
+        // นับจำนวนรายงาน BBS ในแต่ละสัปดาห์ที่ approved
+        const weeklyResults = weeksInMonth.map(week => {
+          const weekReports = monthlyReports.filter(r => 
+            r.employeeId === employee.employeeId && 
+            r.status === "approved" &&
+            new Date(r.submittedDate) >= week.start && 
+            new Date(r.submittedDate) <= week.end
+          );
+          
+          return {
+            week: week.number,
+            reportCount: weekReports.length,
+            meetsWeeklyTarget: weekReports.length >= 3
+          };
+        });
+
+        const totalWeeksInMonth = weeksInMonth.length;
+        const weeksMetTarget = weeklyResults.filter(w => w.meetsWeeklyTarget).length;
+        const meetsBbsRequirement = weeksMetTarget === totalWeeksInMonth;
+
+        // คำนวณ BBS target และ actual
+        const bbsTarget = totalWeeksInMonth * 3; // 3 ครั้งต่อสัปดาห์
+        const bbsCount = weeklyResults.reduce((sum, w) => sum + w.reportCount, 0);
+
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+
+        const sheReports = sheViolations.filter(violation => {
+          const violationDate = new Date(violation.date);
+          return violation.employee_code === employee.employeeId &&
+                 violationDate >= monthStart && 
+                 violationDate <= monthEnd;
+        });
+
+        // นับการละเมิดแต่ละประเภท (เกณฑ์รายเดือน)
+        const ppeViolations = sheReports.filter(r => 
+          r.level_accident === "PPE" || r.level_accident?.toLowerCase().includes("ppe")
+        ).length;
+
+        const highRiskViolations = sheReports.filter(r => 
+          r.level_accident === "เสี่ยงสูง" || r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
+        ).length;
+
+        const accidentViolations = sheReports.filter(r => 
+          r.level_accident === "อุบัติเหตุ" || r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
+        ).length;
+
+        // ตรวจสอบเงื่อนไขการไม่ได้รับเงิน (เกณฑ์รายเดือน)
+        const sheViolationReasons = [];
+        if (ppeViolations >= 12) sheViolationReasons.push(`PPE (${ppeViolations} ครั้ง)`); // 3×4 สัปดาห์
+        if (highRiskViolations >= 8) sheViolationReasons.push(`เสี่ยงสูง (${highRiskViolations} ครั้ง)`); // 2×4 สัปดาห์
+        if (accidentViolations >= 4) sheViolationReasons.push(`อุบัติเหตุ (${accidentViolations} ครั้ง)`); // 1×4 สัปดาห์
+
+        const hasShePenalty = sheViolationReasons.length > 0;
+
+        // สถานะการจ่ายเงิน
+        const isEligible = meetsBbsRequirement && !hasShePenalty;
+
+        let paymentStatus = "";
+        let statusColor = "";
+
+        if (isEligible) {
+          paymentStatus = "ได้รับเงิน";
+          statusColor = "bg-green-100 text-green-800";
+        } else {
+          const reasons = [];
+          if (!meetsBbsRequirement)
+            reasons.push(`BBS ไม่ครบ (${bbsCount}/${bbsTarget})`);
+          if (hasShePenalty)
+            reasons.push(`SHE: ${sheViolationReasons.join(", ")}`);
+          paymentStatus = `ไม่ได้รับ: ${reasons.join(" | ")}`;
+          statusColor = "bg-red-100 text-red-800";
+        }
+
+        return {
+          ...employee,
+          bbsCount,
+          bbsTarget,
+          meetsBbsRequirement,
+          ppeViolations,
+          highRiskViolations,
+          accidentViolations,
+          hasShePenalty,
+          sheViolationReasons,
+          isEligible,
+          paymentStatus,
+          statusColor,
+          weeklyResults,
+        };
+      });
+
+      // ประมวลผลแผนกอื่นๆ (รายกลุ่ม)
+      const groupResults = otherDepartmentGroups.map((groupInfo): any => {
+        // ตรวจสอบแต่ละสัปดาห์ว่ากลุ่มส่งครบหรือไม่
+        const groupWeeklyResults = weeksInMonth.map(week => {
+          const groupWeekReports = monthlyReports.filter(r => 
+            r.department === groupInfo.department && 
+            r.group === groupInfo.group && 
+            r.status === "approved" &&
+            new Date(r.submittedDate) >= week.start && 
+            new Date(r.submittedDate) <= week.end
+          );
+          
+          // คำนวณจำนวนคนที่ส่งครบ 3 ครั้งในสัปดาห์นี้
+          const employeesWithReports = groupInfo.employees.map(emp => {
+            const empWeekReports = groupWeekReports.filter(r => r.employeeId === emp.employeeId);
+            return {
+              ...emp,
+              weekReportCount: empWeekReports.length,
+              meetsWeeklyTarget: empWeekReports.length >= 3
+            };
+          });
+          
+          const employeesMetTarget = employeesWithReports.filter(emp => emp.meetsWeeklyTarget).length;
+          const hasAnyReports = groupWeekReports.length > 0; // มีรายงานในกลุ่มหรือไม่
+          const groupWeekTarget = groupInfo.employeeCount; // ทุกคนในกลุ่มต้องส่งครบ
+          
+          return {
+            week: week.number,
+            employeesMetTarget,
+            groupWeekTarget,
+            meetsGroupWeeklyTarget: hasAnyReports,
+            employeesWithReports
+          };
+        });
+
+        const totalWeeksInMonth = weeksInMonth.length;
+        const weeksGroupMetTarget = groupWeeklyResults.filter(w => w.meetsGroupWeeklyTarget).length;
+        const meetsBbsRequirement = weeksGroupMetTarget === totalWeeksInMonth;
+
+        // คำนวณ BBS target และ actual สำหรับกลุ่ม
+        const bbsTarget = totalWeeksInMonth; // แค่ 1 ครั้งต่อสัปดาห์
+        const bbsCount = groupWeeklyResults.filter(w => w.meetsGroupWeeklyTarget).length;
+
+        // คำนวณการละเมิด SHE ของสมาชิกในกลุ่ม
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+
+        const groupSheReports = sheViolations.filter(violation => {
+          const violationDate = new Date(violation.date);
+          return groupInfo.employees.some(emp => emp.employeeId === violation.employee_code) &&
+                 violationDate >= monthStart && 
+                 violationDate <= monthEnd;
+        });
+
+        const ppeViolations = groupSheReports.filter(r => 
+          r.level_accident === "PPE" || r.level_accident?.toLowerCase().includes("ppe")
+        ).length;
+
+        const highRiskViolations = groupSheReports.filter(r => 
+          r.level_accident === "เสี่ยงสูง" || r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
+        ).length;
+
+        const accidentViolations = groupSheReports.filter(r => 
+          r.level_accident === "อุบัติเหตุ" || r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
+        ).length;
+
+        // เกณฑ์การละเมิดสำหรับกลุ่ม (สมาชิกคนใดคนหนึ่งละเมิดเกินเกณฑ์ = กลุ่มไม่ผ่าน)
+        const sheViolationReasons = [];
+        if (ppeViolations >= 12) sheViolationReasons.push(`PPE (${ppeViolations} ครั้ง)`);
+        if (highRiskViolations >= 8) sheViolationReasons.push(`เสี่ยงสูง (${highRiskViolations} ครั้ง)`);
+        if (accidentViolations >= 4) sheViolationReasons.push(`อุบัติเหตุ (${accidentViolations} ครั้ง)`);
+
+        const hasShePenalty = sheViolationReasons.length > 0;
+        const isEligible = meetsBbsRequirement && !hasShePenalty;
+
+        let paymentStatus = "";
+        let statusColor = "";
+
+        if (isEligible) {
+          paymentStatus = "ได้รับเงิน";
+          statusColor = "bg-green-100 text-green-800";
+        } else {
+          const reasons = [];
+          if (!meetsBbsRequirement)
+            reasons.push(`BBS ไม่ครบ (${bbsCount}/${bbsTarget})`);
+          if (hasShePenalty)
+            reasons.push(`SHE: ${sheViolationReasons.join(", ")}`);
+          paymentStatus = `ไม่ได้รับ: ${reasons.join(" | ")}`;
+          statusColor = "bg-red-100 text-red-800";
+        }
+
+        return {
+          ...groupInfo,
+          bbsCount,
+          bbsTarget,
+          meetsBbsRequirement,
+          ppeViolations,
+          highRiskViolations,
+          accidentViolations,
+          hasShePenalty,
+          sheViolationReasons,
+          isEligible,
+          paymentStatus,
+          statusColor,
+          groupWeeklyResults,
+        };
+      });
+
+      // รวมผลลัพธ์
+      const allResults = [...ithOeResults, ...groupResults];
+
+      return {
+        monthRange: { start: new Date(year, month, 1), end: new Date(year, month + 1, 0) },
+        weeksInMonth,
+        individuals: ithOeResults,
+        groups: groupResults,
+        all: allResults,
+        summary: {
+          totalIndividuals: ithOeResults.length,
+          totalGroups: groupResults.length,
+          eligibleIndividuals: ithOeResults.filter(e => e.isEligible).length,
+          eligibleGroups: groupResults.filter(g => g.isEligible).length,
+          totalPaymentUnits: allResults.filter(item => item.isEligible).length,
+          totalUnits: allResults.length,
+        }
+      };
+    }, [reports, sheViolations, selectedMonth]);
+
+    // เปลี่ยนเดือน
+    const changeMonth = (direction: "prev" | "next") => {
+      setSelectedMonth((prev) => {
+        const newDate = new Date(prev);
+        const offset = direction === "prev" ? -1 : 1;
+        newDate.setMonth(newDate.getMonth() + offset);
+        return newDate;
+      });
+    };
+
+    // Export รายงาน Payroll
+    const exportPayrollReport = () => {
+      const monthRange = payrollData.monthRange;
+      const startStr = format(monthRange.start, "dd-MM-yyyy");
+      const endStr = format(monthRange.end, "dd-MM-yyyy");
+
+      // Headers สำหรับ Individual (ITH-OE)
+      const individualHeaders = [
+        "ประเภท",
+        "รหัสพนักงาน",
+        "ชื่อพนักงาน",
+        "แผนก",
+        "กลุ่ม",
+        "BBS ส่งจริง",
+        "BBS เป้าหมาย",
+        "BBS ผ่าน",
+        "PPE ละเมิด",
+        "เสี่ยงสูง ละเมิด",
+        "อุบัติเหตุ ละเมิด",
+        "SHE ผ่าน",
+        "สถานะการจ่าย",
+        "หมายเหตุ",
+      ];
+
+      // Headers สำหรับ Group (แผนกอื่นๆ)
+      const groupHeaders = [
+        "ประเภท",
+        "ชื่อกลุ่ม",
+        "แผนก",
+        "จำนวนสมาชิก",
+        "รายชื่อสมาชิก",
+        "BBS ส่งจริง",
+        "BBS เป้าหมาย",
+        "BBS ผ่าน",
+        "PPE ละเมิด",
+        "เสี่ยงสูง ละเมิด",
+        "อุบัติเหตุ ละเมิด",
+        "SHE ผ่าน",
+        "สถานะการจ่าย",
+        "หมายเหตุ",
+      ];
+
+      // ข้อมูล Individual
+      const individualData = payrollData.individuals.map((emp) => [
+        "รายบุคคล",
+        emp.employeeId,
+        emp.employeeName,
+        emp.department,
+        emp.group,
+        emp.bbsCount,
+        emp.bbsTarget,
+        emp.meetsBbsRequirement ? "ผ่าน" : "ไม่ผ่าน",
+        emp.ppeViolations,
+        emp.highRiskViolations,
+        emp.accidentViolations,
+        emp.hasShePenalty ? "ไม่ผ่าน" : "ผ่าน",
+        emp.isEligible ? "ได้รับเงิน" : "ไม่ได้รับเงิน",
+        emp.isEligible ? "" : emp.paymentStatus.replace("ไม่ได้รับ: ", ""),
+      ]);
+
+      // ข้อมูล Group
+      const groupData = payrollData.groups.map((group) => [
+        "รายกลุ่ม",
+        group.groupName,
+        group.department,
+        group.employeeCount,
+        group.employees
+          .map((e) => `${e.employeeName}(${e.employeeId})`)
+          .join(", "),
+        group.bbsCount,
+        group.bbsTarget,
+        group.meetsBbsRequirement ? "ผ่าน" : "ไม่ผ่าน",
+        group.ppeViolations,
+        group.highRiskViolations,
+        group.accidentViolations,
+        group.hasShePenalty ? "ไม่ผ่าน" : "ผ่าน",
+        group.isEligible ? "ได้รับเงิน" : "ไม่ได้รับเงิน",
+        group.isEligible
+          ? ""
+          : group.paymentStatus.replace("ไม่ได้รับ: ", ""),
+      ]);
+
+      // รวมข้อมูลทั้งหมด (ใช้ headers ที่ยาวกว่า)
+      const allHeaders = groupHeaders;
+      const allData = [
+        allHeaders,
+        // เพิ่มแถวว่างเพื่อแยกส่วน
+        [
+          "=== ITH-OE (รายบุคคล) ===",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+        ],
+        ...individualData.map((row) => {
+          // เพิ่มคอลัมน์ว่างเพื่อให้ตรงกับ group headers
+          const newRow = [...row];
+          newRow.splice(4, 0, ""); // เพิ่มคอลัมน์ "รายชื่อสมาชิก" ว่าง
+          return newRow;
+        }),
+        // เพิ่มแถวว่างเพื่อแยกส่วน
+        ["", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        [
+          "=== แผนกอื่นๆ (รายกลุ่ม) ===",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+        ],
+        ...groupData,
+      ];
+
+      const csvContent = allData
+        .map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        )
+        .join("\n");
+
+      const filename = `Payroll_Report_Month_${startStr}_to_${endStr}.csv`;
+      const blob = new Blob(["\uFEFF" + csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    const monthNames = [
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม",
+    ];
+
+    // Load SHE data เมื่อ component mount
+    useEffect(() => {
+      fetchSheViolations();
+    }, []);
+
+    return (
+      <div className="space-y-6">
+        {/* Month Selector */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeMonth("prev")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h3 className="text-lg font-semibold">
+              {monthNames[selectedMonth.getMonth()]}{" "}
+              {selectedMonth.getFullYear()}
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeMonth("next")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={fetchSheViolations}
+              disabled={isLoadingShe}
+              variant="outline"
+              size="sm"
+            >
+              {isLoadingShe ? "กำลังโหลด SHE..." : "รีเฟรช SHE"}
+            </Button>
+            <div className="text-sm text-gray-600">
+              สมาชิก: {payrollData.summary.totalUnits} หน่วย | ได้รับเงิน:{" "}
+              {payrollData.summary.totalPaymentUnits} หน่วย
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">
+              {payrollData.summary.totalIndividuals}
+            </div>
+            <div className="text-sm text-blue-700">ITH-OE (รายบุคคล)</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">
+              {payrollData.summary.totalGroups}
+            </div>
+            <div className="text-sm text-purple-700">กลุ่มอื่นๆ</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">
+              {payrollData.summary.totalPaymentUnits}
+            </div>
+            <div className="text-sm text-green-700">ได้รับเงิน</div>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-600">
+              {payrollData.summary.eligibleIndividuals +
+                payrollData.summary.eligibleGroups}
+            </div>
+            <div className="text-sm text-yellow-700">หน่วยผ่านเกณฑ์</div>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-red-600">
+              {payrollData.summary.totalUnits -
+                payrollData.summary.totalPaymentUnits}
+            </div>
+            <div className="text-sm text-red-700">ไม่ผ่านเกณฑ์</div>
+          </div>
+        </div>
+
+        {/* ITH-OE Individual Results */}
+        {payrollData.individuals.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold mb-3 text-blue-600">
+              🧑‍💼 ITH-OE (คิดรายบุคคล)
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-blue-100">
+                    <th className="border border-gray-300 text-left p-3 font-medium">
+                      รหัสพนักงาน
+                    </th>
+                    <th className="border border-gray-300 text-left p-3 font-medium">
+                      ชื่อพนักงาน
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      BBS
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      PPE
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      เสี่ยงสูง
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      อุบัติเหตุ
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      สถานะ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payrollData.individuals.map((employee, index) => (
+                    <tr
+                      key={employee.employeeId}
+                      className={index % 2 === 0 ? "bg-blue-50" : "bg-white"}
+                    >
+                      <td className="border border-gray-300 p-3 font-medium">
+                        {employee.employeeId}
+                      </td>
+                      <td className="border border-gray-300 p-3">
+                        {employee.employeeName}
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <div className="space-y-1">
+                          <div
+                            className={`font-medium ${
+                              employee.meetsBbsRequirement
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {employee.bbsCount}/{employee.bbsTarget}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {employee.meetsBbsRequirement
+                              ? "✓ ผ่าน"
+                              : "✗ ไม่ผ่าน"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            employee.ppeViolations >= 12
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {employee.ppeViolations}
+                          {employee.ppeViolations >= 12 && " ❌"}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            employee.highRiskViolations >= 8
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {employee.highRiskViolations}
+                          {employee.highRiskViolations >= 8 && " ❌"}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            employee.accidentViolations >= 4
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {employee.accidentViolations}
+                          {employee.accidentViolations >= 4 && " ❌"}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <Badge className={employee.statusColor}>
+                          {employee.isEligible
+                            ? "💰 ได้รับเงิน"
+                            : "❌ ไม่ได้รับ"}
+                        </Badge>
+                        {!employee.isEligible && (
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs">
+                            {employee.paymentStatus.replace(
+                              "ไม่ได้รับ: ",
+                              ""
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Other Departments Group Results */}
+        {payrollData.groups.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold mb-3 text-purple-600">
+              👥 แผนกอื่นๆ (คิดรายกลุ่ม)
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-purple-100">
+                    <th className="border border-gray-300 text-left p-3 font-medium">
+                      กลุ่ม
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      จำนวนสมาชิก
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      BBS กลุ่ม
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      PPE
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      เสี่ยงสูง
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      อุบัติเหตุ
+                    </th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+  รายละเอียดรายสัปดาห์  {/* ← เพิ่มตรงนี้ */}
+</th>
+                    <th className="border border-gray-300 text-center p-3 font-medium">
+                      สถานะ
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payrollData.groups.map((group, index) => (
+                    <tr
+                      key={group.groupId}
+                      className={
+                        index % 2 === 0 ? "bg-purple-50" : "bg-white"
+                      }
+                    >
+                      <td className="border border-gray-300 p-3">
+                        <div>
+                          <div className="font-medium">{group.groupName}</div>
+                          <div className="text-xs text-gray-500">
+                            สมาชิก:{" "}
+                            {group.employees
+                              .map((e) => e.employeeName)
+                              .join(", ")}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center font-medium">
+                        {group.employeeCount} คน
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <div className="space-y-1">
+                          <div
+                            className={`font-medium ${
+                              group.meetsBbsRequirement
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {group.bbsCount}/{group.bbsTarget}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {group.meetsBbsRequirement
+                              ? "✓ ผ่าน"
+                              : "✗ ไม่ผ่าน"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            group.ppeViolations >= 12
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {group.ppeViolations}
+                          {group.ppeViolations >= 12 && " ❌"}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            group.highRiskViolations >= 8
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {group.highRiskViolations}
+                          {group.highRiskViolations >= 8 && " ❌"}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 p-3 text-center">
+                        <span
+                          className={
+                            group.accidentViolations >= 4
+                              ? "text-red-600 font-bold"
+                              : "text-gray-600"
+                          }
+                        >
+                          {group.accidentViolations}
+                          {group.accidentViolations >= 4 && " ❌"}
+                        </span>
+                      </td>
+<td className="border border-gray-300 p-3 text-center">  {/* ← เพิ่มตรงนี้ */}
+  <div className="text-xs space-y-1">
+    {group.groupWeeklyResults.map(week => (
+      <div key={week.week} className={week.meetsGroupWeeklyTarget ? "text-green-600" : "text-red-600"}>
+        สัปดาห์{week.week}: {week.meetsGroupWeeklyTarget ? "✓" : "✗"}
+      </div>
+    ))}
+  </div>
+</td>
+
+                      <td className="border border-gray-300 p-3 text-center">
+                        <Badge className={group.statusColor}>
+                          {group.isEligible
+                            ? "💰 ได้รับเงิน"
+                            : "❌ ไม่ได้รับ"}
+                        </Badge>
+                        {!group.isEligible && (
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs">
+                            {group.paymentStatus.replace("ไม่ได้รับ: ", "")}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Export Button */}
+        <div className="flex justify-end space-x-2">
+          <Button
+            onClick={exportPayrollReport}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Export รายงานการจ่ายเงิน
+          </Button>
+        </div>
+
+        {/* Legend */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-semibold mb-2">เกณฑ์การจ่ายเงิน (รายเดือน):</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="font-medium text-green-600">✅ ได้รับเงิน:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li><strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS ครบ 3 ครั้ง/สัปดาห์ ในทุกสัปดาห์ของเดือน + ไม่มี SHE ละเมิด</li>
+                <li><strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มส่ง BBS ครบทุกสัปดาห์ (3×จำนวนสมาชิก×จำนวนสัปดาห์) + ไม่มีสมาชิกละเมิด SHE</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-red-600">❌ ไม่ได้รับเงิน:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>BBS ไม่ครบในสัปดาห์ใดสัปดาห์หนึ่ง</li>
+                <li>PPE ละเมิด ≥ 12 ครั้ง/เดือน (3×4สัปดาห์)</li>
+                <li>เสี่ยงสูง ละเมิด ≥ 8 ครั้ง/เดือน (2×4สัปดาห์)</li>
+                <li>อุบัติเหตุ ≥ 4 ครั้ง/เดือน (1×4สัปดาห์)</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-blue-100 rounded border-l-4 border-blue-500">
+            <p className="text-sm text-blue-800">
+              <strong>หมายเหตุ:</strong>
+              แผนก ITH-OE ใช้ระบบการจ่ายแบบรายบุคคล ส่วนแผนกอื่นๆ
+              ใช้ระบบการจ่ายแบบรายกลุ่ม (ถ้ากลุ่มผ่านเกณฑ์
+              สมาชิกทุกคนในกลุ่มได้รับเงิน)
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+  PayrollReportSummary.displayName = "PayrollReportSummary";
+
   const exportMonthlyReport = (
     weeklySummary: any[],
     monthlyStats: any,
@@ -1439,9 +2948,10 @@ function AdminDashboard() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="reports">รายงานทั้งหมด</TabsTrigger>
             <TabsTrigger value="analytics">สถิติและรายงาน</TabsTrigger>
+            <TabsTrigger value="payroll">การจ่ายเงิน</TabsTrigger>
           </TabsList>
 
           <TabsContent value="reports" className="space-y-6">
@@ -2015,6 +3525,18 @@ function AdminDashboard() {
               </CardContent>
             </Card>
 
+            <Card className="py-4 px-0 md:p-6">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>สรุปรายบุคคล ITH-OE</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <IndividualReportSummary reports={reports} />
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="py-6">
                 <CardHeader>
@@ -2170,6 +3692,20 @@ function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="payroll" className="space-y-6">
+            <Card className="py-4 px-0 md:p-6">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="h-5 w-5" />
+                  <span>รายงานการจ่ายเงิน BBS</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PayrollReportSummary reports={reports} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

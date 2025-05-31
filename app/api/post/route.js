@@ -64,10 +64,39 @@ export async function POST(request) {
       data.other || ''                    // R: Other
     ];
 
+
+    const rowByshe = [
+       recordId,                           // A: Record ID
+      data.date || '',                    // B: Date
+      data.employeeId || '',              // C: Employee ID
+      data.username || '',                // D: Username
+      data.group || '',                   // E: Group
+      data.type || '',                    // F: Type
+      data.safetyCategory || '',          // G: Safety Category
+      data.sub_safetyCategory || '',      // H: Sub Safety Category
+      data.observed_work || '',           // I: Observed Work
+      data.depart_notice || '',           // J: Department Notice
+      vehicleEquipmentText,               // K: Vehicle Equipment (JSON)
+      selectedOptionsText,                // L: Selected Options (comma separated)
+      data.safeActionCount || 0,          // M: Safe Action Count
+      data.actionType || '',              // N: Action Type
+      data.unsafeActionCount || 0,        // O: Unsafe Action Count
+      data.actionTypeunsafe || '',        // P: Action Type Unsafe
+      attachmentText,                     // Q: Attachment (JSON with file IDs)
+      data.other || '',                    // R: Other
+      data.codeemployee || '',            // S: Code Employee
+      data.levelOfSafety || '',           // T: levelOfSafety
+    ];
+
     console.log('💾 Saving to Google Sheet...');
 
     // บันทึกลง Google Sheet
-    await appendToSheet('record!A:R', [row]);
+    if(data.group !== "SHE"){
+      await appendToSheet('record!A:R', [row]);
+    }else{
+      await appendToSheet('record_she!A:T', [rowByshe]);
+    }
+    
 
     const responseData = {
       recordId: recordId,

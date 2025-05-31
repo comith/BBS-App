@@ -7,7 +7,7 @@ function safeJSONParse(str) {
   if (typeof str === "string" && str.trim() !== "") {
     // ตรวจสอบว่าขึ้นต้นด้วย [ หรือ { (JSON format)
     const trimmed = str.trim();
-    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
       try {
         return JSON.parse(str);
       } catch (error) {
@@ -52,8 +52,11 @@ function formatDataByType(data, type) {
           break;
 
         case "department":
+          if (header === "id") {
+            value = value ? parseInt(value, 10) : 0;
+          }
+          break;
         case "group":
-          // สำหรับ list_department และ list_group
           if (header === "id") {
             value = value ? parseInt(value, 10) : 0;
           }
@@ -66,7 +69,7 @@ function formatDataByType(data, type) {
             value = Array.isArray(parsed) ? parsed : [];
           } else if (header === "vehicleEquipment") {
             const parsed = safeJSONParse(value);
-            value = (parsed && typeof parsed === 'object') ? parsed : {};
+            value = parsed && typeof parsed === "object" ? parsed : {};
           } else if (header === "attachment") {
             const parsed = safeJSONParse(value);
             value = Array.isArray(parsed) ? parsed : [];
@@ -101,7 +104,7 @@ async function fetchAndFormatData(sheetRange, type) {
     if (type === "subcategory") {
       const dataWithSubcategory = await getSheetData("list_option!A1:C");
       const datawithDepartment = await getSheetData("list_department!A1:D");
-      
+
       if (dataWithSubcategory && dataWithSubcategory.length > 0) {
         // id | name | sub_category_id filter by sub_category_id
         const subcategoryOptions = dataWithSubcategory.reduce((acc, row) => {
@@ -129,7 +132,7 @@ async function fetchAndFormatData(sheetRange, type) {
           } else {
             item.departcategory_id = [];
           }
-          
+
           // แปลง option เป็น array ของ objects
           item.option = subcategoryOptions[item.id] || [];
           return item;
@@ -141,7 +144,7 @@ async function fetchAndFormatData(sheetRange, type) {
           message: "Subcategory data fetched successfully.",
         };
       }
-      
+
       return {
         success: false,
         data: [],
@@ -153,7 +156,9 @@ async function fetchAndFormatData(sheetRange, type) {
     return {
       success: true,
       data: formattedData,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} data fetched successfully.`,
+      message: `${
+        type.charAt(0).toUpperCase() + type.slice(1)
+      } data fetched successfully.`,
     };
   } catch (error) {
     console.error("API Error:", error);
@@ -195,6 +200,10 @@ export async function GET(request) {
     case "group":
       result = await fetchAndFormatData("list_group!A1:C", "group");
       break;
+    case "she_violations":
+      result = await fetchAndFormatData("record_she!A1:T", "she_violations");
+      break;
+
     default:
       return NextResponse.json(
         {

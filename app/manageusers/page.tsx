@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import {
   Plus,
   Edit2,
+  Trash2,
   Save,
   X,
   Search,
@@ -14,8 +15,10 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 const EmployeeManager = () => {
+  const router = useRouter();
   const { toast } = useToast();
   interface Employee {
     id: string;

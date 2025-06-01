@@ -354,7 +354,7 @@ const updateOption: UpdateOptionType = (itemId, optionId, name) => {
                 เพิ่มหมวดหมู่
               </Button>
               <Button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => window.history.back()}
                 variant="outline"
                 >
                   <Home/>

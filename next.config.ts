@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // สำหรับ Netlify
+  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
 };
 
 

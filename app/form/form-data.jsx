@@ -1,8 +1,5 @@
 // form-data.jsx
 
-import { pl } from "date-fns/locale";
-import { title } from "process";
-
 export const employeeData = [
   {
     employeerId: "5LD01234",

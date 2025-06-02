@@ -1,5 +1,4 @@
 // app/api/upload/route.js
-import { stat } from 'fs';
 import { uploadFileToDrive } from '../config'; // Adjust the import path as necessary
 import { NextResponse } from 'next/server';
 

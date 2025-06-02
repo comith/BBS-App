@@ -118,7 +118,7 @@ async function fetchAndFormatData(sheetRange, type) {
 
         // id | name | group | shortname filter by departcategory_id width id and return shortname
         const departmentOptions = datawithDepartment.reduce((acc, row) => {
-          const [id, name, group, shortname] = row;
+          const [id, shortname] = row;
           acc[id] = { id: parseInt(id, 10), shortname };
           return acc;
         }, {});

@@ -1,19 +1,7 @@
 "use client"
 
-import { useAuth } from "@/hooks/use-auth"
-import { useLanguage } from "@/hooks/use-language"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { LanguageSwitcher } from "@/components/language-switcher"
+
 import { House } from "lucide-react"
-import Link from "next/link"
 import { useSearchParams,useRouter } from "next/navigation"
 
 export function Header() {
@@ -24,7 +12,6 @@ const searchParams  = useSearchParams();
   const employeeName = searchParams.get('fullName');
   const depatment = searchParams.get('department');
   const group = searchParams.get('group');
-  const { t } = useLanguage()
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">

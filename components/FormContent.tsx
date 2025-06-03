@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 
 // ====================================== interface =====================================
 
@@ -81,7 +80,7 @@ interface Department {
 
 function SafetyObservationForm() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const employeeId = searchParams.get("employeeId");
   const employeeName = searchParams.get("fullName");
   const depatment = searchParams.get("department");

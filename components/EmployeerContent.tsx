@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import {
   format,
@@ -358,7 +357,7 @@ const getStatusInfo = (status: string) => {
 };
 
 function EmployeeReportStatus() {
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const employeeId = searchParams.get("employeeId");
   const employeeName = searchParams.get("fullName");
 

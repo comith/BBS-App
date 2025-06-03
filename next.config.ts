@@ -1,20 +1,11 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
- experimental: {
-    serverComponentsExternalPackages: [],
-  },
-  trailingSlash: true,
-  
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // output: 'exstandaloneort',
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // สำหรับ Netlify
-  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  images: { unoptimized: true },
+  reactStrictMode: false,
 };
 
-
-export default nextConfig;
+module.exports = nextConfig;

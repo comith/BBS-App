@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   format,
   isAfter,
@@ -509,7 +508,7 @@ function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
 
   const sheid = searchParams.get("employeeId");
   const employeeId = searchParams.get("employeeId");

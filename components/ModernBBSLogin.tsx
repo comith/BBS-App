@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { SquareUser, RefreshCw } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEmployeeData, useRefreshEmployeeData } from "@/hooks/useEmployeeData";
 
 interface FormData {
@@ -263,7 +263,7 @@ RequiredMark.displayName = "RequiredMark";
 
 function ModernBBSLogin() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const employeeIdFromUrl = searchParams.get("employeeId") || "";
   
   // ✅ ใช้ React Query hooks

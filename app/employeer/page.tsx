@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   format,
   isAfter,
@@ -14,6 +13,7 @@ import {
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -357,9 +357,11 @@ const getStatusInfo = (status: string) => {
 };
 
 function EmployeeReportStatus() {
-  const searchParams = useSearchParams();
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string | null>(null);
+  const [group, setGroup] = useState<string | null>(null);
+  const router = useRouter();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [filteredReports, setFilteredReports] = useState<Report[]>([]);
@@ -438,7 +440,9 @@ function EmployeeReportStatus() {
     level_accident?: string;
   }
 
-  const calculateSheStats = (violations: CalculateSheStatsViolation[]): SheStats => {
+  const calculateSheStats = (
+    violations: CalculateSheStatsViolation[]
+  ): SheStats => {
     const stats: SheStats = {
       total: violations.length,
       byMonth: {},
@@ -460,14 +464,15 @@ function EmployeeReportStatus() {
       stats.byMonth[monthKey]++;
 
       // จัดกลุ่มตามหมวดหมู่
-      if(violation.level_accident === "PPE") {
+      if (violation.level_accident === "PPE") {
         stats.ppeViolations++;
-      }else if (violation.level_accident ===  "เสี่ยงสูง") {
-        stats.byRiskLevel['เสี่ยงสูง'] = (stats.byRiskLevel['เสี่ยงสูง'] || 0) + 1;
-      }else if (violation.level_accident === "เสี่ยงต่ำ") {
-        stats.byRiskLevel['อุบัติเหตุ'] = (stats.byRiskLevel['อุบัติเหตุ'] || 0) + 1;
+      } else if (violation.level_accident === "เสี่ยงสูง") {
+        stats.byRiskLevel["เสี่ยงสูง"] =
+          (stats.byRiskLevel["เสี่ยงสูง"] || 0) + 1;
+      } else if (violation.level_accident === "เสี่ยงต่ำ") {
+        stats.byRiskLevel["อุบัติเหตุ"] =
+          (stats.byRiskLevel["อุบัติเหตุ"] || 0) + 1;
       }
-
     });
 
     return stats;
@@ -495,12 +500,19 @@ function EmployeeReportStatus() {
 
   // เรียกใช้ฟังก์ชันใน useEffect
   useEffect(() => {
-    if (employeeId) {
-      fetchReports();
-      fetchSheViolations(); // เพิ่มบรรทัดนี้
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      setEmployeeId(searchParams.get("employeeId") || "");
+      setEmployeeName(searchParams.get("fullName") || "");
+      setDepartment(searchParams.get("department") || "");
+      setGroup(searchParams.get("group") || "");
+
+      if (searchParams.get("employeeId")) {
+        fetchReports();
+        fetchSheViolations(); // เพิ่มบรรทัดนี้
+      }
     }
   }, [employeeId]);
-
 
   const fetchCategoriesAndSubCategories = async () => {
     try {
@@ -522,77 +534,88 @@ function EmployeeReportStatus() {
     }
   };
 
-
   const SheViolationsDashboard = () => {
-  if (sheViolations.length === 0) {
-    return null; // ไม่แสดงถ้าไม่มีข้อมูล
-  }
+    if (sheViolations.length === 0) {
+      return null; // ไม่แสดงถ้าไม่มีข้อมูล
+    }
 
-  return (
-    <Card className="mb-6 p-6">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <div className="h-6 w-6 bg-red-100 rounded flex items-center justify-center">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </div>
-          <span>รายงาน SHE</span>
-          <Badge variant="secondary">{sheStats.total} ครั้ง</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* สถิติรวม */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-600">การละเมิด PPE</p>
-                <p className="text-2xl font-bold text-red-700">{sheStats.ppeViolations}</p>
-              </div>
-              <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
+    return (
+      <Card className="mb-6 p-6">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <div className="h-6 w-6 bg-red-100 rounded flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
             </div>
-          </div>
-
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600">เสี่ยงสูง</p>
-                <p className="text-2xl font-bold text-orange-700">
-                  {sheStats.byRiskLevel['เสี่ยงสูง'] || 0}
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <XCircle className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* สถิติรายเดือน */}
-        <div className="mb-4">
-          <h4 className="text-lg font-semibold mb-3">รายงานรายเดือน</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(sheStats.byMonth)
-              .sort(([a], [b]) => b.localeCompare(a)) // เรียงจากใหม่ไปเก่า
-              .slice(0, 6) // แสดงแค่ 6 เดือนล่าสุด
-              .map(([monthKey, count]) => (
-                <div key={monthKey} className="bg-gray-50 p-3 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">{getThaiMonth(monthKey)}</p>
-                      <p className="text-xl font-bold text-gray-900">{count}</p>
-                    </div>
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                  </div>
+            <span>รายงาน SHE</span>
+            <Badge variant="secondary">{sheStats.total} ครั้ง</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* สถิติรวม */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-red-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-600">
+                    การละเมิด PPE
+                  </p>
+                  <p className="text-2xl font-bold text-red-700">
+                    {sheStats.ppeViolations}
+                  </p>
                 </div>
-              ))
-            }
-          </div>
-        </div>
+                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </div>
 
-        {/* รายการล่าสุด */}
-        {/* <div>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600">
+                    เสี่ยงสูง
+                  </p>
+                  <p className="text-2xl font-bold text-orange-700">
+                    {sheStats.byRiskLevel["เสี่ยงสูง"] || 0}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <XCircle className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* สถิติรายเดือน */}
+          <div className="mb-4">
+            <h4 className="text-lg font-semibold mb-3">รายงานรายเดือน</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.entries(sheStats.byMonth)
+                .sort(([a], [b]) => b.localeCompare(a)) // เรียงจากใหม่ไปเก่า
+                .slice(0, 6) // แสดงแค่ 6 เดือนล่าสุด
+                .map(([monthKey, count]) => (
+                  <div
+                    key={monthKey}
+                    className="bg-gray-50 p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          {getThaiMonth(monthKey)}
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {count}
+                        </p>
+                      </div>
+                      <Calendar className="h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* รายการล่าสุด */}
+          {/* <div>
           <h4 className="text-lg font-semibold mb-3">รายการล่าสุด</h4>
           <div className="space-y-2">
             {sheViolations
@@ -644,11 +667,10 @@ function EmployeeReportStatus() {
             )}
           </div>
         </div> */}
-      </CardContent>
-    </Card>
-  );
-};
-
+        </CardContent>
+      </Card>
+    );
+  };
 
   const transformApiDataToReportWithCategories = (
     apiData: ApiReport[],
@@ -835,7 +857,7 @@ function EmployeeReportStatus() {
       setReports(transformedReports);
 
       if (transformedReports.length === 0) {
-        setError("ไม่พบรายงานของพนักงานคนนี้");
+        setError("ไม่พบรายงานของท่าน");
       }
     } catch (error) {
       console.error("❌ Error fetching reports:", error);
@@ -853,12 +875,6 @@ function EmployeeReportStatus() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (employeeId) {
-      fetchReports();
-    }
-  }, [employeeId]);
 
   if (!employeeId) {
     return (
@@ -918,7 +934,7 @@ function EmployeeReportStatus() {
                 onClick={() => {
                   fetchReports();
                   fetchSheViolations();
-                  }}
+                }}
                 disabled={isLoading}
                 className="bg-orange-500 hover:bg-orange-600 w-full"
               >
@@ -927,7 +943,15 @@ function EmployeeReportStatus() {
               <Button
                 variant="outline"
                 className="text-gray-600 hover:text-gray-900"
-                onClick={() => window.history.back()}
+                onClick={() => {
+                    const params = new URLSearchParams({
+                      employeeId: employeeId || "",
+                      fullName: employeeName || "",
+                      department: department || "",
+                      group: group || "",
+                    }).toString();
+                    router.push(`/?${params}`);
+                  }}
               >
                 ย้อนกลับ
               </Button>

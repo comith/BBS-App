@@ -1,8 +1,11 @@
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { SquareUser, RefreshCw } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEmployeeData, useRefreshEmployeeData } from "@/hooks/useEmployeeData";
+import { useRouter } from "next/navigation";
+import {
+  useEmployeeData,
+  useRefreshEmployeeData,
+} from "@/hooks/useEmployeeData";
 
 interface FormData {
   employeerId: string;
@@ -32,8 +35,8 @@ const RefreshButton = React.memo(() => {
       disabled={isRefreshing}
       className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors"
     >
-      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-      {isRefreshing ? 'กำลังอัพเดท...' : 'รีเฟรชข้อมูล'}
+      <RefreshCw className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`} />
+      {isRefreshing ? "กำลังอัพเดท..." : "รีเฟรชข้อมูล"}
     </button>
   );
 });
@@ -199,20 +202,20 @@ const MenuButtons = React.memo(
 
     return (
       <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-          <div
-            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleFormClick}
-          >
-            <img
-              src="/img/formicon.png"
-              alt="Form Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              บันทึกรายงานพฤติกรรม
-            </h2>
-          </div>
+        <div
+          className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+          onClick={handleFormClick}
+        >
+          <img
+            src="/img/formicon.png"
+            alt="Form Icon"
+            className="w-auto h-32 m-auto"
+          />
+          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+            บันทึกรายงานพฤติกรรม
+          </h2>
         </div>
+      </div>
     );
   }
 );
@@ -233,27 +236,25 @@ const LoadingScreen = React.memo(() => (
 LoadingScreen.displayName = "LoadingScreen";
 
 // Error component
-const ErrorScreen = React.memo(({ 
-  error, 
-  onRetry 
-}: { 
-  error: string; 
-  onRetry: () => void; 
-}) => (
-  <div className="flex items-center justify-center h-screen">
-    <div className="text-center max-w-md">
-      <div className="text-red-500 text-4xl mb-4">⚠️</div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">เกิดข้อผิดพลาด</h1>
-      <p className="text-gray-600 mb-4">{error}</p>
-      <button
-        onClick={onRetry}
-        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors"
-      >
-        ลองใหม่อีกครั้ง
-      </button>
+const ErrorScreen = React.memo(
+  ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-center max-w-md">
+        <div className="text-red-500 text-4xl mb-4">⚠️</div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          เกิดข้อผิดพลาด
+        </h1>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button
+          onClick={onRetry}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg transition-colors"
+        >
+          ลองใหม่อีกครั้ง
+        </button>
+      </div>
     </div>
-  </div>
-));
+  )
+);
 
 ErrorScreen.displayName = "ErrorScreen";
 
@@ -262,12 +263,11 @@ RequiredMark.displayName = "RequiredMark";
 
 function ModernBBSLogin() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const employeeIdFromUrl = searchParams.get("employeeId") || "";
-  
+  const [employeeIdFromUrl, setEmployeeIdFromUrl] = useState("");
+
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
-  
+
   const [formData, setFormData] = useState<FormData>({
     employeerId: employeeIdFromUrl,
     fullName: "",
@@ -335,8 +335,14 @@ function ModernBBSLogin() {
 
   // ✅ Auto-fill จาก URL parameter
   useEffect(() => {
-    if (employeeIdFromUrl && employees) {
-      findEmployeeData(employeeIdFromUrl);
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const employeeId = searchParams.get("employeeId") || "";
+      setEmployeeIdFromUrl(employeeId);
+
+      if (employeeId && employees) {
+        findEmployeeData(employeeIdFromUrl);
+      }
     }
   }, [employeeIdFromUrl, employees, findEmployeeData]);
 

@@ -1,13 +1,11 @@
 "use client"
-
-
 import { House } from "lucide-react"
-import { useSearchParams,useRouter } from "next/navigation"
+import {useRouter } from "next/navigation"
 
 export function Header() {
 //   const { user, logout } = useAuth()
 const router = useRouter();
-const searchParams  = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const employeeId = searchParams.get('employeeId');
   const employeeName = searchParams.get('fullName');
   const depatment = searchParams.get('department');

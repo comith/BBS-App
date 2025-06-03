@@ -1,11 +1,12 @@
-// api/get/route.js - แก้ไขเพื่อแก้ปัญหา JSON parse error
+// api/get/route.js - เพิ่ม debug และ error handling
 import { getSheetData } from "../config";
 import { NextResponse } from "next/server";
 
+// เพิ่ม debug logging
+console.log("API Route loaded successfully");
+
 function safeJSONParse(str) {
-  // ตรวจสอบว่าเป็น JSON format หรือไม่ก่อน
   if (typeof str === "string" && str.trim() !== "") {
-    // ตรวจสอบว่าขึ้นต้นด้วย [ หรือ { (JSON format)
     const trimmed = str.trim();
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
       try {
@@ -15,7 +16,6 @@ function safeJSONParse(str) {
         return null;
       }
     }
-    // ถ้าไม่ใช่ JSON format ให้คืนค่าเป็น string ธรรมดา
     return str;
   }
   return null;
@@ -32,10 +32,8 @@ function formatDataByType(data, type) {
     headers.forEach((header, index) => {
       let value = row[index] || "";
 
-      // แปลงข้อมูลตามประเภทและคอลัมน์
       switch (type) {
         case "subcategory":
-          // สำหรับ sub_category_data ต้อง parse JSON ในคอลัมน์ departcategory และ option
           if (header === "departcategory_id") {
             const parsed = safeJSONParse(value);
             value = Array.isArray(parsed) ? parsed : [];
@@ -45,17 +43,12 @@ function formatDataByType(data, type) {
           break;
 
         case "category":
-          // สำหรับ category_data
           if (header === "id") {
             value = value ? parseInt(value, 10) : 0;
           }
           break;
 
         case "department":
-          if (header === "id") {
-            value = value ? parseInt(value, 10) : 0;
-          }
-          break;
         case "group":
           if (header === "id") {
             value = value ? parseInt(value, 10) : 0;
@@ -63,7 +56,6 @@ function formatDataByType(data, type) {
           break;
 
         case "record":
-          // สำหรับ record data - ต้องระวัง JSON fields
           if (header === "selectedOptions") {
             const parsed = safeJSONParse(value);
             value = Array.isArray(parsed) ? parsed : [];
@@ -73,17 +65,12 @@ function formatDataByType(data, type) {
           } else if (header === "attachment") {
             const parsed = safeJSONParse(value);
             value = Array.isArray(parsed) ? parsed : [];
-          } else if (
-            header === "safeActionCount" ||
-            header === "unsafeActionCount"
-          ) {
+          } else if (header === "safeActionCount" || header === "unsafeActionCount") {
             value = value ? parseInt(value, 10) : 0;
           }
-          // สำหรับ field อื่นๆ ให้เก็บเป็น string ธรรมดา
           break;
 
         default:
-          // ไม่เปลี่ยนแปลงค่า - เก็บเป็น string
           break;
       }
 
@@ -95,18 +82,27 @@ function formatDataByType(data, type) {
 
 async function fetchAndFormatData(sheetRange, type) {
   try {
+    console.log(`🔍 Fetching data for type: ${type}, range: ${sheetRange}`);
+    
+    // ตรวจสอบว่า getSheetData function มีอยู่ไหม
+    if (typeof getSheetData !== 'function') {
+      throw new Error('getSheetData function is not available');
+    }
+
     const data = await getSheetData(sheetRange);
+    console.log(`📊 Data received:`, data ? `${data.length} rows` : 'null');
 
     if (!data || data.length === 0) {
       return { success: false, data: [], message: "No data found." };
     }
 
     if (type === "subcategory") {
+      console.log("🔧 Processing subcategory with additional data...");
+      
       const dataWithSubcategory = await getSheetData("list_option!A1:C");
       const datawithDepartment = await getSheetData("list_department!A1:D");
 
       if (dataWithSubcategory && dataWithSubcategory.length > 0) {
-        // id | name | sub_category_id filter by sub_category_id
         const subcategoryOptions = dataWithSubcategory.reduce((acc, row) => {
           const [id, name, subCategoryId] = row;
           if (subCategoryId) {
@@ -116,7 +112,6 @@ async function fetchAndFormatData(sheetRange, type) {
           return acc;
         }, {});
 
-        // id | name | group | shortname filter by departcategory_id width id and return shortname
         const departmentOptions = datawithDepartment.reduce((acc, row) => {
           const [id, shortname] = row;
           acc[id] = { id: parseInt(id, 10), shortname };
@@ -124,7 +119,6 @@ async function fetchAndFormatData(sheetRange, type) {
         }, {});
 
         const formattedData = formatDataByType(data, type).map((item) => {
-          // แปลง departcategory_id เป็น array ของ objects
           if (Array.isArray(item.departcategory_id)) {
             item.departcategory_id = item.departcategory_id.map(
               (id) => departmentOptions[id] || {}
@@ -133,11 +127,12 @@ async function fetchAndFormatData(sheetRange, type) {
             item.departcategory_id = [];
           }
 
-          // แปลง option เป็น array ของ objects
           item.option = subcategoryOptions[item.id] || [];
           return item;
         });
 
+        console.log(`✅ Subcategory processed: ${formattedData.length} items`);
+        
         return {
           success: true,
           data: formattedData,
@@ -153,15 +148,16 @@ async function fetchAndFormatData(sheetRange, type) {
     }
 
     const formattedData = formatDataByType(data, type);
+    console.log(`✅ Data formatted: ${formattedData.length} items`);
+    
     return {
       success: true,
       data: formattedData,
-      message: `${
-        type.charAt(0).toUpperCase() + type.slice(1)
-      } data fetched successfully.`,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} data fetched successfully.`,
     };
   } catch (error) {
-    console.error("API Error:", error);
+    console.error("❌ API Error:", error);
+    console.error("Error stack:", error.stack);
     return {
       success: false,
       data: [],
@@ -173,53 +169,75 @@ async function fetchAndFormatData(sheetRange, type) {
 
 // GET method สำหรับดึงข้อมูลทั้งหมด
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type");
+  console.log("🔗 GET request received at /api/get");
+  try {
+    console.log("🚀 API GET request received");
+    
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get("type");
+    
+    console.log(`📝 Request type: ${type}`);
 
-  let result;
-
-  switch (type) {
-    case "record":
-      result = await fetchAndFormatData("record!A1:S", "record");
-      break;
-    case "employee":
-      result = await fetchAndFormatData("employee!A1:F", "employee");
-      break;
-    case "category":
-      result = await fetchAndFormatData("category_data!A1:D", "category");
-      break;
-    case "subcategory":
-      result = await fetchAndFormatData(
-        "sub_category_data!A1:K",
-        "subcategory"
-      );
-      break;
-    case "department":
-      result = await fetchAndFormatData("list_department!A1:D", "department");
-      break;
-    case "group":
-      result = await fetchAndFormatData("list_group!A1:C", "group");
-      break;
-    case "she_violations":
-      result = await fetchAndFormatData("record_she!A1:T", "she_violations");
-      break;
-
-    default:
+    // ตรวจสอบว่ามี type parameter ไหม
+    if (!type) {
+      console.log("❌ No type parameter provided");
       return NextResponse.json(
-        {
-          message:
-            "Invalid type parameter. Use: record, category, subcategory, department, or group",
-        },
+        { message: "Type parameter is required" },
         { status: 400 }
       );
-  }
+    }
 
-  if (!result.success) {
+    let result;
+
+    switch (type) {
+      case "record":
+        result = await fetchAndFormatData("record!A1:S", "record");
+        break;
+      case "employee":
+        result = await fetchAndFormatData("employee!A1:F", "employee");
+        break;
+      case "category":
+        result = await fetchAndFormatData("category_data!A1:D", "category");
+        break;
+      case "subcategory":
+        result = await fetchAndFormatData("sub_category_data!A1:K", "subcategory");
+        break;
+      case "department":
+        result = await fetchAndFormatData("list_department!A1:D", "department");
+        break;
+      case "group":
+        result = await fetchAndFormatData("list_group!A1:C", "group");
+        break;
+      case "she_violations":
+        result = await fetchAndFormatData("record_she!A1:T", "she_violations");
+        break;
+
+      default:
+        console.log(`❌ Invalid type: ${type}`);
+        return NextResponse.json(
+          {
+            message: "Invalid type parameter. Use: record, category, subcategory, department, group, employee, or she_violations",
+          },
+          { status: 400 }
+        );
+    }
+
+    console.log(`📤 Result:`, result.success ? 'Success' : 'Failed');
+
+    if (!result.success) {
+      return NextResponse.json(
+        { message: result.message, error: result.error },
+        { status: result.data.length === 0 ? 404 : 500 }
+      );
+    }
+    console.log(`📊 Returning data for type: ${type}`);
+    return NextResponse.json(result.data);
+    
+  } catch (error) {
+    console.error("💥 Unexpected error in GET handler:", error);
     return NextResponse.json(
-      { message: result.message, error: result.error },
-      { status: result.data.length === 0 ? 404 : 500 }
+      { message: "Internal server error", error: error.message },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(result.data);
 }

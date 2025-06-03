@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   format,
   isAfter,
@@ -509,13 +508,13 @@ function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const searchParams = useSearchParams();
 
-  const sheid = searchParams.get("employeeId");
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
-  const depatment = searchParams.get("department");
-  const group = searchParams.get("group");
+  const [sheid, setSheid] = useState<string | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string | null>(null);
+  const [group, setGroup] = useState<string | null>(null);
+
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -3007,7 +3006,17 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchReports();
+    
+     if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      setSheid(searchParams.get("employeeId") || "");
+      setEmployeeId(searchParams.get("employeeId") || "");
+      setEmployeeName(searchParams.get("fullName") || "");
+      setDepartment(searchParams.get("department") || "");
+      setGroup(searchParams.get("group") || "");
+      fetchReports();
+    }
+
   }, []);
 
   return (
@@ -3050,7 +3059,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/managecategory?${params}`);
@@ -3065,7 +3074,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/?${params}`);
@@ -3080,7 +3089,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/manageusers?${params}`);

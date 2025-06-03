@@ -299,7 +299,6 @@ function SafetyObservationForm() {
       });
 
       const result = await response.json();
-      console.log("Upload result:", result);
 
       if (!response.ok) {
         throw new Error(result.message || "Upload failed");
@@ -372,45 +371,9 @@ function SafetyObservationForm() {
   const fetchSubSafetyCategories = async (): Promise<SubSafetyCategory[]> => {
     const response = await fetch("/api/get?type=subcategory");
     const data = await response.json();
-    console.log("Fetched sub safety categories:", data);
     return Array.isArray(data) ? data : [];
   };
 
-  React.useEffect(() => {
-    const loadAllData = async () => {
-      setIsLoading(true);
-      try {
-        const [departments, groups, categories, subSafetyCategories] =
-          await Promise.all([
-            fetchDepartments(),
-            fetchGroups(),
-            fetchCategories(),
-            fetchSubSafetyCategories(),
-          ]);
-
-        setListDepartment(departments);
-        setListGroup(groups);
-        setSafetyCategoryData(categories);
-        setSubSafetyCategoryData(subSafetyCategories);
-      } catch (error) {
-        // handle error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      setEmployeeId(searchParams.get("employeeId") || "");
-      setEmployeeName(searchParams.get("fullName") || "");
-      setDepartment(searchParams.get("department") || "");
-      setGroup(searchParams.get("group") || "");
-      setIsLoading(true);
-      window.scrollTo(0, 0);
-
-      loadAllData();
-    }
-  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -436,6 +399,72 @@ function SafetyObservationForm() {
     },
     mode: "onTouched",
   });
+
+
+  React.useEffect(() => {
+  const loadAllData = async () => {
+    setIsLoading(true);
+    try {
+      const [departments, groups, categories, subSafetyCategories] =
+        await Promise.all([
+          fetchDepartments(),
+          fetchGroups(),
+          fetchCategories(),
+          fetchSubSafetyCategories(),
+        ]);
+
+      setListDepartment(departments);
+      setListGroup(groups);
+      setSafetyCategoryData(categories);
+      setSubSafetyCategoryData(subSafetyCategories);
+    } catch (error) {
+      // handle error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (typeof window !== "undefined") {
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlEmployeeId = searchParams.get("employeeId") || "";
+    const urlEmployeeName = searchParams.get("fullName") || "";
+    const urlDepartment = searchParams.get("department") || "";
+    const urlGroup = searchParams.get("group") || "";
+
+    // ตั้งค่า state
+    setEmployeeId(urlEmployeeId);
+    setEmployeeName(urlEmployeeName);
+    setDepartment(urlDepartment);
+    setGroup(urlGroup);
+
+    // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
+    form.reset({
+      date: new Date(),
+      employeeId: urlEmployeeId,
+      username: urlEmployeeName,
+      type: urlDepartment,
+      group: urlGroup,
+      safetyCategory: undefined,
+      sub_safetyCategory: undefined,
+      observed_work: "",
+      depart_notice: "",
+      vehicleEquipment: {},
+      safeActionCount: undefined,
+      unsafeActionCount: undefined,
+      selectedOptions: [],
+      attachment: undefined,
+      attachid: "",
+      other: "",
+      codeemployee: "",
+      levelOfSafety: "",
+    });
+
+    setIsLoading(true);
+    window.scrollTo(0, 0);
+
+    loadAllData();
+  }
+}, [form]);
 
   React.useEffect(() => {
     const successfulFiles = uploadedFiles.filter((f) => f.status === "success");
@@ -519,15 +548,11 @@ function SafetyObservationForm() {
     const needToAddEmployee = employeeName === "" || employeeId === "";
 
     if (needToAddEmployee) {
-      console.log("🔍 Need to add new employee first");
       const addEmployeeSuccess = await addnewUser();
 
       if (!addEmployeeSuccess) {
-        console.log("❌ Failed to add employee, stopping submission");
         return; // หยุดการส่งข้อมูลถ้าเพิ่มพนักงานไม่สำเร็จ
       }
-
-      console.log("✅ Employee added successfully, continuing with submission");
     }
 
     setIsSubmitting(true);
@@ -538,13 +563,6 @@ function SafetyObservationForm() {
         (f) => f.status === "success"
       );
       const hasUploadedFiles = successfulFiles.length > 0;
-
-      console.log("🔍 Submit check:", {
-        totalUploadedFiles: uploadedFiles.length,
-        successfulFiles: successfulFiles.length,
-        hasUploadedFiles: hasUploadedFiles,
-        fileIds: successfulFiles.map((f) => f.id),
-      });
 
       if (hasUploadedFiles) {
         // 🔥 กรณีมีไฟล์ที่อัปโหลดสำเร็จแล้ว: ส่งเป็น JSON พร้อม file IDs
@@ -575,11 +593,6 @@ function SafetyObservationForm() {
           levelOfSafety: data.levelOfSafety || "",
         };
 
-        console.log("📤 Submitting with files:", {
-          fileCount: submissionData.uploadedFiles.length,
-          files: submissionData.uploadedFiles,
-        });
-
         // ส่งข้อมูลเป็น JSON
         const response = await fetch("/api/post", {
           method: "POST",
@@ -602,7 +615,6 @@ function SafetyObservationForm() {
           description: "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว",
         });
 
-        console.log("✅ Submission successful with uploaded files:", result);
       } else {
         // 🔥 กรณีไม่มีไฟล์: ส่งข้อมูลอย่างเดียว
         const submissionData = {
@@ -624,8 +636,6 @@ function SafetyObservationForm() {
           uploadedFiles: [], // ไม่มีไฟล์
           other: data.other || "",
         };
-
-        console.log("📤 Submitting without files");
 
         const response = await fetch("/api/post", {
           method: "POST",
@@ -649,7 +659,6 @@ function SafetyObservationForm() {
           }`,
         });
 
-        console.log("✅ Submission successful without files:", result);
       }
 
       // 🔄 รีเซ็ตหลังจากส่งสำเร็จ
@@ -716,7 +725,6 @@ function SafetyObservationForm() {
         return `${field}: ${error?.message || "Invalid"}`;
       });
 
-      console.log("Critical form errors:", errorMessages);
 
       toast({
         title: "กรุณาตรวจสอบข้อมูล",

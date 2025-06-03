@@ -390,8 +390,6 @@ function EmployeeReportStatus() {
 
   const fetchSheViolations = async () => {
     try {
-      console.log("🔄 Fetching SHE violations for employee:", employeeId);
-
       const response = await fetch("/api/get?type=she_violations");
 
       if (!response.ok) {
@@ -399,7 +397,6 @@ function EmployeeReportStatus() {
       }
 
       const apiData = await response.json();
-      console.log("✅ SHE Violations API Response:", apiData);
 
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูล SHE violations ไม่ใช่ array");
@@ -415,11 +412,6 @@ function EmployeeReportStatus() {
       // คำนวณสถิติ
       const stats = calculateSheStats(filteredData);
       setSheStats(stats);
-
-      console.log("📊 SHE Violations processed:", {
-        total: filteredData.length,
-        stats,
-      });
     } catch (error) {
       console.error("❌ Error fetching SHE violations:", error);
     }
@@ -526,9 +518,6 @@ function EmployeeReportStatus() {
 
       setCategories(categoryData);
       setSubCategories(subCategoryData);
-
-      console.log("Categories loaded:", categoryData);
-      console.log("SubCategories loaded:", subCategoryData);
     } catch (error) {
       console.error("Error loading categories:", error);
     }
@@ -678,15 +667,9 @@ function EmployeeReportStatus() {
     categories: any[],
     subCategories: any[]
   ): Report[] => {
-    console.log("Transforming API data with categories:", {
-      totalRecords: apiData.length,
-      employeeId,
-      categoriesCount: categories.length,
-      subCategoriesCount: subCategories.length,
-    });
+
 
     const filtered = apiData.filter((item) => item.employee_id === employeeId);
-    console.log("Filtered records for employee:", filtered.length);
 
     return filtered.map((item, index) => {
       // หา category name จาก ID
@@ -813,8 +796,6 @@ function EmployeeReportStatus() {
     setError(null);
 
     try {
-      console.log("🔄 Fetching reports for employee:", employeeId);
-
       // เรียกข้อมูลทั้งหมดพร้อมกัน
       const [recordResponse, categoryResponse, subCategoryResponse] =
         await Promise.all([
@@ -833,11 +814,6 @@ function EmployeeReportStatus() {
         subCategoryResponse.json(),
       ]);
 
-      console.log("✅ API Response received:", {
-        totalRecords: apiData.length,
-        categories: categoryData.length,
-        subCategories: subCategoryData.length,
-      });
 
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
@@ -849,10 +825,6 @@ function EmployeeReportStatus() {
         categoryData,
         subCategoryData
       );
-
-      console.log("📊 Transformed reports:", {
-        count: transformedReports.length,
-      });
 
       setReports(transformedReports);
 
@@ -866,7 +838,6 @@ function EmployeeReportStatus() {
       );
       // ใช้ mock data เป็น fallback เฉพาะตอน development
       if (process.env.NODE_ENV === "development") {
-        console.log("🔄 Using mock data as fallback");
         setReports([]);
       } else {
         setReports([]);
@@ -893,7 +864,7 @@ function EmployeeReportStatus() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {error && !isLoading && (
+      {/* {error && !isLoading && (
         <Card className="mb-6">
           <CardContent className="py-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
@@ -906,7 +877,7 @@ function EmployeeReportStatus() {
             </Button>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">

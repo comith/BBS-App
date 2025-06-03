@@ -133,7 +133,6 @@ function SheViolationsManagement() {
   const fetchViolations = async () => {
     setLoading(true);
     try {
-      console.log("🔄 Fetching SHE violations...");
 
       const [violationsResponse, categoriesResponse, employeesResponse] = await Promise.all([
         fetch("/api/get?type=she_violations"),
@@ -150,12 +149,6 @@ function SheViolationsManagement() {
         categoriesResponse.json(),
         employeesResponse.json(),
       ]);
-
-      console.log("✅ Data loaded:", {
-        violations: violationsData.length,
-        categories: categoriesData.length,
-        employees: employeesData.length,
-      });
 
       setViolations(violationsData);
       setCategories(categoriesData);

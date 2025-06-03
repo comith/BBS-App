@@ -688,11 +688,6 @@ function AdminDashboard() {
     setIsSubmittingApproval(true);
 
     try {
-      console.log("🔄 Submitting approval action:", {
-        recordId: selectedReport.recordId,
-        action: approvalAction,
-        note: adminNote.trim() || null,
-      });
 
       const response = await fetch("/api/approve", {
         method: "POST",
@@ -715,7 +710,6 @@ function AdminDashboard() {
       }
 
       const result = await response.json();
-      console.log("✅ Approval API response:", result);
 
       // อัพเดต local state
       const updatedReports = reports.map((report) => {
@@ -767,7 +761,6 @@ function AdminDashboard() {
     setError(null);
 
     try {
-      console.log("🔄 Fetching all reports for admin dashboard...");
 
       const [recordResponse, categoryResponse, subCategoryResponse] =
         await Promise.all([
@@ -786,11 +779,6 @@ function AdminDashboard() {
         subCategoryResponse.json(),
       ]);
 
-      console.log("✅ API Response received:", {
-        totalRecords: apiData,
-        categories: categoryData,
-        subCategories: subCategoryData,
-      });
 
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
@@ -802,15 +790,6 @@ function AdminDashboard() {
         subCategoryData
       );
 
-      console.log("📊 Transformed reports for dashboard:", {
-        count: transformedReports.length,
-        pending: transformedReports.filter((r) => r.status === "pending")
-          .length,
-        approved: transformedReports.filter((r) => r.status === "approved")
-          .length,
-        rejected: transformedReports.filter((r) => r.status === "rejected")
-          .length,
-      });
 
       setReports(transformedReports);
     } catch (error) {

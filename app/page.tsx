@@ -340,8 +340,12 @@ function ModernBBSLogin() {
       const employeeId = searchParams.get("employeeId") || "";
       setEmployeeIdFromUrl(employeeId);
 
-      if (employeeId && employees) {
-        findEmployeeData(employeeIdFromUrl);
+      if (employeeId) {
+        setFormData((prev) => ({
+          ...prev,
+          employeerId: employeeId,
+        }));
+        findEmployeeData(employeeId);
       }
     }
   }, [employeeIdFromUrl, employees, findEmployeeData]);

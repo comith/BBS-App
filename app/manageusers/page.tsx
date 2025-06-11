@@ -456,6 +456,7 @@ const EmployeeManager = () => {
     "employee",
     "Manager",
     "Supervisor",
+    "SHE",
   ];
 
   // ฟังก์ชันสำหรับ pagination

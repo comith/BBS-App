@@ -1931,7 +1931,7 @@ function AdminDashboard() {
         const ithOeEmployees = [
           ...new Set(
             reports
-              .filter((r) => r.department === "ITH-OE" || r.group === "CV0" || r.group === "MO0" || r.group === "MT0" || r.group === "AUX0" || r.group === "SV0")
+              .filter((r) => r.department === "ITH-OE" || r.group === "CV0" || r.group === "MO0" || r.group === "MT0" || r.group === "AUX0" || r.group === "SV0" || r.group === "Manager")
               .map((r) => r.employeeId)
           ),
         ].map((employeeId) => {

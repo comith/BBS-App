@@ -167,12 +167,40 @@ const MenuButtons = React.memo(
       );
     }
 
-    if (
-      formData.position !== "SHE" &&
-      formData.position !== "Manager" &&
-      formData.position !== "AC" &&
-      formData.position !== ""
-    ) {
+    if (formData.position === "AC" || formData.position === "Manager") {
+      return (
+        <div className="flex flex-row gap-4 w-full max-w-md pb-4">
+          <div
+            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            onClick={handleFormClick}
+          >
+            <img
+              src="/img/formicon.png"
+              alt="Form Icon"
+              className="w-auto h-32 m-auto"
+            />
+            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+              บันทึกรายงานพฤติกรรม
+            </h2>
+          </div>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            onClick={handleDashboardClick}
+          >
+            <img
+              src="/img/report_icon.png"
+              alt="Report Icon"
+              className="w-auto h-32 m-auto"
+            />
+            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+              สรุปผลรายงานพฤติกรรม
+            </h2>
+          </div>
+        </div>
+      );
+    }
+
+
       return (
         <div className="flex flex-row gap-4 w-full max-w-md pb-4">
           <div
@@ -203,25 +231,6 @@ const MenuButtons = React.memo(
           </div>
         </div>
       );
-    }
-
-    return (
-      <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-        <div
-          className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-          onClick={handleFormClick}
-        >
-          <img
-            src="/img/formicon.png"
-            alt="Form Icon"
-            className="w-auto h-32 m-auto"
-          />
-          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-            บันทึกรายงานพฤติกรรม
-          </h2>
-        </div>
-      </div>
-    );
   }
 );
 

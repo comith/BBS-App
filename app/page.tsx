@@ -167,7 +167,12 @@ const MenuButtons = React.memo(
       );
     }
 
-    if (formData.position !== "SHE" && formData.position !== "") {
+    if (
+      formData.position !== "SHE" &&
+      formData.position !== "Manager" &&
+      formData.position !== "AC" &&
+      formData.position !== ""
+    ) {
       return (
         <div className="flex flex-row gap-4 w-full max-w-md pb-4">
           <div

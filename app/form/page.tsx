@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-import { format, isValid, parse } from "date-fns";
+import { format, isValid, parse, set } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,44 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { tr } from "date-fns/locale";
+
+const frameworks = [
+  {
+    value: "next.js",
+    label: "Next.js",
+  },
+  {
+    value: "sveltekit",
+    label: "SvelteKit",
+  },
+  {
+    value: "nuxt.js",
+    label: "Nuxt.js",
+  },
+  {
+    value: "remix",
+    label: "Remix",
+  },
+  {
+    value: "astro",
+    label: "Astro",
+  },
+];
 
 // ====================================== interface =====================================
 
@@ -84,6 +122,9 @@ function SafetyObservationForm() {
   const [employeeName, setEmployeeName] = React.useState<string | null>();
   const [department, setDepartment] = React.useState<string | null>();
   const [group, setGroup] = React.useState<string | null>();
+  const [open, setOpen] = React.useState(false);
+  const [checkUpdateEmployee, setCheckUpdateEmployee] =
+    React.useState<boolean>(false);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [sub_safetyCategoryData, setSubSafetyCategoryData] = React.useState<
@@ -112,164 +153,167 @@ function SafetyObservationForm() {
 
   // Form schema
   const formSchema = React.useMemo(() => {
-  return z
-    .object({
-      date: z
-        .date({
-          required_error: "กรุณาเลือก วันที่",
-        })
-        .refine((date) => date <= new Date(), {
-          message: "วันที่ต้องไม่เกินวันนี้",
-        }),
-      employeeId: z.string().min(1, {
-        message: "กรุณากรอก รหัสพนักงาน",
-      }),
-      username: z.string().min(1, {
-        message: "กรุณาระบุ ชื่อ-นามสกุล",
-      }),
-      group: z.string().optional(),
-      type: z.enum(
-        (list_department.length > 0
-          ? [list_department[0].name, ...list_department.slice(1).map((item) => item.name)]
-          : [""]) as [string, ...string[]],
-        {
-          required_error: "กรุณาเลือก สังกัดแผนก",
-        }
-      ),
-      safetyCategory: z.string().optional(),
-      sub_safetyCategory: z.string().optional(),
-      observed_work: z.string().min(1, {
-        message: "กรุณากรอก งานที่สังเกตุ",
-      }),
-      depart_notice: z.string().min(1, {
-        message: "กรุณาเลือก สังกัดแผนกที่ถูกสังเกตุ",
-      }),
-      vehicleEquipment: z
-        .record(
-          z.string(),
-          z
-            .record(
-              z.string(),
-              z.record(z.string(), z.boolean().optional()).optional()
-            )
-            .optional()
-        )
-        .optional(),
-      selectedOptions: z
-        .array(
-          z.object({
-            id: z.number(),
-            name: z.string(),
+    return z
+      .object({
+        date: z
+          .date({
+            required_error: "กรุณาเลือก วันที่",
           })
-        )
-        .min(1, {
-          message: "กรุณาเลือกอย่างน้อย 1 รายการ",
-        })
-        .optional(),
-      safeActionCount: z.coerce.number().min(0).optional(),
-      actionType: z.enum(["ชมเชย", "เพิกเฉย"]).optional(),
-      unsafeActionCount: z.coerce.number().min(0).optional(),
-      actionTypeunsafe: z.enum(["ตักเตือน", "เพิกเฉย"]).optional(),
-      attachment: z
-        .any()
-        .refine((files) => {
-          // ตรวจสอบว่ามีไฟล์หรือไม่ (REQUIRED)
-          if (Array.isArray(files)) {
-            return (
-              files.length > 0 && files.some((f) => f.status === "success")
-            );
-          } else {
-            return files && files.length > 0;
+          .refine((date) => date <= new Date(), {
+            message: "วันที่ต้องไม่เกินวันนี้",
+          }),
+        employeeId: z.string().min(1, {
+          message: "กรุณากรอก รหัสพนักงาน",
+        }),
+        username: z.string().min(1, {
+          message: "กรุณาระบุ ชื่อ-นามสกุล",
+        }),
+        group: z.string().optional(),
+        type: z.enum(
+          (list_department.length > 0
+            ? [
+                list_department[0].name,
+                ...list_department.slice(1).map((item) => item.name),
+              ]
+            : [""]) as [string, ...string[]],
+          {
+            required_error: "กรุณาเลือก สังกัดแผนก",
           }
-        }, "กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์")
-        .refine((files) => {
-          // ตรวจสอบขนาดไฟล์
+        ),
+        safetyCategory: z.string().optional(),
+        sub_safetyCategory: z.string().optional(),
+        observed_work: z.string().min(1, {
+          message: "กรุณากรอก งานที่สังเกตุ",
+        }),
+        depart_notice: z.string().min(1, {
+          message: "กรุณาเลือก สังกัดแผนกที่ถูกสังเกตุ",
+        }),
+        vehicleEquipment: z
+          .record(
+            z.string(),
+            z
+              .record(
+                z.string(),
+                z.record(z.string(), z.boolean().optional()).optional()
+              )
+              .optional()
+          )
+          .optional(),
+        selectedOptions: z
+          .array(
+            z.object({
+              id: z.number(),
+              name: z.string(),
+            })
+          )
+          .min(1, {
+            message: "กรุณาเลือกอย่างน้อย 1 รายการ",
+          })
+          .optional(),
+        safeActionCount: z.coerce.number().min(0).optional(),
+        actionType: z.enum(["ชมเชย", "เพิกเฉย"]).optional(),
+        unsafeActionCount: z.coerce.number().min(0).optional(),
+        actionTypeunsafe: z.enum(["ตักเตือน", "เพิกเฉย"]).optional(),
+        attachment: z
+          .any()
+          .refine((files) => {
+            // ตรวจสอบว่ามีไฟล์หรือไม่ (REQUIRED)
+            if (Array.isArray(files)) {
+              return (
+                files.length > 0 && files.some((f) => f.status === "success")
+              );
+            } else {
+              return files && files.length > 0;
+            }
+          }, "กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์")
+          .refine((files) => {
+            // ตรวจสอบขนาดไฟล์
 
-          if (Array.isArray(files)) {
-            // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+            if (Array.isArray(files)) {
+              // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+              return true;
+            }
+
+            if (files && files.length > 0) {
+              return Array.from(files).every((file) => {
+                const fileObj = file as File;
+                const isVideo = fileObj.type.startsWith("video/");
+                const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+                return fileObj.size <= maxSize;
+              });
+            }
             return true;
-          }
+          }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 100MB")
+          .refine((files) => {
+            if (Array.isArray(files)) {
+              // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+              return true;
+            }
 
-          if (files && files.length > 0) {
-            return Array.from(files).every((file) => {
-              const fileObj = file as File;
-              const isVideo = fileObj.type.startsWith("video/");
-              const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
-              return fileObj.size <= maxSize;
-            });
-          }
-          return true;
-        }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 100MB")
-        .refine((files) => {
-          if (Array.isArray(files)) {
-            // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
+            // ตรวจสอบประเภทไฟล์
+            const allowedTypes = [
+              // รูปภาพ
+              "image/jpeg",
+              "image/jpg",
+              "image/png",
+              "image/gif",
+              "image/webp",
+              "image/svg+xml",
+
+              // เอกสาร
+              "application/pdf",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+              // วีดิโอ
+              "video/mp4",
+              "video/mpeg",
+              "video/quicktime",
+              "video/x-msvideo", // .avi
+              "video/webm",
+              "video/x-ms-wmv", // .wmv
+              "video/3gpp", // .3gp
+              "video/x-flv", // .flv
+            ];
+
+            if (files && files.length > 0) {
+              return Array.from(files).every((file) =>
+                allowedTypes.includes((file as File).type)
+              );
+            }
             return true;
-          }
+          }, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP, SVG), วีดิโอ (MP4, AVI, MOV, WebM) และเอกสาร (PDF, DOC, DOCX)")
+          .refine((files) => {
+            // ตรวจสอบจำนวนไฟล์
+            if (Array.isArray(files)) {
+              return files.length <= 5;
+            }
 
-          // ตรวจสอบประเภทไฟล์
-          const allowedTypes = [
-            // รูปภาพ
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "image/svg+xml",
+            return !files || files.length <= 5;
+          }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
+        other: z.string().optional(),
+        attachid: z.string().optional(),
+        codeemployee: z.string().optional(),
+        levelOfSafety: z.string().optional(),
+      })
+      .superRefine((data, ctx) => {
+        // ถ้าเลือกหัวข้อที่ 8. อื่นๆ ต้องกรอกข้อมูลเพิ่มเติม
 
-            // เอกสาร
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-
-            // วีดิโอ
-            "video/mp4",
-            "video/mpeg",
-            "video/quicktime",
-            "video/x-msvideo", // .avi
-            "video/webm",
-            "video/x-ms-wmv", // .wmv
-            "video/3gpp", // .3gp
-            "video/x-flv", // .flv
-          ];
-
-          if (files && files.length > 0) {
-            return Array.from(files).every((file) =>
-              allowedTypes.includes((file as File).type)
-            );
-          }
-          return true;
-        }, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP, SVG), วีดิโอ (MP4, AVI, MOV, WebM) และเอกสาร (PDF, DOC, DOCX)")
-        .refine((files) => {
-          // ตรวจสอบจำนวนไฟล์
-          if (Array.isArray(files)) {
-            return files.length <= 5;
-          }
-
-          return !files || files.length <= 5;
-        }, "สามารถแนบไฟล์ได้สูงสุด 5 ไฟล์"),
-      other: z.string().optional(),
-      attachid: z.string().optional(),
-      codeemployee: z.string().optional(),
-      levelOfSafety: z.string().optional(),
-    })
-    .superRefine((data, ctx) => {
-      // ถ้าเลือกหัวข้อที่ 8. อื่นๆ ต้องกรอกข้อมูลเพิ่มเติม
-
-      const selectedOptions: SelectedOption[] = data.selectedOptions || [];
-      if (
-        selectedOptions.some(
-          (item: SelectedOption) => item.id === 72 || item.name === "8. อื่นๆ"
-        ) &&
-        (!data.other || !data.other.trim())
-      ) {
-        ctx.addIssue({
-          path: ["other"],
-          code: z.ZodIssueCode.custom,
-          message: "กรุณาระบุข้อมูลเพิ่มเติมหากเลือกหัวข้อ 'อื่นๆ'",
-        });
-      }
-    });
-    }, [list_department]); 
+        const selectedOptions: SelectedOption[] = data.selectedOptions || [];
+        if (
+          selectedOptions.some(
+            (item: SelectedOption) => item.id === 72 || item.name === "8. อื่นๆ"
+          ) &&
+          (!data.other || !data.other.trim())
+        ) {
+          ctx.addIssue({
+            path: ["other"],
+            code: z.ZodIssueCode.custom,
+            message: "กรุณาระบุข้อมูลเพิ่มเติมหากเลือกหัวข้อ 'อื่นๆ'",
+          });
+        }
+      });
+  }, [list_department]);
 
   const uploadFileImmediately = async (file: File) => {
     const tempId = `temp_${Date.now()}_${Math.random()}`;
@@ -374,7 +418,6 @@ function SafetyObservationForm() {
     return Array.isArray(data) ? data : [];
   };
 
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -400,71 +443,76 @@ function SafetyObservationForm() {
     mode: "onTouched",
   });
 
-
   React.useEffect(() => {
-  const loadAllData = async () => {
-    setIsLoading(true);
-    try {
-      const [departments, groups, categories, subSafetyCategories] =
-        await Promise.all([
-          fetchDepartments(),
-          fetchGroups(),
-          fetchCategories(),
-          fetchSubSafetyCategories(),
-        ]);
+    const loadAllData = async () => {
+      setIsLoading(true);
+      try {
+        const [departments, groups, categories, subSafetyCategories] =
+          await Promise.all([
+            fetchDepartments(),
+            fetchGroups(),
+            fetchCategories(),
+            fetchSubSafetyCategories(),
+          ]);
 
-      setListDepartment(departments);
-      setListGroup(groups);
-      setSafetyCategoryData(categories);
-      setSubSafetyCategoryData(subSafetyCategories);
-    } catch (error) {
-      // handle error
-    } finally {
-      setIsLoading(false);
+        setListDepartment(departments);
+        setListGroup(groups);
+        setSafetyCategoryData(categories);
+        setSubSafetyCategoryData(subSafetyCategories);
+      } catch (error) {
+        // handle error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlEmployeeId = searchParams.get("employeeId") || "";
+      const urlEmployeeName = searchParams.get("fullName") || "";
+      const urlDepartment = searchParams.get("department") || "";
+      const urlGroup = searchParams.get("group") || "";
+
+      // ตั้งค่า state
+      setCheckUpdateEmployee(
+        urlDepartment === undefined || urlDepartment === "" ||
+        urlGroup === undefined  || urlGroup === ""
+        ? true
+        : false
+      );
+      setEmployeeId(urlEmployeeId);
+      setEmployeeName(urlEmployeeName);
+      setDepartment(urlDepartment);
+      setGroup(urlGroup);
+
+      // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
+      form.reset({
+        date: new Date(),
+        employeeId: urlEmployeeId,
+        username: urlEmployeeName,
+        type: urlDepartment,
+        group: urlGroup,
+        safetyCategory: undefined,
+        sub_safetyCategory: undefined,
+        observed_work: "",
+        depart_notice: "",
+        vehicleEquipment: {},
+        safeActionCount: undefined,
+        unsafeActionCount: undefined,
+        selectedOptions: [],
+        attachment: undefined,
+        attachid: "",
+        other: "",
+        codeemployee: "",
+        levelOfSafety: "",
+      });
+
+      setIsLoading(true);
+      window.scrollTo(0, 0);
+
+      loadAllData();
     }
-  };
-
-  if (typeof window !== "undefined") {
-    const searchParams = new URLSearchParams(window.location.search);
-    const urlEmployeeId = searchParams.get("employeeId") || "";
-    const urlEmployeeName = searchParams.get("fullName") || "";
-    const urlDepartment = searchParams.get("department") || "";
-    const urlGroup = searchParams.get("group") || "";
-
-    // ตั้งค่า state
-    setEmployeeId(urlEmployeeId);
-    setEmployeeName(urlEmployeeName);
-    setDepartment(urlDepartment);
-    setGroup(urlGroup);
-
-    // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
-    form.reset({
-      date: new Date(),
-      employeeId: urlEmployeeId,
-      username: urlEmployeeName,
-      type: urlDepartment,
-      group: urlGroup,
-      safetyCategory: undefined,
-      sub_safetyCategory: undefined,
-      observed_work: "",
-      depart_notice: "",
-      vehicleEquipment: {},
-      safeActionCount: undefined,
-      unsafeActionCount: undefined,
-      selectedOptions: [],
-      attachment: undefined,
-      attachid: "",
-      other: "",
-      codeemployee: "",
-      levelOfSafety: "",
-    });
-
-    setIsLoading(true);
-    window.scrollTo(0, 0);
-
-    loadAllData();
-  }
-}, [form]);
+  }, [form]);
 
   React.useEffect(() => {
     const successfulFiles = uploadedFiles.filter((f) => f.status === "success");
@@ -538,6 +586,45 @@ function SafetyObservationForm() {
     }
   };
 
+  const updateUser = async () => {
+    try {
+      const response = await fetch("/api/put", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "employee", // ✅ ส่ง type employee
+          data: {
+            employeerId: employeeId,
+            fullName: employeeName,
+            department: form.getValues("type") || "",
+            group: form.getValues("group") || "",
+          },
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update user");
+      }
+      toast({
+        title: "อัปเดตพนักงานสำเร็จ",
+        description: `พนักงาน ${employeeName} ถูกอัปเดตเรียบร้อยแล้ว`,
+        variant: "success",
+      });
+      return true;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description:
+          error instanceof Error ? error.message : "ไม่สามารถอัปเดตพนักงานได้",
+        variant: "destructive",
+      });
+      return false;
+    }
+  } 
+
   // Improved form submission with proper validation and feedback
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     // ตรวจสอบ form errors ก่อนส่ง
@@ -546,6 +633,14 @@ function SafetyObservationForm() {
       return; // หยุดการส่งถ้ามี errors
     }
     const needToAddEmployee = employeeName === "" || employeeId === "";
+    if(checkUpdateEmployee) {
+      const addEmployeeSuccess = await updateUser();
+
+      if (!addEmployeeSuccess) {
+        return; // หยุดการส่งข้อมูลถ้าอัปเดตพนักงานไม่สำเร็จ
+      }
+      setCheckUpdateEmployee(false);
+    }
 
     if (needToAddEmployee) {
       const addEmployeeSuccess = await addnewUser();
@@ -614,7 +709,6 @@ function SafetyObservationForm() {
           variant: "success",
           description: "ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว",
         });
-
       } else {
         // 🔥 กรณีไม่มีไฟล์: ส่งข้อมูลอย่างเดียว
         const submissionData = {
@@ -658,7 +752,6 @@ function SafetyObservationForm() {
             result.data?.recordId ? ` (ID: ${result.data.recordId})` : ""
           }`,
         });
-
       }
 
       // 🔄 รีเซ็ตหลังจากส่งสำเร็จ
@@ -724,7 +817,6 @@ function SafetyObservationForm() {
           form.formState.errors[field as keyof typeof form.formState.errors];
         return `${field}: ${error?.message || "Invalid"}`;
       });
-
 
       toast({
         title: "กรุณาตรวจสอบข้อมูล",
@@ -887,26 +979,52 @@ function SafetyObservationForm() {
                           {selectedType}
                         </span>
                       </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!!group}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="เลือกกลุ่ม" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {list_group
-                            .filter((item) => item.group === selectedType)
-                            .map((item) => (
-                              <SelectItem key={item.id} value={item.name}>
-                                {item.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between"
+                          >
+                            {field.value
+                              ? field.value
+                              : "เลือกกลุ่มในชุด"
+                              }
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput
+                              placeholder="ค้นหา กลุ่มในชุด..."
+                              className="h-9"
+                            />
+                            <CommandList>
+                              <CommandEmpty>ไม่พบกลุ่มในชุดที่เลือก</CommandEmpty>
+                              <CommandGroup>
+                                {list_group
+                                  .filter((item) => item.group === selectedType)
+                                  .map((item) => (
+                                    <CommandItem 
+                                    key={item.id} 
+                                    value={item.name}
+                                    onSelect={(value) => {
+                                      field.onChange(value);
+                                      setOpen(false);
+                                    }}
+                                    >
+                                      {item.name}
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+
                       <FormMessage />
                     </FormItem>
                   )}

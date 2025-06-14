@@ -455,8 +455,8 @@ const EmployeeManager = () => {
     "(L)Leader",
     "employee",
     "Manager",
-    "Supervisor",
     "SHE",
+    "AC"
   ];
 
   // ฟังก์ชันสำหรับ pagination
@@ -800,7 +800,7 @@ const EmployeeManager = () => {
                           {departments.map((dept) => (
                             <option
                               key={dept.id}
-                              value={dept.shortname || dept.name}
+                              value={dept.name || dept.name}
                             >
                               {dept.name}
                             </option>

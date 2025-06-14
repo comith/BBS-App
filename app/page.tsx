@@ -116,6 +116,7 @@ const MenuButtons = React.memo(
           fullName: formData.fullName,
           department: formData.department,
           group: formData.group,
+          position: formData.position,
         });
         return `${path}?${params.toString()}`;
       },

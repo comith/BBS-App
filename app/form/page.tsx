@@ -121,6 +121,7 @@ function SafetyObservationForm() {
   const [employeeId, setEmployeeId] = React.useState<string | null>();
   const [employeeName, setEmployeeName] = React.useState<string | null>();
   const [department, setDepartment] = React.useState<string | null>();
+  const [position, setPosition] = React.useState<string | null>();
   const [group, setGroup] = React.useState<string | null>();
   const [open, setOpen] = React.useState(false);
   const [checkUpdateEmployee, setCheckUpdateEmployee] =
@@ -472,6 +473,7 @@ function SafetyObservationForm() {
       const urlEmployeeName = searchParams.get("fullName") || "";
       const urlDepartment = searchParams.get("department") || "";
       const urlGroup = searchParams.get("group") || "";
+      const urlPosition = searchParams.get("position") || "";
 
       // ตั้งค่า state
       setCheckUpdateEmployee(
@@ -483,6 +485,7 @@ function SafetyObservationForm() {
       setEmployeeId(urlEmployeeId);
       setEmployeeName(urlEmployeeName);
       setDepartment(urlDepartment);
+      setPosition(urlPosition);
       setGroup(urlGroup);
 
       // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
@@ -987,6 +990,9 @@ function SafetyObservationForm() {
                             role="combobox"
                             aria-expanded={open}
                             className="w-full justify-between"
+                            disabled={
+                              position === 'EN' ? false : true
+                            }
                           >
                             {field.value
                               ? field.value

@@ -108,7 +108,12 @@ export async function POST(request) {
     if (data.group !== "SHE") {
       await appendToSheet("record!A:R", [row]);
     } else {
-      await appendToSheet("record_she!A:T", [rowByshe]);
+      if(!data.codeemployee) {
+        await appendToSheet("record!A:R", [row]);
+      }else {
+        await appendToSheet("record!A:R", [row]);
+        await appendToSheet("record_she!A:T", [rowByshe]);
+      }
     }
 
     const responseData = {

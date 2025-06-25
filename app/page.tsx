@@ -137,7 +137,7 @@ const MenuButtons = React.memo(
 
     if (formData.position === "SHE") {
       return (
-        <div className="flex flex-row gap-4 w-full max-w-md pb-4">
+        <div className="flex flex-row gap-4 w-full max-w-xl pb-4">
           <div
             className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleFormClick}
@@ -161,7 +161,21 @@ const MenuButtons = React.memo(
               className="w-auto h-32 m-auto"
             />
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              สรุปผลรายงานพฤติกรรม
+              สรุปผลรายงานพฤติกรรม (All)
+            </h2>
+          </div>
+
+           <div
+            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            onClick={handleReportClick}
+          >
+            <img
+              src="/img/people_report.png"
+              alt="Report Icon"
+              className="w-auto h-32 m-auto"
+            />
+            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+              สรุปผลรายงานพฤติกรรม (คุณ)
             </h2>
           </div>
         </div>
@@ -189,7 +203,7 @@ const MenuButtons = React.memo(
             onClick={handleDashboardClick}
           >
             <img
-              src="/img/report_icon.png"
+              src="/img/people_report.png"
               alt="Report Icon"
               className="w-auto h-32 m-auto"
             />
@@ -222,7 +236,7 @@ const MenuButtons = React.memo(
             onClick={handleReportClick}
           >
             <img
-              src="/img/report_icon.png"
+              src="/img/people_report.png"
               alt="Report Icon"
               className="w-auto h-32 m-auto"
             />

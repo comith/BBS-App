@@ -991,7 +991,7 @@ function SafetyObservationForm() {
                             aria-expanded={open}
                             className="w-full justify-between"
                             disabled={
-                              position === 'EN' ? false : true
+                              (position === 'EN' || group === '') ? false : true
                             }
                           >
                             {field.value

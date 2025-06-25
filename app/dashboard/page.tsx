@@ -911,6 +911,9 @@ function AdminDashboard() {
 
         let weekNumber = 1;
         while (current <= lastDay) {
+
+          if (weekNumber > 5) break;
+
           const weekStart = new Date(current);
           const weekEnd = new Date(current);
           weekEnd.setDate(weekEnd.getDate() + 6);
@@ -938,8 +941,9 @@ function AdminDashboard() {
           const reportDate = report.submittedDate;
           return (
             reportDate.getFullYear() === year &&
-            reportDate.getMonth() === month &&
-            report.department !== "ITH-OE"
+            reportDate.getMonth() === month 
+            // &&
+            // report.department !== "ITH-OE"
           );
         });
       }, [reports, selectedMonth]);
@@ -1894,6 +1898,9 @@ function AdminDashboard() {
 
         let weekNumber = 1;
         while (current <= lastDay) {
+
+          if (weekNumber > 5) break;
+          
           const weekStart = new Date(current);
           const weekEnd = new Date(current);
           weekEnd.setDate(weekEnd.getDate() + 6);
@@ -2016,10 +2023,10 @@ function AdminDashboard() {
           const weeksMetTarget = weeklyResults.filter(
             (w) => w.meetsWeeklyTarget
           ).length;
-          const meetsBbsRequirement = weeksMetTarget === totalWeeksInMonth;
+          const meetsBbsRequirement = weeksMetTarget === 5;
 
           // คำนวณ BBS target และ actual
-          const bbsTarget = totalWeeksInMonth * 3; // 3 ครั้งต่อสัปดาห์
+          const bbsTarget = 5 * 3; // 3 ครั้งต่อสัปดาห์
           const bbsCount = weeklyResults.reduce(
             (sum, w) => sum + w.reportCount,
             0
@@ -2150,10 +2157,10 @@ function AdminDashboard() {
               (w) => w.meetsGroupWeeklyTarget
             ).length;
             const meetsBbsRequirement =
-              weeksGroupMetTarget === totalWeeksInMonth;
+              weeksGroupMetTarget === 5;
 
             // คำนวณ BBS target และ actual สำหรับกลุ่ม
-            const bbsTarget = totalWeeksInMonth; // แค่ 1 ครั้งต่อสัปดาห์
+            const bbsTarget = 5; // แค่ 1 ครั้งต่อสัปดาห์
             const bbsCount = groupWeeklyResults.filter(
               (w) => w.meetsGroupWeeklyTarget
             ).length;

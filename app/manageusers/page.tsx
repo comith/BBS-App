@@ -519,7 +519,7 @@ const EmployeeManager = () => {
           </h1>
         </div>
         <p className="text-gray-600">
-          จัดการข้อมูลพนักงานในแผนก ITH (Civil, Mechanical Operations, Survey)
+          จัดการข้อมูลพนักงานในแผนก ITH
         </p>
       </div>
 

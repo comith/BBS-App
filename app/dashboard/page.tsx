@@ -359,6 +359,7 @@ interface Report {
   priority: "low" | "normal" | "high";
   actionType?: string;
   actionTypeunsafe?: string;
+  other?: string;
 }
 
 const getStatusInfo = (status: string) => {
@@ -494,6 +495,7 @@ const transformApiDataToDashboardReport = (
       priority: priority,
       actionType: item.actionType || "",
       actionTypeunsafe: item.actionTypeunsafe || "",
+      other:item.other || ""
     };
   });
 };
@@ -1962,7 +1964,7 @@ function AdminDashboard() {
         const otherDepartmentGroups = [
           ...new Set(
             reports
-              .filter((r) => r.department !== "ITH-OE")
+              .filter((r) => r.department !== "ITH-OE" )
               .map((r) => r.department)
           ),
         ].map((department) => {
@@ -1970,7 +1972,12 @@ function AdminDashboard() {
           const subGroups = [
             ...new Set(
               reports
-                .filter((r) => r.department === department)
+                .filter(
+                  (r) =>
+                    r.department === department &&
+                    r.group !== "ITH-OE" &&
+                    !["CV0", "MO0", "MT0", "AUX0", "SV0", "Manager"].includes(r.group)
+                )
                 .map((r) => r.group)
             ),
           ];
@@ -4080,7 +4087,9 @@ function AdminDashboard() {
                             variant="secondary"
                             className="text-xs !text-wrap"
                           >
-                            {option}
+                            {option === "8. อื่นๆ" ? 
+                            'อื่นๆ: ' + selectedReport.other : option
+                              }
                           </Badge>
                         ))}
                       </div>

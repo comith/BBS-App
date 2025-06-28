@@ -345,6 +345,7 @@ interface Report {
   status: "approved" | "pending" | "rejected";
   safeCount: number;
   unsafeCount: number;
+
   selectedOptions: string[];
   attachment: Array<{
     id: string;
@@ -356,6 +357,8 @@ interface Report {
   approvedBy: string | null;
   submittedDate: Date;
   priority: "low" | "normal" | "high";
+  actionType?: string;
+  actionTypeunsafe?: string;
 }
 
 const getStatusInfo = (status: string) => {
@@ -489,6 +492,8 @@ const transformApiDataToDashboardReport = (
       approvedBy: item.approvedBy || null,
       submittedDate: new Date(item.date),
       priority: priority,
+      actionType: item.actionType || "",
+      actionTypeunsafe: item.actionTypeunsafe || "",
     };
   });
 };
@@ -783,7 +788,6 @@ function AdminDashboard() {
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
       }
-
       const transformedReports = transformApiDataToDashboardReport(
         apiData,
         categoryData,
@@ -4090,13 +4094,17 @@ function AdminDashboard() {
                         <strong className="text-green-600">
                           Safe Actions:
                         </strong>{" "}
-                        {selectedReport.safeCount} คน
+                        {selectedReport.safeCount} คน 
+                        {selectedReport.actionType != '' ? " และได้ดำเนินการ " : ""} <strong className="text-green-600"> { selectedReport.actionType}</strong>
                       </p>
+
                       <p>
                         <strong className="text-red-600">
                           Unsafe Actions:
                         </strong>{" "}
                         {selectedReport.unsafeCount} คน
+
+                        {selectedReport.actionTypeunsafe != '' ? " และได้ดำเนินการ " : ""} <strong className="text-red-600"> { selectedReport.actionTypeunsafe}</strong>
                       </p>
                     </div>
                   </div>

@@ -2,8 +2,6 @@
 import { getSheetData } from "../config";
 import { NextResponse } from "next/server";
 
-// เพิ่ม debug logging
-console.log("API Route loaded successfully");
 
 function safeJSONParse(str) {
   if (typeof str === "string" && str.trim() !== "") {
@@ -192,7 +190,7 @@ export async function GET(request) {
 
     switch (type) {
       case "record":
-        result = await fetchAndFormatData("record!A1:S", "record");
+        result = await fetchAndFormatData("record!A1:V", "record");
         break;
       case "employee":
         result = await fetchAndFormatData("employee!A1:F", "employee");

@@ -299,6 +299,12 @@ interface Report {
   adminNote: string | null;
   approvedDate: Date | null;
   approvedBy: string | null;
+  comment: string | null;
+  attachments: {
+    id: string;
+    name: string;
+    webViewLink: string;
+  }[];
 }
 
 interface ApiReport {
@@ -321,6 +327,7 @@ interface ApiReport {
   attachment: any[];
   other: string;
   status: string;
+  comment: string | null;
 }
 
 const getStatusInfo = (status: string) => {
@@ -667,8 +674,6 @@ function EmployeeReportStatus() {
     categories: any[],
     subCategories: any[]
   ): Report[] => {
-
-
     const filtered = apiData.filter((item) => item.employee_id === employeeId);
 
     return filtered.map((item, index) => {
@@ -679,6 +684,19 @@ function EmployeeReportStatus() {
       const subCategory = subCategories.find(
         (sub) => sub.id === parseInt(item.sub_safetycategory_id)
       );
+
+      const attachmentArray = Array.isArray(item.attachment)
+      ? item.attachment.map((file) => {
+          if (typeof file === "string") {
+            return { id: "", name: file, webViewLink: "" };
+          }
+          return {
+            id: file.id || "",
+            name: file.name || "ไม่ระบุ",
+            webViewLink: file.webViewLink || "",
+          };
+        })
+      : [];
 
       return {
         id: index + 1,
@@ -697,6 +715,8 @@ function EmployeeReportStatus() {
         adminNote: null,
         approvedDate: null,
         approvedBy: null,
+        comment: item.comment || null,
+        attachments: attachmentArray,
       };
     });
   };
@@ -814,7 +834,6 @@ function EmployeeReportStatus() {
         subCategoryResponse.json(),
       ]);
 
-
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
       }
@@ -915,14 +934,14 @@ function EmployeeReportStatus() {
                 variant="outline"
                 className="text-gray-600 hover:text-gray-900"
                 onClick={() => {
-                    const params = new URLSearchParams({
-                      employeeId: employeeId || "",
-                      fullName: employeeName || "",
-                      department: department || "",
-                      group: group || "",
-                    }).toString();
-                    router.push(`/?${params}`);
-                  }}
+                  const params = new URLSearchParams({
+                    employeeId: employeeId || "",
+                    fullName: employeeName || "",
+                    department: department || "",
+                    group: group || "",
+                  }).toString();
+                  router.push(`/?${params}`);
+                }}
               >
                 ย้อนกลับ
               </Button>
@@ -941,7 +960,7 @@ function EmployeeReportStatus() {
                   <p className="text-sm font-medium text-gray-600">
                     รายงานทั้งหมด
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-blue-700">
                     {stats.total}
                   </p>
                 </div>
@@ -1241,7 +1260,7 @@ function EmployeeReportStatus() {
                                 </span>
                               </div>
                               <div>
-                                <span className="text-gray-600">แผนก: </span>
+                                <span className="text-gray-600">แผนกที่สังเกต: </span>
                                 <span className="font-medium">
                                   {report.department}
                                 </span>
@@ -1402,43 +1421,80 @@ function EmployeeReportStatus() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">วันที่รายงาน</p>
-                    <p className="font-medium">
+                    <Badge className="bg-orange-100 text-orange-800 !text-wrap">
                       {format(selectedReport.date, "dd MMMM yyyy", {
                         locale: th,
                       })}
-                    </p>
+                    </Badge>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">สถานะ</p>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-gray-600">สถานะ :</p>
                     <Badge
                       className={getStatusInfo(selectedReport.status).color}
                     >
                       {getStatusInfo(selectedReport.status).label}
                     </Badge>
+                    {selectedReport.status === "rejected" && (
+                      <div>
+                        <p className="text-sm text-gray-600">เนื่องจาก :</p>
+                        <Badge className="bg-orange-100 text-orange-800 !text-wrap">
+                          {selectedReport.comment}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600">หมวดหมู่ความปลอดภัย</p>
-                  <p className="font-medium">{selectedReport.safetyCategory}</p>
+                  <Badge className="bg-orange-100 text-orange-800 !text-wrap">
+                    {selectedReport.safetyCategory}
+                  </Badge>
                 </div>
 
                 {selectedReport.subCategory && (
                   <div>
                     <p className="text-sm text-gray-600">หมวดหมู่ย่อย</p>
-                    <p className="font-medium">{selectedReport.subCategory}</p>
+                    <Badge className="bg-orange-100 text-orange-800 !text-wrap">
+                      {selectedReport.subCategory}
+                    </Badge>
                   </div>
                 )}
 
                 <div>
                   <p className="text-sm text-gray-600">งานที่สังเกต</p>
-                  <p className="font-medium">{selectedReport.observedWork}</p>
+                  <Badge className="bg-orange-100 text-orange-800 !text-wrap">
+                    {selectedReport.observedWork}
+                  </Badge>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600">แผนกที่สังเกต</p>
-                  <p className="font-medium">{selectedReport.department}</p>
+                  <Badge className="bg-orange-100 text-orange-800 !text-wrap">
+                    {selectedReport.department}
+                  </Badge>
                 </div>
+
+                
+                {selectedReport.attachments && selectedReport.attachments.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600">ไฟล์แนบ</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {selectedReport.attachments.map((file) => (
+                        <li key={file.id}>
+                          <a
+                            href={file.webViewLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {file.name}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

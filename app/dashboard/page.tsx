@@ -324,15 +324,15 @@ interface ApiReport {
   attachment: any[];
   other: string;
   status: string;
-  // ✅ เพิ่ม fields ใหม่สำหรับ approval data
   adminNote?: string;
   approvedDate?: string;
   approvedBy?: string;
+  comment?: string; 
 }
 
 interface Report {
   id: number;
-  recordId: string; // ✅ เพิ่มฟิลด์นี้
+  recordId: string;
   date: Date;
   employeeId: string;
   employeeName: string;
@@ -345,7 +345,6 @@ interface Report {
   status: "approved" | "pending" | "rejected";
   safeCount: number;
   unsafeCount: number;
-
   selectedOptions: string[];
   attachment: Array<{
     id: string;
@@ -360,6 +359,7 @@ interface Report {
   actionType?: string;
   actionTypeunsafe?: string;
   other?: string;
+  comment?: string;
 }
 
 const getStatusInfo = (status: string) => {
@@ -495,7 +495,8 @@ const transformApiDataToDashboardReport = (
       priority: priority,
       actionType: item.actionType || "",
       actionTypeunsafe: item.actionTypeunsafe || "",
-      other:item.other || ""
+      other:item.other || "",
+      comment: item.comment || "",
     };
   });
 };
@@ -795,7 +796,6 @@ function AdminDashboard() {
         categoryData,
         subCategoryData
       );
-
 
       setReports(transformedReports);
     } catch (error) {
@@ -4157,6 +4157,11 @@ function AdminDashboard() {
                       <p>
                         <strong>สถานะ:</strong>{" "}
                         {getStatusInfo(selectedReport.status).label}
+                        {selectedReport.status === "rejected" && (
+                          <span className="text-gray-500 ml-2"> 
+                            ({selectedReport.comment})
+                          </span>
+                        )}
                       </p>
                       {selectedReport.approvedDate && (
                         <p>

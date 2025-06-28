@@ -58,7 +58,8 @@ function formatDataByType(data, type) {
         case "record":
           if (header === "selectedOptions") {
             const parsed = safeJSONParse(value);
-            value = Array.isArray(parsed) ? parsed : [];
+            value = parsed.split(",");
+
           } else if (header === "vehicleEquipment") {
             const parsed = safeJSONParse(value);
             value = parsed && typeof parsed === "object" ? parsed : {};

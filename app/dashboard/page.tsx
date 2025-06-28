@@ -4078,7 +4078,7 @@ function AdminDashboard() {
                           <Badge
                             key={index}
                             variant="secondary"
-                            className="text-xs"
+                            className="text-xs !text-wrap"
                           >
                             {option}
                           </Badge>

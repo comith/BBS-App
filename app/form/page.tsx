@@ -244,7 +244,7 @@ function SafetyObservationForm() {
               });
             }
             return true;
-          }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 100MB")
+          }, "ไฟล์รูปภาพ/เอกสารต้องไม่เกิน 10MB, วีดิโอไม่เกิน 30MB")
           .refine((files) => {
             if (Array.isArray(files)) {
               // Skip validation สำหรับ uploaded files เพราะผ่านการตรวจสอบแล้ว
@@ -317,83 +317,104 @@ function SafetyObservationForm() {
   }, [list_department]);
 
   const uploadFileImmediately = async (file: File) => {
-    const tempId = `temp_${Date.now()}_${Math.random()}`;
+  const tempId = `temp_${Date.now()}_${Math.random()}`;
 
-    // เพิ่มไฟล์ใน state พร้อมสถานะ uploading
-    setUploadedFiles((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        name: file.name,
-        webViewLink: "",
-        originalFile: file,
-        status: "uploading",
-      },
-    ]);
+  // เพิ่มไฟล์ใน state พร้อมสถานะ uploading
+  setUploadedFiles((prev) => [
+    ...prev,
+    {
+      id: tempId,
+      name: file.name,
+      webViewLink: "",
+      originalFile: file,
+      status: "uploading",
+    },
+  ]);
 
-    try {
-      // สร้าง FormData สำหรับส่งไฟล์
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("filename", file.name);
+  try {
+    // สร้าง FormData สำหรับส่งไฟล์
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("filename", file.name);
+    // เพิ่ม folderId ถ้าต้องการ (optional)
+    formData.append("folderId", "1Jmu78EX1IAoH4w8VvvCEJKZWn9k84SUL");
 
-      // ส่งไฟล์ไป API upload
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+    // ส่งไฟล์ไป API upload
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Upload failed");
+    // ตรวจสอบ response
+    if (!response.ok) {
+      // พยายาม parse JSON error message
+      let errorMessage = "Upload failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (parseError) {
+        // ถ้า parse JSON ไม่ได้ ใช้ status text
+        errorMessage = response.statusText || errorMessage;
       }
-
-      // อัปเดตสถานะเป็น success
-      setUploadedFiles((prev) =>
-        prev.map((item) =>
-          item.id === tempId
-            ? {
-                ...item,
-                id: result.file.id,
-                webViewLink: result.file.webViewLink,
-                status: "success" as const,
-              }
-            : item
-        )
-      );
-
-      toast({
-        title: "อัปโหลดสำเร็จ",
-        description: `ไฟล์ ${file.name} ถูกอัปโหลดเรียบร้อยแล้ว`,
-      });
-
-      return result.file;
-    } catch (error) {
-      console.error("Upload error:", error);
-
-      // อัปเดตสถานะเป็น error
-      setUploadedFiles((prev) =>
-        prev.map((item) =>
-          item.id === tempId
-            ? {
-                ...item,
-                status: "error" as const,
-                error: error instanceof Error ? error.message : "Upload failed",
-              }
-            : item
-        )
-      );
-
-      toast({
-        title: "อัปโหลดล้มเหลว",
-        description: `ไม่สามารถอัปโหลดไฟล์ ${file.name} ได้`,
-        variant: "destructive",
-      });
-
-      throw error;
+      throw new Error(errorMessage);
     }
-  };
+
+    const result = await response.json();
+
+    // ตรวจสอบว่ามี file data หรือไม่
+    if (!result.file || !result.file.id) {
+      throw new Error("Invalid response: missing file data");
+    }
+
+    // อัปเดตสถานะเป็น success
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === tempId
+          ? {
+              ...item,
+              id: result.file.id,
+              webViewLink: result.file.webViewLink || result.file.downloadUrl || "",
+              status: "success" as const,
+            }
+          : item
+      )
+    );
+
+    toast({
+      title: "อัปโหลดสำเร็จ",
+      description: `ไฟล์ ${file.name} ถูกอัปโหลดเรียบร้อยแล้ว`,
+    });
+
+    return result.file;
+
+  } catch (error) {
+    console.error("Upload error:", error);
+
+    // อัปเดตสถานะเป็น error
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === tempId
+          ? {
+              ...item,
+              status: "error" as const,
+              error: error instanceof Error ? error.message : "Upload failed",
+            }
+          : item
+      )
+    );
+
+    // แสดง error message ที่ชัดเจนขึ้น
+    const errorMessage = error instanceof Error ? error.message : "Upload failed";
+    
+    toast({
+      title: "อัปโหลดล้มเหลว",
+      description: `ไม่สามารถอัปโหลดไฟล์ ${file.name} ได้: ${errorMessage}`,
+      variant: "destructive",
+    });
+
+    throw error;
+  }
+};
 
   const fetchDepartments = async (): Promise<Department[]> => {
     const response = await fetch("/api/get?type=department");
@@ -1682,7 +1703,7 @@ function SafetyObservationForm() {
                                       title: "ไฟล์ใหญ่เกินไป",
                                       description: `ไฟล์ ${
                                         file.name
-                                      } ใหญ่เกิน ${isVideo ? "100MB" : "10MB"}`,
+                                      } ใหญ่เกิน ${isVideo ? "30MB" : "10MB"}`,
                                       variant: "destructive",
                                     });
                                     return null;
@@ -1807,7 +1828,7 @@ function SafetyObservationForm() {
                                     <br />
                                     <span className="text-xs">
                                       รูปภาพ/เอกสาร: ไม่เกิน 10MB | วีดิโอ:
-                                      ไม่เกิน 100MB
+                                      ไม่เกิน 30MB
                                     </span>
                                   </p>
                                 </div>
@@ -2088,7 +2109,7 @@ function SafetyObservationForm() {
                               WebM, PDF, DOC, DOCX
                             </span>
                             <span className="block">
-                              • ขนาด: ไม่เกิน 10MB ต่อไฟล์ (วีดิโอไม่เกิน 100MB)
+                              • ขนาด: ไม่เกิน 10MB ต่อไฟล์ (วีดิโอไม่เกิน 30MB)
                             </span>
                             <span className="block text-red-600 font-semibold">
                               • หมายเหตุ: ไฟล์จะถูกอัปโหลดทันทีเมื่อเลือก

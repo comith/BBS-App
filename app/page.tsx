@@ -15,6 +15,42 @@ interface FormData {
   position: string;
 }
 
+// LocalStorage utility functions
+const STORAGE_KEY = "bbs_employee_data";
+
+const saveToLocalStorage = (data: FormData) => {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+    }
+  }
+};
+
+const loadFromLocalStorage = (): FormData | null => {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Error loading from localStorage:", error);
+      return null;
+    }
+  }
+  return null;
+};
+
+const clearLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error("Error clearing localStorage:", error);
+    }
+  }
+};
+
 // Refresh Button Component
 const RefreshButton = React.memo(() => {
   const { refresh } = useRefreshEmployeeData();
@@ -109,37 +145,26 @@ const MenuButtons = React.memo(
     formData: FormData;
     router: ReturnType<typeof useRouter>;
   }) => {
-    const createURLParams = useCallback(
-      (path: string) => {
-        const params = new URLSearchParams({
-          employeeId: formData.employeerId,
-          fullName: formData.fullName,
-          department: formData.department,
-          group: formData.group,
-          position: formData.position,
-        });
-        return `${path}?${params.toString()}`;
-      },
-      [formData]
-    );
-
     const handleFormClick = useCallback(() => {
-      router.push(createURLParams("/form"));
-    }, [router, createURLParams]);
+      saveToLocalStorage(formData);
+      router.push("/form");
+    }, [router, formData]);
 
     const handleReportClick = useCallback(() => {
-      router.push(createURLParams("/employeer"));
-    }, [router, createURLParams]);
+      saveToLocalStorage(formData);
+      router.push("/employeer");
+    }, [router, formData]);
 
     const handleDashboardClick = useCallback(() => {
-      router.push(createURLParams("/dashboard"));
-    }, [router, createURLParams]);
+      saveToLocalStorage(formData);
+      router.push("/dashboard");
+    }, [router, formData]);
 
     if (formData.position === "SHE") {
       return (
-        <div className="flex flex-row gap-4 w-full max-w-xl pb-4">
+        <div className="grid grid-cols-2 gap-4 w-full max-w-xl pb-4 md:grid-cols-3">
           <div
-            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleFormClick}
           >
             <img
@@ -152,7 +177,7 @@ const MenuButtons = React.memo(
             </h2>
           </div>
           <div
-            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleDashboardClick}
           >
             <img
@@ -166,7 +191,7 @@ const MenuButtons = React.memo(
           </div>
 
            <div
-            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+            className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleReportClick}
           >
             <img
@@ -215,37 +240,36 @@ const MenuButtons = React.memo(
       );
     }
 
-
-      return (
-        <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-          <div
-            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleFormClick}
-          >
-            <img
-              src="/img/formicon.png"
-              alt="Form Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              บันทึกรายงานพฤติกรรม
-            </h2>
-          </div>
-          <div
-            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleReportClick}
-          >
-            <img
-              src="/img/people_report.png"
-              alt="Report Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              สรุปผลรายงานพฤติกรรม
-            </h2>
-          </div>
+    return (
+      <div className="flex flex-row gap-4 w-full max-w-md pb-4">
+        <div
+          className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+          onClick={handleFormClick}
+        >
+          <img
+            src="/img/formicon.png"
+            alt="Form Icon"
+            className="w-auto h-32 m-auto"
+          />
+          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+            บันทึกรายงานพฤติกรรม
+          </h2>
         </div>
-      );
+        <div
+          className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
+          onClick={handleReportClick}
+        >
+          <img
+            src="/img/people_report.png"
+            alt="Report Icon"
+            className="w-auto h-32 m-auto"
+          />
+          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
+            สรุปผลรายงานพฤติกรรม
+          </h2>
+        </div>
+      </div>
+    );
   }
 );
 
@@ -287,18 +311,43 @@ const ErrorScreen = React.memo(
 
 ErrorScreen.displayName = "ErrorScreen";
 
+// Clear Data Button Component
+const ClearDataButton = React.memo(() => {
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClear = useCallback(() => {
+    setIsClearing(true);
+    clearLocalStorage();
+    setTimeout(() => {
+      setIsClearing(false);
+      window.location.reload(); // Refresh page to clear form
+    }, 500);
+  }, []);
+
+  return (
+    <button
+      onClick={handleClear}
+      disabled={isClearing}
+      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
+    >
+      {isClearing ? "กำลังล้างข้อมูล..." : "ล้างข้อมูลที่บันทึก"}
+    </button>
+  );
+});
+
+ClearDataButton.displayName = "ClearDataButton";
+
 const RequiredMark = React.memo(() => <sup className="text-red-500">*</sup>);
 RequiredMark.displayName = "RequiredMark";
 
 function ModernBBSLogin() {
   const router = useRouter();
-  const [employeeIdFromUrl, setEmployeeIdFromUrl] = useState("");
 
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
 
   const [formData, setFormData] = useState<FormData>({
-    employeerId: employeeIdFromUrl,
+    employeerId: "",
     fullName: "",
     department: "",
     group: "",
@@ -315,13 +364,16 @@ function ModernBBSLogin() {
     (id: string) => {
       const employee = employeeMap.get(id);
       if (employee) {
-        setFormData((prev) => ({
-          ...prev,
+        const newFormData = {
+          employeerId: id,
           fullName: employee.fullName,
           department: String(employee.department),
           group: employee.group || "",
           position: employee.position || "",
-        }));
+        };
+        setFormData(newFormData);
+        // Auto save to localStorage when employee found
+        saveToLocalStorage(newFormData);
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -362,22 +414,20 @@ function ModernBBSLogin() {
     [findEmployeeData]
   );
 
-  // ✅ Auto-fill จาก URL parameter
+  // ✅ Load data from localStorage on component mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      const employeeId = searchParams.get("employeeId") || "";
-      setEmployeeIdFromUrl(employeeId);
-
-      if (employeeId) {
-        setFormData((prev) => ({
-          ...prev,
-          employeerId: employeeId,
-        }));
-        findEmployeeData(employeeId);
+      // โหลดข้อมูลจาก localStorage เท่านั้น
+      const storedData = loadFromLocalStorage();
+      if (storedData && storedData.employeerId) {
+        setFormData(storedData);
+        // Verify employee still exists in current data
+        if (employees) {
+          findEmployeeData(storedData.employeerId);
+        }
       }
     }
-  }, [employeeIdFromUrl, employees, findEmployeeData]);
+  }, [employees, findEmployeeData]);
 
   // ✅ แสดง Loading Screen จาก React Query
   if (isLoading) {
@@ -433,7 +483,7 @@ function ModernBBSLogin() {
 
       {/* Right side */}
       <div className="w-full xl:w-1/2 flex items-center justify-center bg-gray-50 py-4 overflow-auto">
-        <div className="w-full mx-8 flex gap-4 flex-col">
+        <div className="w-full mx-4 flex gap-4 flex-col">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -484,7 +534,10 @@ function ModernBBSLogin() {
                   กรอกรหัสพนักงานเพื่อเริ่มใช้งาน <RequiredMark />
                 </span>
               </div>
-              <RefreshButton />
+              <div className="flex items-center gap-2">
+                <RefreshButton />
+                {/* <ClearDataButton /> */}
+              </div>
             </div>
             <input
               type="text"
@@ -494,10 +547,19 @@ function ModernBBSLogin() {
               placeholder="กรอกรหัสพนักงาน เช่น 5LD01234"
               className="w-full px-4 py-4 border-l-4 border-blue-500 bg-gray-50 rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
             />
+            
+            {/* Show stored data indicator */}
+            {formData.fullName && (
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-700">
+                  ✓ ข้อมูลพนักงาน: {formData.fullName} ({formData.department} - {formData.group})
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Menu buttons - only show when employeerId is valid */}
-          {formData.employeerId.length >= 8 && (
+          {formData.employeerId.length >= 8 && formData.fullName && (
             <MenuButtons formData={formData} router={router} />
           )}
         </div>

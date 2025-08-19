@@ -42,7 +42,6 @@ import {
   Check,
   Ban,
   Building2,
-  Settings,
   House,
   DollarSign,
   UserRoundCog,
@@ -1854,21 +1853,20 @@ function AdminDashboard() {
       const [sheViolations, setSheViolations] = useState<SheViolation[]>([]);
       const [isLoadingShe, setIsLoadingShe] = useState(false);
 
-      // ฟังก์ชันคำนวณช่วงสัปดาห์
-      const getWeekRange = (date: Date) => {
-        const currentDate = new Date(date);
-        const dayOfWeek = currentDate.getDay();
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // จันทร์เป็นวันแรกของสัปดาห์
+      // ฟังก์ชันคำนวณช่วงเดือน (21 ของเดือนก่อนหน้า ถึง 20 ของเดือนปัจจุบัน)
+      const getMonthlyRange = (date: Date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
 
-        const monday = new Date(currentDate);
-        monday.setDate(currentDate.getDate() + mondayOffset);
-        monday.setHours(0, 0, 0, 0);
+        // วันที่ 21 ของเดือนก่อนหน้า
+        const startDate = new Date(year, month - 1, 21);
+        startDate.setHours(0, 0, 0, 0);
 
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23, 59, 59, 999);
+        // วันที่ 20 ของเดือนปัจจุบัน
+        const endDate = new Date(year, month, 20);
+        endDate.setHours(23, 59, 59, 999);
 
-        return { start: monday, end: sunday };
+        return { start: startDate, end: endDate };
       };
 
       // โหลดข้อมูลการรายงานจาก SHE
@@ -1888,57 +1886,17 @@ function AdminDashboard() {
         }
       };
 
-      const getWeeksInMonth = (date: Date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-
-        const weeks = [];
-        let current = new Date(firstDay);
-
-        // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
-        while (current.getDay() !== 1) {
-          current.setDate(current.getDate() - 1);
-        }
-
-        let weekNumber = 1;
-        while (current <= lastDay) {
-
-          if (weekNumber > 5) break;
-          
-          const weekStart = new Date(current);
-          const weekEnd = new Date(current);
-          weekEnd.setDate(weekEnd.getDate() + 6);
-
-          weeks.push({
-            number: weekNumber,
-            start: weekStart,
-            end: weekEnd > lastDay ? lastDay : weekEnd,
-            label: `สัปดาห์ที่ ${weekNumber}`,
-          });
-
-          current.setDate(current.getDate() + 7);
-          weekNumber++;
-        }
-
-        return weeks;
-      };
-
       // คำนวณข้อมูล Payroll สำหรับเดือนที่เลือก
       const payrollData = useMemo(() => {
-        const year = selectedMonth.getFullYear();
-        const month = selectedMonth.getMonth();
+        const monthlyRange = getMonthlyRange(selectedMonth);
 
-        // กรองรายงาน BBS ในเดือนนี้
+        // กรองรายงาน BBS ในช่วงเดือนนี้ (21 ถึง 20)
         const monthlyReports = reports.filter((report) => {
           const reportDate = new Date(report.submittedDate);
           return (
-            reportDate.getFullYear() === year && reportDate.getMonth() === month
+            reportDate >= monthlyRange.start && reportDate <= monthlyRange.end
           );
         });
-
-        const weeksInMonth = getWeeksInMonth(selectedMonth);
 
         // แยกการประมวลผลตามแผนก
         const ithOeEmployees = [
@@ -2013,45 +1971,24 @@ function AdminDashboard() {
 
         // ประมวลผล ITH-OE (รายบุคคล)
         const ithOeResults = ithOeEmployees.map((employee) => {
-          // นับจำนวนรายงาน BBS ในแต่ละสัปดาห์ที่ approved
-          const weeklyResults = weeksInMonth.map((week) => {
-            const weekReports = monthlyReports.filter(
-              (r) =>
-                r.employeeId === employee.employeeId &&
-                r.status === "approved" &&
-                new Date(r.submittedDate) >= week.start &&
-                new Date(r.submittedDate) <= week.end
-            );
-
-            return {
-              week: week.number,
-              reportCount: weekReports.length,
-              meetsWeeklyTarget: weekReports.length >= 3,
-            };
-          });
-
-          const totalWeeksInMonth = weeksInMonth.length;
-          const weeksMetTarget = weeklyResults.filter(
-            (w) => w.meetsWeeklyTarget
-          ).length;
-          const meetsBbsRequirement = weeksMetTarget === 5;
-
-          // คำนวณ BBS target และ actual
-          const bbsTarget = 5 * 3; // 3 ครั้งต่อสัปดาห์
-          const bbsCount = weeklyResults.reduce(
-            (sum, w) => sum + w.reportCount,
-            0
+          // นับจำนวนรายงาน BBS ในช่วงเดือนที่ approved
+          const employeeMonthlyReports = monthlyReports.filter(
+            (r) =>
+              r.employeeId === employee.employeeId &&
+              r.status === "approved"
           );
 
-          const monthStart = new Date(year, month, 1);
-          const monthEnd = new Date(year, month + 1, 0);
+          const bbsCount = employeeMonthlyReports.length;
+          const bbsTarget = 12; // เป้าหมาย 12 ครั้งต่อเดือน
+          const meetsBbsRequirement = bbsCount >= bbsTarget;
 
+          // คำนวณการละเมิด SHE ในช่วงเดือน
           const sheReports = sheViolations.filter((violation) => {
             const violationDate = new Date(violation.date);
             return (
               violation.employee_code === employee.employeeId &&
-              violationDate >= monthStart &&
-              violationDate <= monthEnd
+              violationDate >= monthlyRange.start &&
+              violationDate <= monthlyRange.end
             );
           });
 
@@ -2118,76 +2055,34 @@ function AdminDashboard() {
             isEligible,
             paymentStatus,
             statusColor,
-            weeklyResults,
+            monthlyRange, // เพิ่มข้อมูลช่วงเวลา
           };
         });
 
         // ประมวลผลแผนกอื่นๆ (รายกลุ่ม)
         const groupResults = otherDepartmentGroups.flatMap((departmentInfo) =>
           departmentInfo.subGroups.map((groupInfo): any => {
-            // ตรวจสอบแต่ละสัปดาห์ว่ากลุ่มส่งครบหรือไม่
-            const groupWeeklyResults = weeksInMonth.map((week) => {
-              const groupWeekReports = monthlyReports.filter(
-                (r) =>
-                  r.department === groupInfo.department &&
-                  r.group === groupInfo.group &&
-                  r.status === "approved" &&
-                  new Date(r.submittedDate) >= week.start &&
-                  new Date(r.submittedDate) <= week.end
-              );
+            // นับจำนวนรายงาน BBS ของกลุ่มในช่วงเดือน
+            const groupMonthlyReports = monthlyReports.filter(
+              (r) =>
+                r.department === groupInfo.department &&
+                r.group === groupInfo.group &&
+                r.status === "approved"
+            );
 
-              // คำนวณจำนวนคนที่ส่งครบ 3 ครั้งในสัปดาห์นี้
-              const employeesWithReports = groupInfo.employees.map((emp) => {
-                const empWeekReports = groupWeekReports.filter(
-                  (r) => r.employeeId === emp.employeeId
-                );
-                return {
-                  ...emp,
-                  weekReportCount: empWeekReports.length,
-                  meetsWeeklyTarget: empWeekReports.length >= 3,
-                };
-              });
-
-              const employeesMetTarget = employeesWithReports.filter(
-                (emp) => emp.meetsWeeklyTarget
-              ).length;
-              const hasAnyReports = groupWeekReports.length > 0; // มีรายงานในกลุ่มหรือไม่
-              const groupWeekTarget = groupInfo.employeeCount; // ทุกคนในกลุ่มต้องส่งครบ
-
-              return {
-                week: week.number,
-                employeesMetTarget,
-                groupWeekTarget,
-                meetsGroupWeeklyTarget: hasAnyReports,
-                employeesWithReports,
-              };
-            });
-
-            const totalWeeksInMonth = weeksInMonth.length;
-            const weeksGroupMetTarget = groupWeeklyResults.filter(
-              (w) => w.meetsGroupWeeklyTarget
-            ).length;
-            const meetsBbsRequirement =
-              weeksGroupMetTarget === 5;
-
-            // คำนวณ BBS target และ actual สำหรับกลุ่ม
-            const bbsTarget = 5; // แค่ 1 ครั้งต่อสัปดาห์
-            const bbsCount = groupWeeklyResults.filter(
-              (w) => w.meetsGroupWeeklyTarget
-            ).length;
+            const bbsCount = groupMonthlyReports.length;
+            const bbsTarget = 12; // เป้าหมาย 12 ครั้งต่อเดือนสำหรับกลุ่ม
+            const meetsBbsRequirement = bbsCount >= bbsTarget;
 
             // คำนวณการละเมิด SHE ของสมาชิกในกลุ่ม
-            const monthStart = new Date(year, month, 1);
-            const monthEnd = new Date(year, month + 1, 0);
-
             const groupSheReports = sheViolations.filter((violation) => {
               const violationDate = new Date(violation.date);
               return (
                 groupInfo.employees.some(
                   (emp) => emp.employeeId === violation.employee_code
                 ) &&
-                violationDate >= monthStart &&
-                violationDate <= monthEnd
+                violationDate >= monthlyRange.start &&
+                violationDate <= monthlyRange.end
               );
             });
 
@@ -2254,7 +2149,7 @@ function AdminDashboard() {
               isEligible,
               paymentStatus,
               statusColor,
-              groupWeeklyResults,
+              monthlyRange, // เพิ่มข้อมูลช่วงเวลา
             };
           })
         );
@@ -2263,11 +2158,7 @@ function AdminDashboard() {
         const allResults = [...ithOeResults, ...groupResults];
 
         return {
-          monthRange: {
-            start: new Date(year, month, 1),
-            end: new Date(year, month + 1, 0),
-          },
-          weeksInMonth,
+          monthRange: monthlyRange,
           individuals: ithOeResults,
           groups: groupResults,
           all: allResults,
@@ -2487,6 +2378,13 @@ function AdminDashboard() {
         fetchSheViolations();
       }, []);
 
+      // Format วันที่สำหรับแสดง
+      const formatDateRange = (range: { start: Date; end: Date }) => {
+        const startStr = format(range.start, "dd/MM/yyyy");
+        const endStr = format(range.end, "dd/MM/yyyy");
+        return `${startStr} - ${endStr}`;
+      };
+
       return (
         <div className="space-y-6">
           {/* Month Selector */}
@@ -2499,10 +2397,15 @@ function AdminDashboard() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <h3 className="text-lg font-semibold">
-                {monthNames[selectedMonth.getMonth()]}{" "}
-                {selectedMonth.getFullYear()}
-              </h3>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">
+                  {monthNames[selectedMonth.getMonth()]}{" "}
+                  {selectedMonth.getFullYear()}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  ({formatDateRange(payrollData.monthRange)})
+                </p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -2580,7 +2483,7 @@ function AdminDashboard() {
                         ชื่อพนักงาน
                       </th>
                       <th className="border border-gray-300 text-center p-3 font-medium">
-                        BBS
+                        BBS (12 ครั้ง/เดือน)
                       </th>
                       <th className="border border-gray-300 text-center p-3 font-medium">
                         PPE
@@ -2629,37 +2532,37 @@ function AdminDashboard() {
                         <td className="border border-gray-300 p-3 text-center">
                           <span
                             className={
-                              employee.ppeViolations >= 12
+                              employee.ppeViolations >= 3
                                 ? "text-red-600 font-bold"
                                 : "text-gray-600"
                             }
                           >
                             {employee.ppeViolations}
-                            {employee.ppeViolations >= 12 && " ❌"}
+                            {employee.ppeViolations >= 3 && " ❌"}
                           </span>
                         </td>
                         <td className="border border-gray-300 p-3 text-center">
                           <span
                             className={
-                              employee.highRiskViolations >= 8
+                              employee.highRiskViolations >= 2
                                 ? "text-red-600 font-bold"
                                 : "text-gray-600"
                             }
                           >
                             {employee.highRiskViolations}
-                            {employee.highRiskViolations >= 8 && " ❌"}
+                            {employee.highRiskViolations >= 2 && " ❌"}
                           </span>
                         </td>
                         <td className="border border-gray-300 p-3 text-center">
                           <span
                             className={
-                              employee.accidentViolations >= 4
+                              employee.accidentViolations >= 1
                                 ? "text-red-600 font-bold"
                                 : "text-gray-600"
                             }
                           >
                             {employee.accidentViolations}
-                            {employee.accidentViolations >= 4 && " ❌"}
+                            {employee.accidentViolations >= 1 && " ❌"}
                           </span>
                         </td>
                         <td className="border border-gray-300 p-3 text-center">
@@ -2709,7 +2612,7 @@ function AdminDashboard() {
                               จำนวนสมาชิก
                             </th>
                             <th className="border border-gray-300 text-center p-3 font-medium">
-                              BBS กลุ่ม
+                              BBS กลุ่ม (12 ครั้ง/เดือน)
                             </th>
                             <th className="border border-gray-300 text-center p-3 font-medium">
                               PPE
@@ -2719,9 +2622,6 @@ function AdminDashboard() {
                             </th>
                             <th className="border border-gray-300 text-center p-3 font-medium">
                               อุบัติเหตุ
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              รายละเอียดรายสัปดาห์
                             </th>
                             <th className="border border-gray-300 text-center p-3 font-medium">
                               สถานะ
@@ -2813,38 +2713,6 @@ function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td className="border border-gray-300 p-3 text-center">
-                                  <div className="text-xs space-y-1">
-                                    {group.groupWeeklyResults.map(
-                                      (week: {
-                                        week: number;
-                                        employeesMetTarget: number;
-                                        groupWeekTarget: number;
-                                        meetsGroupWeeklyTarget: boolean;
-                                        employeesWithReports: {
-                                          employeeId: string;
-                                          employeeName: string;
-                                          weekReportCount: number;
-                                          meetsWeeklyTarget: boolean;
-                                        }[];
-                                      }) => (
-                                        <div
-                                          key={week.week}
-                                          className={
-                                            week.meetsGroupWeeklyTarget
-                                              ? "text-green-600"
-                                              : "text-red-600"
-                                          }
-                                        >
-                                          สัปดาห์{week.week}:{" "}
-                                          {week.meetsGroupWeeklyTarget
-                                            ? "✓"
-                                            : "✗"}
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
                                   <Badge className={group.statusColor}>
                                     {group.isEligible
                                       ? "💰 ได้รับเงิน"
@@ -2883,39 +2751,36 @@ function AdminDashboard() {
 
           {/* Legend */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">เกณฑ์การจ่ายเงิน (รายเดือน):</h4>
+            <h4 className="font-semibold mb-2">เกณฑ์การจ่ายเงิน (ระบบใหม่ - นับรวมต่อเดือน):</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-medium text-green-600">✅ ได้รับเงิน:</p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
                   <li>
-                    <strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS ครบ 3
-                    ครั้ง/สัปดาห์ ในทุกสัปดาห์ของเดือน + ไม่มี SHE ละเมิด
+                    <strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS รวม 12 ครั้งต่อเดือน + ไม่มี SHE ละเมิด
                   </li>
                   <li>
-                    <strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มมีการส่ง BBS
-                    ทุกสัปดาห์ของเดือน (ไม่จำเป็นต้องทุกคน) + ไม่มีสมาชิกละเมิด
-                    SHE
+                    <strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มส่ง BBS รวม 12 ครั้งต่อเดือน + ไม่มีสมาชิกละเมิด SHE
                   </li>
                 </ul>
               </div>
               <div>
                 <p className="font-medium text-red-600">❌ ไม่ได้รับเงิน:</p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>BBS ไม่ครบในสัปดาห์ใดสัปดาห์หนึ่ง</li>
-                  <li>PPE ละเมิด ≥ 3 ครั้ง/เดือน</li>
-                  <li>เสี่ยงสูง ละเมิด ≥ 2 ครั้ง/เดือน</li>
-                  <li>อุบัติเหตุ ≥ 1 ครั้ง/เดือน</li>
+                  <li>BBS ส่งไม่ครบ 12 ครั้งต่อเดือน</li>
+                  <li>PPE ละเมิด ≥ 3 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 12 ครั้ง/เดือน (รายกลุ่ม)</li>
+                  <li>เสี่ยงสูง ละเมิด ≥ 2 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 8 ครั้ง/เดือน (รายกลุ่ม)</li>
+                  <li>อุบัติเหตุ ≥ 1 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 4 ครั้ง/เดือน (รายกลุ่ม)</li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-blue-100 rounded border-l-4 border-blue-500">
               <p className="text-sm text-blue-800">
-                <strong>หมายเหตุ:</strong>
-                แผนก ITH-OE ใช้ระบบการจ่ายแบบรายบุคคล (แต่ละคนต้องส่งครบ 3
-                ครั้ง/สัปดาห์ทุกสัปดาห์) ส่วนแผนกอื่นๆ ใช้ระบบการจ่ายแบบรายกลุ่ม
-                (แค่มีสมาชิกคนใดคนหนึ่งส่งรายงานในสัปดาห์นั้น กลุ่มก็ผ่าน
-                ถ้ากลุ่มผ่านเกณฑ์ สมาชิกทุกคนในกลุ่มได้รับเงิน)
+                <strong>หมายเหตุ (ระบบใหม่):</strong>
+                <br />• <strong>ช่วงเวลาการนับ:</strong> วันที่ 21 ของเดือนก่อนหน้า ถึง วันที่ 20 ของเดือนปัจจุบัน
+                <br />• <strong>การนับ BBS:</strong> นับรวมทั้งเดือน 12 ครั้ง (ไม่แบ่งตามสัปดาห์)
+                <br />• <strong>ITH-OE:</strong> แต่ละคนต้องส่งครบ 12 ครั้งต่อเดือน
+                <br />• <strong>แผนกอื่นๆ:</strong> กลุ่มรวมกันส่งครบ 12 ครั้งต่อเดือน ถ้าผ่านเกณฑ์ทุกคนในกลุ่มได้รับเงิน
               </p>
             </div>
           </div>
@@ -3002,17 +2867,49 @@ function AdminDashboard() {
     document.body.removeChild(link);
   };
 
+
+  const STORAGE_KEY = "bbs_employee_data";
+
+const loadFromLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Error loading from localStorage:", error);
+      return null;
+    }
+  }
+  return null;
+};
+
   useEffect(() => {
     
      if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      setSheid(searchParams.get("employeeId") || "");
-      setEmployeeId(searchParams.get("employeeId") || "");
-      setEmployeeName(searchParams.get("fullName") || "");
-      setDepartment(searchParams.get("department") || "");
-      setGroup(searchParams.get("group") || "");
-      fetchReports();
-    }
+  // โหลดข้อมูลจาก localStorage เท่านั้น
+  const employeeData = loadFromLocalStorage();
+  
+  if (employeeData) {
+    const {
+      employeerId = "",
+      fullName = "",
+      department = "",
+      group = "",
+      position = ""
+    } = employeeData;
+
+    // ตั้งค่า state
+    setSheid(employeerId);
+    setEmployeeId(employeerId);
+    setEmployeeName(fullName);
+    setDepartment(department);
+    setGroup(group);
+    
+    // fetch ข้อมูลรายงาน
+    fetchReports();
+  } else {
+    console.warn("No employee data found in localStorage");
+  }}
 
   }, []);
 
@@ -3029,7 +2926,7 @@ function AdminDashboard() {
                 alt="ITH Logo"
                 width={60}
                 height={60}
-                className="rounded-lg"
+                className="rounded-lg hidden md:flex"
               />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
@@ -3051,31 +2948,10 @@ function AdminDashboard() {
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
-                  onClick={() => 
-                  {
-                    const params = new URLSearchParams({
-                      employeeId: employeeId || "",
-                      fullName: employeeName || "",
-                      department: department || "",
-                      group: group || "",
-                    }).toString();
-                    router.push(`/managecategory?${params}`);
+                  onClick={() => {
+                    router.push(`/`);
                   }}
                 >
-                  <Settings />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const params = new URLSearchParams({
-                      employeeId: employeeId || "",
-                      fullName: employeeName || "",
-                      department: department || "",
-                      group: group || "",
-                    }).toString();
-                    router.push(`/?${params}`);
-                  }}>
                   <House className="h-5 w-5" />
                 </Button>
 
@@ -3433,7 +3309,7 @@ function AdminDashboard() {
             </Card>
 
             {/* Reports List */}
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-auto h-[40dvh] md:h-[80dvh]">
               {isLoading ? (
                 <div className="text-center py-8">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>

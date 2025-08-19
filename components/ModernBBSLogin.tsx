@@ -261,11 +261,27 @@ ErrorScreen.displayName = "ErrorScreen";
 const RequiredMark = React.memo(() => <sup className="text-red-500">*</sup>);
 RequiredMark.displayName = "RequiredMark";
 
+const STORAGE_KEY = "bbs_employee_data";
+  
+  const loadFromLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+
 function ModernBBSLogin() {
   const router = useRouter();
-  const searchParams = new URLSearchParams(window.location.search);
-  const employeeIdFromUrl = searchParams.get("employeeId") || "";
-  
+  const employeeData = loadFromLocalStorage();
+  const employeeIdFromUrl = employeeData?.employeeId || "";
+
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
   

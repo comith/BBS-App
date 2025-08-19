@@ -508,13 +508,33 @@ function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const searchParams = new URLSearchParams(window.location.search);
+  
+const STORAGE_KEY = "bbs_employee_data";
 
-  const sheid = searchParams.get("employeeId");
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
-  const depatment = searchParams.get("department");
-  const group = searchParams.get("group");
+const loadFromLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Error loading from localStorage:", error);
+      return null;
+    }
+  }
+  return null;
+};
+
+// เปลี่ยนโค้ดเดิมเป็น:
+const employeeData = loadFromLocalStorage();
+
+// ตั้งค่าตัวแปรจากข้อมูลใน localStorage
+const sheid = employeeData?.employeerId || "";
+const employeeId = employeeData?.employeerId || "";
+const employeeName = employeeData?.fullName || "";
+const department = employeeData?.department || "";
+const group = employeeData?.group || "";
+
+
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -3049,7 +3069,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/managecategory?${params}`);
@@ -3064,7 +3084,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/?${params}`);
@@ -3079,7 +3099,7 @@ function AdminDashboard() {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
-                      department: depatment || "",
+                      department: department || "",
                       group: group || "",
                     }).toString();
                     router.push(`/manageusers?${params}`);

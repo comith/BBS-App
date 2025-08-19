@@ -317,104 +317,105 @@ function SafetyObservationForm() {
   }, [list_department]);
 
   const uploadFileImmediately = async (file: File) => {
-  const tempId = `temp_${Date.now()}_${Math.random()}`;
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
 
-  // เพิ่มไฟล์ใน state พร้อมสถานะ uploading
-  setUploadedFiles((prev) => [
-    ...prev,
-    {
-      id: tempId,
-      name: file.name,
-      webViewLink: "",
-      originalFile: file,
-      status: "uploading",
-    },
-  ]);
+    // เพิ่มไฟล์ใน state พร้อมสถานะ uploading
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        name: file.name,
+        webViewLink: "",
+        originalFile: file,
+        status: "uploading",
+      },
+    ]);
 
-  try {
-    // สร้าง FormData สำหรับส่งไฟล์
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("filename", file.name);
-    // เพิ่ม folderId ถ้าต้องการ (optional)
-    formData.append("folderId", "1Jmu78EX1IAoH4w8VvvCEJKZWn9k84SUL");
+    try {
+      // สร้าง FormData สำหรับส่งไฟล์
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("filename", file.name);
+      // เพิ่ม folderId ถ้าต้องการ (optional)
+      formData.append("folderId", "1Jmu78EX1IAoH4w8VvvCEJKZWn9k84SUL");
 
-    // ส่งไฟล์ไป API upload
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+      // ส่งไฟล์ไป API upload
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    // ตรวจสอบ response
-    if (!response.ok) {
-      // พยายาม parse JSON error message
-      let errorMessage = "Upload failed";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (parseError) {
-        // ถ้า parse JSON ไม่ได้ ใช้ status text
-        errorMessage = response.statusText || errorMessage;
+      // ตรวจสอบ response
+      if (!response.ok) {
+        // พยายาม parse JSON error message
+        let errorMessage = "Upload failed";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          // ถ้า parse JSON ไม่ได้ ใช้ status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
+
+      const result = await response.json();
+
+      // ตรวจสอบว่ามี file data หรือไม่
+      if (!result.file || !result.file.id) {
+        throw new Error("Invalid response: missing file data");
+      }
+
+      // อัปเดตสถานะเป็น success
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                ...item,
+                id: result.file.id,
+                webViewLink:
+                  result.file.webViewLink || result.file.downloadUrl || "",
+                status: "success" as const,
+              }
+            : item
+        )
+      );
+
+      toast({
+        title: "อัปโหลดสำเร็จ",
+        description: `ไฟล์ ${file.name} ถูกอัปโหลดเรียบร้อยแล้ว`,
+      });
+
+      return result.file;
+    } catch (error) {
+      console.error("Upload error:", error);
+
+      // อัปเดตสถานะเป็น error
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                ...item,
+                status: "error" as const,
+                error: error instanceof Error ? error.message : "Upload failed",
+              }
+            : item
+        )
+      );
+
+      // แสดง error message ที่ชัดเจนขึ้น
+      const errorMessage =
+        error instanceof Error ? error.message : "Upload failed";
+
+      toast({
+        title: "อัปโหลดล้มเหลว",
+        description: `ไม่สามารถอัปโหลดไฟล์ ${file.name} ได้: ${errorMessage}`,
+        variant: "destructive",
+      });
+
+      throw error;
     }
-
-    const result = await response.json();
-
-    // ตรวจสอบว่ามี file data หรือไม่
-    if (!result.file || !result.file.id) {
-      throw new Error("Invalid response: missing file data");
-    }
-
-    // อัปเดตสถานะเป็น success
-    setUploadedFiles((prev) =>
-      prev.map((item) =>
-        item.id === tempId
-          ? {
-              ...item,
-              id: result.file.id,
-              webViewLink: result.file.webViewLink || result.file.downloadUrl || "",
-              status: "success" as const,
-            }
-          : item
-      )
-    );
-
-    toast({
-      title: "อัปโหลดสำเร็จ",
-      description: `ไฟล์ ${file.name} ถูกอัปโหลดเรียบร้อยแล้ว`,
-    });
-
-    return result.file;
-
-  } catch (error) {
-    console.error("Upload error:", error);
-
-    // อัปเดตสถานะเป็น error
-    setUploadedFiles((prev) =>
-      prev.map((item) =>
-        item.id === tempId
-          ? {
-              ...item,
-              status: "error" as const,
-              error: error instanceof Error ? error.message : "Upload failed",
-            }
-          : item
-      )
-    );
-
-    // แสดง error message ที่ชัดเจนขึ้น
-    const errorMessage = error instanceof Error ? error.message : "Upload failed";
-    
-    toast({
-      title: "อัปโหลดล้มเหลว",
-      description: `ไม่สามารถอัปโหลดไฟล์ ${file.name} ได้: ${errorMessage}`,
-      variant: "destructive",
-    });
-
-    throw error;
-  }
-};
+  };
 
   const fetchDepartments = async (): Promise<Department[]> => {
     const response = await fetch("/api/get?type=department");
@@ -465,6 +466,21 @@ function SafetyObservationForm() {
     mode: "onTouched",
   });
 
+  const STORAGE_KEY = "bbs_employee_data";
+
+  const loadFromLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
   React.useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true);
@@ -489,52 +505,65 @@ function SafetyObservationForm() {
     };
 
     if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      const urlEmployeeId = searchParams.get("employeeId") || "";
-      const urlEmployeeName = searchParams.get("fullName") || "";
-      const urlDepartment = searchParams.get("department") || "";
-      const urlGroup = searchParams.get("group") || "";
-      const urlPosition = searchParams.get("position") || "";
+      // โหลดข้อมูลจาก localStorage เท่านั้น
+      const employeeData = loadFromLocalStorage();
 
-      // ตั้งค่า state
-      setCheckUpdateEmployee(
-        urlDepartment === undefined || urlDepartment === "" ||
-        urlGroup === undefined  || urlGroup === ""
-        ? true
-        : false
-      );
-      setEmployeeId(urlEmployeeId);
-      setEmployeeName(urlEmployeeName);
-      setDepartment(urlDepartment);
-      setPosition(urlPosition);
-      setGroup(urlGroup);
+      if (employeeData) {
+        const {
+          employeerId = "",
+          fullName = "",
+          department = "",
+          group = "",
+          position = "",
+        } = employeeData;
 
-      // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
-      form.reset({
-        date: new Date(),
-        employeeId: urlEmployeeId,
-        username: urlEmployeeName,
-        type: urlDepartment,
-        group: urlGroup,
-        safetyCategory: undefined,
-        sub_safetyCategory: undefined,
-        observed_work: "",
-        depart_notice: "",
-        vehicleEquipment: {},
-        safeActionCount: undefined,
-        unsafeActionCount: undefined,
-        selectedOptions: [],
-        attachment: undefined,
-        attachid: "",
-        other: "",
-        codeemployee: "",
-        levelOfSafety: "",
-      });
+        // ตั้งค่า state
+        setCheckUpdateEmployee(
+          department === undefined ||
+            department === "" ||
+            group === undefined ||
+            group === ""
+            ? true
+            : false
+        );
+        setEmployeeId(employeerId);
+        setEmployeeName(fullName);
+        setDepartment(department);
+        setPosition(position);
+        setGroup(group);
 
-      setIsLoading(true);
-      window.scrollTo(0, 0);
+        // *** ใช้ reset() เพื่อตั้งค่าทั้งหมดพร้อมกัน ***
+        form.reset({
+          date: new Date(),
+          employeeId: employeerId,
+          username: fullName,
+          type: department,
+          group: group,
+          safetyCategory: undefined,
+          sub_safetyCategory: undefined,
+          observed_work: "",
+          depart_notice: "",
+          vehicleEquipment: {},
+          safeActionCount: undefined,
+          unsafeActionCount: undefined,
+          selectedOptions: [],
+          attachment: undefined,
+          attachid: "",
+          other: "",
+          codeemployee: "",
+          levelOfSafety: "",
+        });
 
-      loadAllData();
+        setIsLoading(true);
+        window.scrollTo(0, 0);
+
+        loadAllData();
+      } else {
+        // ถ้าไม่มีข้อมูลใน localStorage
+        console.warn("No employee data found in localStorage");
+        // อาจจะ redirect กลับไปหน้า login หรือแสดง error
+        // router.push("/");
+      }
     }
   }, [form]);
 
@@ -647,7 +676,7 @@ function SafetyObservationForm() {
       });
       return false;
     }
-  } 
+  };
 
   // Improved form submission with proper validation and feedback
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
@@ -657,7 +686,7 @@ function SafetyObservationForm() {
       return; // หยุดการส่งถ้ามี errors
     }
     const needToAddEmployee = employeeName === "" || employeeId === "";
-    if(checkUpdateEmployee) {
+    if (checkUpdateEmployee) {
       const addEmployeeSuccess = await updateUser();
 
       if (!addEmployeeSuccess) {
@@ -1012,17 +1041,14 @@ function SafetyObservationForm() {
                             aria-expanded={open}
                             className="w-full justify-between"
                             disabled={
-                              (position === 'EN' || group === '') ? false : true
+                              position === "EN" || group === "" ? false : true
                             }
                           >
-                            {field.value
-                              ? field.value
-                              : "เลือกกลุ่มในชุด"
-                              }
+                            {field.value ? field.value : "เลือกกลุ่มในชุด"}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        
+
                         <PopoverContent className="w-full p-0" align="start">
                           <Command>
                             <CommandInput
@@ -1030,18 +1056,20 @@ function SafetyObservationForm() {
                               className="h-9"
                             />
                             <CommandList>
-                              <CommandEmpty>ไม่พบกลุ่มในชุดที่เลือก</CommandEmpty>
+                              <CommandEmpty>
+                                ไม่พบกลุ่มในชุดที่เลือก
+                              </CommandEmpty>
                               <CommandGroup>
                                 {list_group
                                   .filter((item) => item.group === selectedType)
                                   .map((item) => (
-                                    <CommandItem 
-                                    key={item.id} 
-                                    value={item.name}
-                                    onSelect={(value) => {
-                                      field.onChange(value);
-                                      setOpen(false);
-                                    }}
+                                    <CommandItem
+                                      key={item.id}
+                                      value={item.name}
+                                      onSelect={(value) => {
+                                        field.onChange(value);
+                                        setOpen(false);
+                                      }}
                                     >
                                       {item.name}
                                     </CommandItem>

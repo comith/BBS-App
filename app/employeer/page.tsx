@@ -497,38 +497,55 @@ function EmployeeReportStatus() {
     return `${monthNames[parseInt(month) - 1]} ${parseInt(year) + 543}`;
   };
 
+  const STORAGE_KEY = "bbs_employee_data";
+
+  const loadFromLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
   // เรียกใช้ฟังก์ชันใน useEffect
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      setEmployeeId(searchParams.get("employeeId") || "");
-      setEmployeeName(searchParams.get("fullName") || "");
-      setDepartment(searchParams.get("department") || "");
-      setGroup(searchParams.get("group") || "");
+      // โหลดข้อมูลจาก localStorage เท่านั้น
+      const employeeData = loadFromLocalStorage();
 
-      if (searchParams.get("employeeId")) {
-        fetchReports();
-        fetchSheViolations(); // เพิ่มบรรทัดนี้
+      if (employeeData) {
+        const {
+          employeerId = "",
+          fullName = "",
+          department = "",
+          group = "",
+          position = "",
+        } = employeeData;
+
+        // ตั้งค่า state
+        setEmployeeId(employeerId);
+        setEmployeeName(fullName);
+        setDepartment(department);
+        setGroup(group);
+
+        // ถ้ามี employeeId ให้ fetch ข้อมูล
+        if (employeerId) {
+          fetchReports();
+          fetchSheViolations();
+        }
+      } else {
+        // ถ้าไม่มีข้อมูลใน localStorage
+        console.warn("No employee data found in localStorage");
+        // อาจจะ redirect กลับไปหน้า login หรือแสดง error message
+        // router.push("/");
       }
     }
   }, [employeeId]);
-
-  const fetchCategoriesAndSubCategories = async () => {
-    try {
-      const [categoryResponse, subCategoryResponse] = await Promise.all([
-        fetch("/api/get?type=category"),
-        fetch("/api/get?type=subcategory"),
-      ]);
-
-      const categoryData = await categoryResponse.json();
-      const subCategoryData = await subCategoryResponse.json();
-
-      setCategories(categoryData);
-      setSubCategories(subCategoryData);
-    } catch (error) {
-      console.error("Error loading categories:", error);
-    }
-  };
 
   const SheViolationsDashboard = () => {
     if (sheViolations.length === 0) {
@@ -686,17 +703,17 @@ function EmployeeReportStatus() {
       );
 
       const attachmentArray = Array.isArray(item.attachment)
-      ? item.attachment.map((file) => {
-          if (typeof file === "string") {
-            return { id: "", name: file, webViewLink: "" };
-          }
-          return {
-            id: file.id || "",
-            name: file.name || "ไม่ระบุ",
-            webViewLink: file.webViewLink || "",
-          };
-        })
-      : [];
+        ? item.attachment.map((file) => {
+            if (typeof file === "string") {
+              return { id: "", name: file, webViewLink: "" };
+            }
+            return {
+              id: file.id || "",
+              name: file.name || "ไม่ระบุ",
+              webViewLink: file.webViewLink || "",
+            };
+          })
+        : [];
 
       return {
         id: index + 1,
@@ -934,13 +951,7 @@ function EmployeeReportStatus() {
                 variant="outline"
                 className="text-gray-600 hover:text-gray-900"
                 onClick={() => {
-                  const params = new URLSearchParams({
-                    employeeId: employeeId || "",
-                    fullName: employeeName || "",
-                    department: department || "",
-                    group: group || "",
-                  }).toString();
-                  router.push(`/?${params}`);
+                  router.push(`/`);
                 }}
               >
                 ย้อนกลับ
@@ -1260,7 +1271,9 @@ function EmployeeReportStatus() {
                                 </span>
                               </div>
                               <div>
-                                <span className="text-gray-600">แผนกที่สังเกต: </span>
+                                <span className="text-gray-600">
+                                  แผนกที่สังเกต:{" "}
+                                </span>
                                 <span className="font-medium">
                                   {report.department}
                                 </span>
@@ -1475,26 +1488,26 @@ function EmployeeReportStatus() {
                   </Badge>
                 </div>
 
-                
-                {selectedReport.attachments && selectedReport.attachments.length > 0 && (
-                  <div>
-                    <p className="text-sm text-gray-600">ไฟล์แนบ</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {selectedReport.attachments.map((file) => (
-                        <li key={file.id}>
-                          <a
-                            href={file.webViewLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {file.name}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {selectedReport.attachments &&
+                  selectedReport.attachments.length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-600">ไฟล์แนบ</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {selectedReport.attachments.map((file) => (
+                          <li key={file.id}>
+                            <a
+                              href={file.webViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {file.name}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

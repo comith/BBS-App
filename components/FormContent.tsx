@@ -80,11 +80,26 @@ interface Department {
 
 function SafetyObservationForm() {
   const { toast } = useToast();
-  const searchParams = new URLSearchParams(window.location.search);
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
-  const depatment = searchParams.get("department");
-  const group = searchParams.get("group");
+  const STORAGE_KEY = "bbs_employee_data";
+
+const loadFromLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Error loading from localStorage:", error);
+      return null;
+    }
+  }
+  return null;
+};
+
+  const employeeData = loadFromLocalStorage();
+  const employeeId = employeeData?.employeeId;
+  const employeeName = employeeData?.fullName;
+  const department = employeeData?.department;
+  const group = employeeData?.group;
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [sub_safetyCategoryData, setSubSafetyCategoryData] = React.useState<
     SubSafetyCategory[]
@@ -413,7 +428,7 @@ function SafetyObservationForm() {
       date: new Date(),
       employeeId: employeeId ?? undefined,
       username: employeeName ?? "",
-      type: depatment ?? "",
+      type: department ?? "",
       group: group ?? "",
       safetyCategory: undefined,
       sub_safetyCategory: undefined,
@@ -853,7 +868,7 @@ function SafetyObservationForm() {
                         onChange={field.onChange}
                         departments={list_department}
                         form={form}
-                        readOnly={!!depatment}
+                        readOnly={!!department}
                       />
                     </FormControl>
                     <FormMessage />

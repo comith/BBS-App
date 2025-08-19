@@ -6,22 +6,7 @@ import { useRouter } from "next/navigation";
 export function Header() {
   //   const { user, logout } = useAuth()
   const router = useRouter();
-  const [employeeId, setEmployeeId] = React.useState<string | null>(null);
-  const [employeeName, setEmployeeName] = React.useState<string | null>(null);
-  const [department, setDepartment] = React.useState<string | null>(null);
-  const [group, setGroup] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-  if (typeof window !== "undefined") {
-    const searchParams = new URLSearchParams(window.location.search);
-    setEmployeeId(searchParams.get("employeeId") || "");
-    setEmployeeName(searchParams.get("fullName") || "");
-    setDepartment(searchParams.get("department") || "");
-    setGroup(searchParams.get("group") || "");
-  }
-    
-  }, []);
-  
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       {/* <Button variant="outline" size="icon" className="md:hidden">
@@ -30,16 +15,15 @@ export function Header() {
       </Button> */}
 
       <div className="flex-1">
-        <a
-          className="flex items-center gap-2 font-semibold hover:cursor-pointer"
-          onClick={() => {
-            const params = new URLSearchParams({
-              employeeId: employeeId || "",
-              fullName: employeeName || "",
-              department: department || "",
-              group: group || "",
-            }).toString();
-            router.push(`/?${params}`);
+        <button
+          type="button"
+          className="flex items-center gap-2 font-semibold hover:cursor-pointer bg-transparent border-none p-0"
+          aria-label="Go to home"
+          onClick={() => { router.push(`/`); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              router.push(`/`);
+            }
           }}
         >
           <House className="h-5 w-5" />
@@ -47,7 +31,7 @@ export function Header() {
           <span className="text-sm text-muted-foreground hidden sm:inline-block">
             Behavior Base Safety
           </span>
-        </a>
+        </button>
       </div>
 
       <div className="flex items-center gap-2">

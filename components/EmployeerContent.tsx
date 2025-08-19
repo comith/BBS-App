@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Suspense } from 'react'
+import { Suspense } from "react";
 import {
   format,
   isAfter,
@@ -357,9 +357,24 @@ const getStatusInfo = (status: string) => {
 };
 
 function EmployeeReportStatus() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const employeeId = searchParams.get("employeeId");
-  const employeeName = searchParams.get("fullName");
+  const STORAGE_KEY = "bbs_employee_data";
+
+  const loadFromLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const employeeData = loadFromLocalStorage();
+  const employeeId = employeeData?.employeeId || "";
+  const employeeName = employeeData?.fullName || "";
 
   const [reports, setReports] = useState<Report[]>([]);
   const [filteredReports, setFilteredReports] = useState<Report[]>([]);
@@ -438,7 +453,9 @@ function EmployeeReportStatus() {
     level_accident?: string;
   }
 
-  const calculateSheStats = (violations: CalculateSheStatsViolation[]): SheStats => {
+  const calculateSheStats = (
+    violations: CalculateSheStatsViolation[]
+  ): SheStats => {
     const stats: SheStats = {
       total: violations.length,
       byMonth: {},
@@ -460,14 +477,15 @@ function EmployeeReportStatus() {
       stats.byMonth[monthKey]++;
 
       // จัดกลุ่มตามหมวดหมู่
-      if(violation.level_accident === "PPE") {
+      if (violation.level_accident === "PPE") {
         stats.ppeViolations++;
-      }else if (violation.level_accident ===  "เสี่ยงสูง") {
-        stats.byRiskLevel['เสี่ยงสูง'] = (stats.byRiskLevel['เสี่ยงสูง'] || 0) + 1;
-      }else if (violation.level_accident === "เสี่ยงต่ำ") {
-        stats.byRiskLevel['อุบัติเหตุ'] = (stats.byRiskLevel['อุบัติเหตุ'] || 0) + 1;
+      } else if (violation.level_accident === "เสี่ยงสูง") {
+        stats.byRiskLevel["เสี่ยงสูง"] =
+          (stats.byRiskLevel["เสี่ยงสูง"] || 0) + 1;
+      } else if (violation.level_accident === "เสี่ยงต่ำ") {
+        stats.byRiskLevel["อุบัติเหตุ"] =
+          (stats.byRiskLevel["อุบัติเหตุ"] || 0) + 1;
       }
-
     });
 
     return stats;
@@ -501,7 +519,6 @@ function EmployeeReportStatus() {
     }
   }, [employeeId]);
 
-
   const fetchCategoriesAndSubCategories = async () => {
     try {
       const [categoryResponse, subCategoryResponse] = await Promise.all([
@@ -522,77 +539,88 @@ function EmployeeReportStatus() {
     }
   };
 
-
   const SheViolationsDashboard = () => {
-  if (sheViolations.length === 0) {
-    return null; // ไม่แสดงถ้าไม่มีข้อมูล
-  }
+    if (sheViolations.length === 0) {
+      return null; // ไม่แสดงถ้าไม่มีข้อมูล
+    }
 
-  return (
-    <Card className="mb-6 p-6">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <div className="h-6 w-6 bg-red-100 rounded flex items-center justify-center">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </div>
-          <span>รายงาน SHE</span>
-          <Badge variant="secondary">{sheStats.total} ครั้ง</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* สถิติรวม */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-600">การละเมิด PPE</p>
-                <p className="text-2xl font-bold text-red-700">{sheStats.ppeViolations}</p>
-              </div>
-              <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
+    return (
+      <Card className="mb-6 p-6">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <div className="h-6 w-6 bg-red-100 rounded flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
             </div>
-          </div>
-
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600">เสี่ยงสูง</p>
-                <p className="text-2xl font-bold text-orange-700">
-                  {sheStats.byRiskLevel['เสี่ยงสูง'] || 0}
-                </p>
-              </div>
-              <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <XCircle className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* สถิติรายเดือน */}
-        <div className="mb-4">
-          <h4 className="text-lg font-semibold mb-3">รายงานรายเดือน</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(sheStats.byMonth)
-              .sort(([a], [b]) => b.localeCompare(a)) // เรียงจากใหม่ไปเก่า
-              .slice(0, 6) // แสดงแค่ 6 เดือนล่าสุด
-              .map(([monthKey, count]) => (
-                <div key={monthKey} className="bg-gray-50 p-3 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">{getThaiMonth(monthKey)}</p>
-                      <p className="text-xl font-bold text-gray-900">{count}</p>
-                    </div>
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                  </div>
+            <span>รายงาน SHE</span>
+            <Badge variant="secondary">{sheStats.total} ครั้ง</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* สถิติรวม */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-red-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-600">
+                    การละเมิด PPE
+                  </p>
+                  <p className="text-2xl font-bold text-red-700">
+                    {sheStats.ppeViolations}
+                  </p>
                 </div>
-              ))
-            }
-          </div>
-        </div>
+                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </div>
 
-        {/* รายการล่าสุด */}
-        {/* <div>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600">
+                    เสี่ยงสูง
+                  </p>
+                  <p className="text-2xl font-bold text-orange-700">
+                    {sheStats.byRiskLevel["เสี่ยงสูง"] || 0}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <XCircle className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* สถิติรายเดือน */}
+          <div className="mb-4">
+            <h4 className="text-lg font-semibold mb-3">รายงานรายเดือน</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.entries(sheStats.byMonth)
+                .sort(([a], [b]) => b.localeCompare(a)) // เรียงจากใหม่ไปเก่า
+                .slice(0, 6) // แสดงแค่ 6 เดือนล่าสุด
+                .map(([monthKey, count]) => (
+                  <div
+                    key={monthKey}
+                    className="bg-gray-50 p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          {getThaiMonth(monthKey)}
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {count}
+                        </p>
+                      </div>
+                      <Calendar className="h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* รายการล่าสุด */}
+          {/* <div>
           <h4 className="text-lg font-semibold mb-3">รายการล่าสุด</h4>
           <div className="space-y-2">
             {sheViolations
@@ -644,11 +672,10 @@ function EmployeeReportStatus() {
             )}
           </div>
         </div> */}
-      </CardContent>
-    </Card>
-  );
-};
-
+        </CardContent>
+      </Card>
+    );
+  };
 
   const transformApiDataToReportWithCategories = (
     apiData: ApiReport[],
@@ -877,499 +904,510 @@ function EmployeeReportStatus() {
 
   return (
     <Suspense>
-    <div className="min-h-screen bg-gray-50">
-      {error && !isLoading && (
-        <Card className="mb-6">
-          <CardContent className="py-8 text-center">
-            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button
-              onClick={fetchReports}
-              className="bg-orange-500 hover:bg-orange-600"
-            >
-              ลองใหม่อีกครั้ง
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <div className="min-h-screen bg-gray-50">
+        {error && !isLoading && (
+          <Card className="mb-6">
+            <CardContent className="py-8 text-center">
+              <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button
+                onClick={fetchReports}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                ลองใหม่อีกครั้ง
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Image
-                src="/img/ith.png"
-                alt="ITH Logo"
-                width={60}
-                height={60}
-                className="rounded-lg"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  สถานะรายงานความปลอดภัย
-                </h1>
-                <p className="text-gray-600">
-                  รหัสพนักงาน: {employeeId} | {employeeName}
-                </p>
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Image
+                  src="/img/ith.png"
+                  alt="ITH Logo"
+                  width={60}
+                  height={60}
+                  className="rounded-lg"
+                />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    สถานะรายงานความปลอดภัย
+                  </h1>
+                  <p className="text-gray-600">
+                    รหัสพนักงาน: {employeeId} | {employeeName}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col md:flex-row justify-center items-center gap-2">
-              <Button
-                onClick={() => {
-                  fetchReports();
-                  fetchSheViolations();
+              <div className="flex flex-col md:flex-row justify-center items-center gap-2">
+                <Button
+                  onClick={() => {
+                    fetchReports();
+                    fetchSheViolations();
                   }}
-                disabled={isLoading}
-                className="bg-orange-500 hover:bg-orange-600 w-full"
-              >
-                {isLoading ? "กำลังโหลด..." : "รีเฟรช"}
-              </Button>
-              <Button
-                variant="outline"
-                className="text-gray-600 hover:text-gray-900"
-                onClick={() => window.history.back()}
-              >
-                ย้อนกลับ
-              </Button>
+                  disabled={isLoading}
+                  className="bg-orange-500 hover:bg-orange-600 w-full"
+                >
+                  {isLoading ? "กำลังโหลด..." : "รีเฟรช"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-gray-600 hover:text-gray-900"
+                  onClick={() => window.history.back()}
+                >
+                  ย้อนกลับ
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="py-2">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    รายงานทั้งหมด
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.total}
-                  </p>
-                </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Calendar className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="py-2">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    อนุมัติแล้ว
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {stats.approved}
-                  </p>
-                </div>
-                <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle2 className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="py-2">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    รอการอนุมัติ
-                  </p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {stats.pending}
-                  </p>
-                </div>
-                <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-yellow-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="py-2">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    ไม่อนุมัติ
-                  </p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {stats.rejected}
-                  </p>
-                </div>
-                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <XCircle className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Summary */}
-        <Card className="mb-6 py-6">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="h-6 w-6 bg-orange-100 rounded flex items-center justify-center">
-                <AlertCircle className="h-4 w-4 text-orange-600" />
-              </div>
-              <span>สรุปผลการสังเกต</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-green-600">
-                    {stats.totalSafeActions}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-green-600">
-                    Safe Actions
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    พฤติกรรมที่ปลอดภัย (คน)
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-red-600">
-                    {stats.totalUnsafeActions}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-red-600">
-                    Unsafe Actions
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    พฤติกรรมที่ไม่ปลอดภัย (คน)
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SHE Violations Dashboard */}
-        <SheViolationsDashboard />
-
-        {/* Calendar */}
-
-        {/* Search and Filter */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-[12fr_1fr_2fr] gap-4">
-              {/* First row: Search and Status filter */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="ค้นหารายงาน..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card className="py-2">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      รายงานทั้งหมด
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.total}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Calendar className="h-6 w-6 text-blue-600" />
                   </div>
                 </div>
-                <div className="w-full md:w-48">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="กรองตามสถานะ" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">ทั้งหมด</SelectItem>
-                      <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
-                      <SelectItem value="pending">รอการอนุมัติ</SelectItem>
-                      <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Second row: Date range picker */}
-              <div className="flex flex-col md:flex-row gap-4 items-center">
-                <div className="flex-1">
-                  <Popover
-                    open={isDatePickerOpen}
-                    onOpenChange={setIsDatePickerOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !dateRange.from && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? (
-                          dateRange.to ? (
-                            <>
-                              {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                              {format(dateRange.to, "dd/MM/yyyy")}
-                            </>
-                          ) : (
-                            format(dateRange.from, "dd/MM/yyyy")
-                          )
-                        ) : (
-                          "เลือกช่วงวันที่"
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <div className="p-3 border-b bg-gray-50">
-                        <p className="text-sm font-medium text-gray-700 mb-2">
-                          เลือกช่วงเวลา
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setQuickDateRange(7)}
-                            className="text-xs"
-                          >
-                            7 วันที่แล้ว
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setQuickDateRange(30)}
-                            className="text-xs"
-                          >
-                            30 วันที่แล้ว
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setQuickDateRange(90)}
-                            className="text-xs"
-                          >
-                            3 เดือนที่แล้ว
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <CustomCalendar
-                          mode="range"
-                          selected={dateRange}
-                          onSelect={setDateRange}
-                          numberOfMonths={1}
-                          className="rounded-md"
-                        />
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Clear date range button */}
-                {(dateRange.from || dateRange.to) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearDateRange}
-                    className="flex items-center gap-2"
-                  >
-                    <X className="h-4 w-4" />
-                    ล้างวันที่
-                  </Button>
-                )}
-
-                {/* Show filtered results count */}
-                <div className="text-sm text-gray-600 whitespace-nowrap">
-                  แสดง {filteredReports.length} จาก {reports.length} รายการ
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Reports List with Accordion */}
-        <div className="space-y-4 h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-              <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
-                  ไม่พบรายงานที่ตรงกับเงื่อนไขการค้นหา
-                </p>
               </CardContent>
             </Card>
-          ) : (
-            filteredReports.map((report) => {
-              const statusInfo = getStatusInfo(report.status);
-              const StatusIcon = statusInfo.icon;
-              const isOpen = openAccordions.has(report.id);
 
-              return (
-                <Card
-                  key={report.id}
-                  className="hover:shadow-md transition-shadow"
-                >
-                  <Collapsible
-                    open={isOpen}
-                    onOpenChange={() => toggleAccordion(report.id)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <CardContent className="p-4 cursor-pointer hover:bg-gray-50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                รายงาน #{report.id}
-                              </h3>
-                              <Badge className={statusInfo.color}>
-                                <StatusIcon className="h-3 w-3 mr-1" />
-                                {statusInfo.label}
-                              </Badge>
-                            </div>
+            <Card className="py-2">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      อนุมัติแล้ว
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {stats.approved}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                              <div>
-                                <span className="text-gray-600">วันที่: </span>
-                                <span className="font-medium">
-                                  {format(report.date, "dd/MM/yyyy")}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">แผนก: </span>
-                                <span className="font-medium">
-                                  {report.department}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600">
-                                  Safe/Unsafe:{" "}
-                                </span>
-                                <span className="text-green-600 font-medium">
-                                  {report.safeCount}
-                                </span>
-                                <span className="text-gray-400 mx-1">/</span>
-                                <span className="text-red-600 font-medium">
-                                  {report.unsafeCount}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+            <Card className="py-2">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      รอการอนุมัติ
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {stats.pending}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-yellow-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                          <div className="flex items-center space-x-2 ml-4">
+            <Card className="py-2">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      ไม่อนุมัติ
+                    </p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {stats.rejected}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <XCircle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Performance Summary */}
+          <Card className="mb-6 py-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <div className="h-6 w-6 bg-orange-100 rounded flex items-center justify-center">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                </div>
+                <span>สรุปผลการสังเกต</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center space-x-4">
+                  <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl font-bold text-green-600">
+                      {stats.totalSafeActions}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-green-600">
+                      Safe Actions
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      พฤติกรรมที่ปลอดภัย (คน)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl font-bold text-red-600">
+                      {stats.totalUnsafeActions}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-red-600">
+                      Unsafe Actions
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      พฤติกรรมที่ไม่ปลอดภัย (คน)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SHE Violations Dashboard */}
+          <SheViolationsDashboard />
+
+          {/* Calendar */}
+
+          {/* Search and Filter */}
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-[12fr_1fr_2fr] gap-4">
+                {/* First row: Search and Status filter */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="ค้นหารายงาน..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="w-full md:w-48">
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                    >
+                      <SelectTrigger>
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="กรองตามสถานะ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทั้งหมด</SelectItem>
+                        <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
+                        <SelectItem value="pending">รอการอนุมัติ</SelectItem>
+                        <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Second row: Date range picker */}
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1">
+                    <Popover
+                      open={isDatePickerOpen}
+                      onOpenChange={setIsDatePickerOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dateRange.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange.from ? (
+                            dateRange.to ? (
+                              <>
+                                {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                                {format(dateRange.to, "dd/MM/yyyy")}
+                              </>
+                            ) : (
+                              format(dateRange.from, "dd/MM/yyyy")
+                            )
+                          ) : (
+                            "เลือกช่วงวันที่"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="p-3 border-b bg-gray-50">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            เลือกช่วงเวลา
+                          </p>
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedReport(report);
-                              }}
+                              onClick={() => setQuickDateRange(7)}
+                              className="text-xs"
                             >
-                              <Eye className="h-4 w-4" />
+                              7 วันที่แล้ว
                             </Button>
-                            {isOpen ? (
-                              <ChevronUp className="h-5 w-5 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-gray-400" />
-                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuickDateRange(30)}
+                              className="text-xs"
+                            >
+                              30 วันที่แล้ว
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuickDateRange(90)}
+                              className="text-xs"
+                            >
+                              3 เดือนที่แล้ว
+                            </Button>
                           </div>
                         </div>
-                      </CardContent>
-                    </CollapsibleTrigger>
+                        <div className="p-3">
+                          <CustomCalendar
+                            mode="range"
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={1}
+                            className="rounded-md"
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
-                    <CollapsibleContent>
-                      <CardContent className="pt-0 pb-4 px-4">
-                        <div className="border-t pt-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-gray-600">
-                                หมวดหมู่ความปลอดภัย
-                              </p>
-                              <p className="font-medium text-sm">
-                                {report.safetyCategory}
-                              </p>
+                  {/* Clear date range button */}
+                  {(dateRange.from || dateRange.to) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearDateRange}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      ล้างวันที่
+                    </Button>
+                  )}
+
+                  {/* Show filtered results count */}
+                  <div className="text-sm text-gray-600 whitespace-nowrap">
+                    แสดง {filteredReports.length} จาก {reports.length} รายการ
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reports List with Accordion */}
+          <div className="space-y-4 h-[400px] overflow-y-auto">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+              </div>
+            ) : filteredReports.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">
+                    ไม่พบรายงานที่ตรงกับเงื่อนไขการค้นหา
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredReports.map((report) => {
+                const statusInfo = getStatusInfo(report.status);
+                const StatusIcon = statusInfo.icon;
+                const isOpen = openAccordions.has(report.id);
+
+                return (
+                  <Card
+                    key={report.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
+                    <Collapsible
+                      open={isOpen}
+                      onOpenChange={() => toggleAccordion(report.id)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <CardContent className="p-4 cursor-pointer hover:bg-gray-50">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  รายงาน #{report.id}
+                                </h3>
+                                <Badge className={statusInfo.color}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {statusInfo.label}
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                                <div>
+                                  <span className="text-gray-600">
+                                    วันที่:{" "}
+                                  </span>
+                                  <span className="font-medium">
+                                    {format(report.date, "dd/MM/yyyy")}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">แผนก: </span>
+                                  <span className="font-medium">
+                                    {report.department}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">
+                                    Safe/Unsafe:{" "}
+                                  </span>
+                                  <span className="text-green-600 font-medium">
+                                    {report.safeCount}
+                                  </span>
+                                  <span className="text-gray-400 mx-1">/</span>
+                                  <span className="text-red-600 font-medium">
+                                    {report.unsafeCount}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm text-gray-600">
-                                งานที่สังเกต
-                              </p>
-                              <p className="font-medium">
-                                {report.observedWork}
-                              </p>
+
+                            <div className="flex items-center space-x-2 ml-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedReport(report);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {isOpen ? (
+                                <ChevronUp className="h-5 w-5 text-gray-400" />
+                              ) : (
+                                <ChevronDown className="h-5 w-5 text-gray-400" />
+                              )}
                             </div>
-                            {report.subCategory && (
-                              <div className="md:col-span-2">
+                          </div>
+                        </CardContent>
+                      </CollapsibleTrigger>
+
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 pb-4 px-4">
+                          <div className="border-t pt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
                                 <p className="text-sm text-gray-600">
-                                  หมวดหมู่ย่อย
+                                  หมวดหมู่ความปลอดภัย
                                 </p>
                                 <p className="font-medium text-sm">
-                                  {report.subCategory}
+                                  {report.safetyCategory}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-600">
+                                  งานที่สังเกต
+                                </p>
+                                <p className="font-medium">
+                                  {report.observedWork}
+                                </p>
+                              </div>
+                              {report.subCategory && (
+                                <div className="md:col-span-2">
+                                  <p className="text-sm text-gray-600">
+                                    หมวดหมู่ย่อย
+                                  </p>
+                                  <p className="font-medium text-sm">
+                                    {report.subCategory}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {report.status === "approved" &&
+                              report.approvedDate && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                                  <p className="text-sm text-green-800">
+                                    <strong>อนุมัติเมื่อ:</strong>{" "}
+                                    {format(
+                                      report.approvedDate,
+                                      "dd MMMM yyyy",
+                                      {
+                                        locale: th,
+                                      }
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-green-800">
+                                    <strong>อนุมัติโดย:</strong>{" "}
+                                    {report.approvedBy}
+                                  </p>
+                                  {report.adminNote && (
+                                    <p className="text-sm text-green-800 mt-1">
+                                      <strong>หมายเหตุ:</strong>{" "}
+                                      {report.adminNote}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                            {report.status === "rejected" &&
+                              report.adminNote && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
+                                  <p className="text-sm text-red-800">
+                                    <strong>เหตุผลที่ไม่อนุมัติ:</strong>{" "}
+                                    {report.adminNote}
+                                  </p>
+                                </div>
+                              )}
+
+                            {report.status === "pending" && (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
+                                <p className="text-sm text-yellow-800">
+                                  🕐
+                                  รายงานนี้อยู่ระหว่างการพิจารณาโดยผู้ดูแลระบบ
                                 </p>
                               </div>
                             )}
                           </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </Card>
+                );
+              })
+            )}
+          </div>
 
-                          {report.status === "approved" &&
-                            report.approvedDate && (
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                                <p className="text-sm text-green-800">
-                                  <strong>อนุมัติเมื่อ:</strong>{" "}
-                                  {format(report.approvedDate, "dd MMMM yyyy", {
-                                    locale: th,
-                                  })}
-                                </p>
-                                <p className="text-sm text-green-800">
-                                  <strong>อนุมัติโดย:</strong>{" "}
-                                  {report.approvedBy}
-                                </p>
-                                {report.adminNote && (
-                                  <p className="text-sm text-green-800 mt-1">
-                                    <strong>หมายเหตุ:</strong>{" "}
-                                    {report.adminNote}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-
-                          {report.status === "rejected" && report.adminNote && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
-                              <p className="text-sm text-red-800">
-                                <strong>เหตุผลที่ไม่อนุมัติ:</strong>{" "}
-                                {report.adminNote}
-                              </p>
-                            </div>
-                          )}
-
-                          {report.status === "pending" && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
-                              <p className="text-sm text-yellow-800">
-                                🕐 รายงานนี้อยู่ระหว่างการพิจารณาโดยผู้ดูแลระบบ
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Card>
-              );
-            })
-          )}
-        </div>
-
-        {/* Export Button */}
-        {/* {filteredReports.length > 0 && (
+          {/* Export Button */}
+          {/* {filteredReports.length > 0 && (
           <div className="mt-6 text-center">
             <Button
               variant="outline"
@@ -1384,106 +1422,114 @@ function EmployeeReportStatus() {
             </Button>
           </div>
         )} */}
-      </div>
+        </div>
 
-      {/* Report Detail Modal (Simple version) */}
-      {selectedReport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">
-                  รายละเอียดรายงาน #{selectedReport.id}
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedReport(null)}
-                >
-                  ✕
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">วันที่รายงาน</p>
-                    <p className="font-medium">
-                      {format(selectedReport.date, "dd MMMM yyyy", {
-                        locale: th,
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">สถานะ</p>
-                    <Badge
-                      className={getStatusInfo(selectedReport.status).color}
-                    >
-                      {getStatusInfo(selectedReport.status).label}
-                    </Badge>
-                  </div>
+        {/* Report Detail Modal (Simple version) */}
+        {selectedReport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">
+                    รายละเอียดรายงาน #{selectedReport.id}
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedReport(null)}
+                  >
+                    ✕
+                  </Button>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-600">หมวดหมู่ความปลอดภัย</p>
-                  <p className="font-medium">{selectedReport.safetyCategory}</p>
-                </div>
-
-                {selectedReport.subCategory && (
-                  <div>
-                    <p className="text-sm text-gray-600">หมวดหมู่ย่อย</p>
-                    <p className="font-medium">{selectedReport.subCategory}</p>
-                  </div>
-                )}
-
-                <div>
-                  <p className="text-sm text-gray-600">งานที่สังเกต</p>
-                  <p className="font-medium">{selectedReport.observedWork}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-600">แผนกที่สังเกต</p>
-                  <p className="font-medium">{selectedReport.department}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">พฤติกรรมปลอดภัย</p>
-                    <p className="font-medium text-green-600">
-                      {selectedReport.safeCount} คน
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">พฤติกรรมไม่ปลอดภัย</p>
-                    <p className="font-medium text-red-600">
-                      {selectedReport.unsafeCount} คน
-                    </p>
-                  </div>
-                </div>
-
-                {selectedReport.adminNote && (
-                  <div>
-                    <p className="text-sm text-gray-600">หมายเหตุจากผู้ดูแล</p>
-                    <div
-                      className={cn(
-                        "p-3 rounded-lg border",
-                        selectedReport.status === "approved"
-                          ? "bg-green-50 border-green-200"
-                          : selectedReport.status === "rejected"
-                          ? "bg-red-50 border-red-200"
-                          : "bg-gray-50 border-gray-200"
-                      )}
-                    >
-                      <p className="text-sm">{selectedReport.adminNote}</p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">วันที่รายงาน</p>
+                      <p className="font-medium">
+                        {format(selectedReport.date, "dd MMMM yyyy", {
+                          locale: th,
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">สถานะ</p>
+                      <Badge
+                        className={getStatusInfo(selectedReport.status).color}
+                      >
+                        {getStatusInfo(selectedReport.status).label}
+                      </Badge>
                     </div>
                   </div>
-                )}
+
+                  <div>
+                    <p className="text-sm text-gray-600">หมวดหมู่ความปลอดภัย</p>
+                    <p className="font-medium">
+                      {selectedReport.safetyCategory}
+                    </p>
+                  </div>
+
+                  {selectedReport.subCategory && (
+                    <div>
+                      <p className="text-sm text-gray-600">หมวดหมู่ย่อย</p>
+                      <p className="font-medium">
+                        {selectedReport.subCategory}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-sm text-gray-600">งานที่สังเกต</p>
+                    <p className="font-medium">{selectedReport.observedWork}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600">แผนกที่สังเกต</p>
+                    <p className="font-medium">{selectedReport.department}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">พฤติกรรมปลอดภัย</p>
+                      <p className="font-medium text-green-600">
+                        {selectedReport.safeCount} คน
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        พฤติกรรมไม่ปลอดภัย
+                      </p>
+                      <p className="font-medium text-red-600">
+                        {selectedReport.unsafeCount} คน
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedReport.adminNote && (
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        หมายเหตุจากผู้ดูแล
+                      </p>
+                      <div
+                        className={cn(
+                          "p-3 rounded-lg border",
+                          selectedReport.status === "approved"
+                            ? "bg-green-50 border-green-200"
+                            : selectedReport.status === "rejected"
+                            ? "bg-red-50 border-red-200"
+                            : "bg-gray-50 border-gray-200"
+                        )}
+                      >
+                        <p className="text-sm">{selectedReport.adminNote}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </Suspense>
   );
 }

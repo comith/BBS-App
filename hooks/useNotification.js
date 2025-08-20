@@ -4,52 +4,36 @@ import { useEffect, useState } from 'react';
 
 export function useNotification() {
   const [permission, setPermission] = useState('default');
-  const [swRegistration, setSwRegistration] = useState(null);
   const [pushSubscription, setPushSubscription] = useState(null);
-  const [isSwReady, setIsSwReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [canUseNotification, setCanUseNotification] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
       
-      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
-      setCanUseNotification('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && isSecure);
-
       if ('Notification' in window) {
         setPermission(Notification.permission);
-      }
-
-      if ('serviceWorker' in navigator && canUseNotification) {
-        registerServiceWorker();
+        
+        // ขอ permission อัตโนมัติเมื่อโหลดหน้า
+        if (Notification.permission === 'default') {
+          // รอ 2 วินาทีก่อนขอ permission เพื่อให้ user เห็นหน้าเว็บก่อน
+          setTimeout(() => {
+            requestPermission();
+          }, 2000);
+        }
       }
     }
   }, []);
 
-  const registerServiceWorker = async () => {
-    try {
-      console.log('Registering service worker...');
-      
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Service Worker registered:', registration);
-      
-      await navigator.serviceWorker.ready;
-      console.log('Service Worker is ready');
-      
-      setSwRegistration(registration);
-      setIsSwReady(true);
-      
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        setPushSubscription(existingSubscription);
-        console.log('Existing subscription found:', existingSubscription);
-      }
-    } catch (error) {
-      console.error('Service Worker registration failed:', error);
-    }
+  // ตรวจสอบว่าสามารถใช้ notification ได้หรือไม่
+  const canUseNotification = () => {
+    if (typeof window === 'undefined') return false;
+    
+    const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && isSecure;
   };
 
+  // แปลง VAPID key
   const urlBase64ToUint8Array = (base64String) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
@@ -65,50 +49,7 @@ export function useNotification() {
     return outputArray;
   };
 
-  const subscribeToPush = async () => {
-    console.log('Attempting to subscribe to push...');
-
-    try {
-      // รอให้ Service Worker พร้อมก่อน
-      const registration = await waitForServiceWorkerReady();
-      
-      // ตรวจสอบว่า registration ไม่เป็น null
-      if (!registration || !registration.pushManager) {
-        throw new Error('Service Worker registration หรือ pushManager ไม่พร้อม');
-      }
-      
-      if (permission !== 'granted') {
-        console.warn('ไม่มี permission สำหรับ notification');
-        return null;
-      }
-
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
-      
-      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
-      console.log('Using registration:', registration);
-      console.log('PushManager available:', !!registration.pushManager);
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerKey
-      });
-
-      console.log('Push subscription successful:', subscription);
-      setPushSubscription(subscription);
-
-      await saveSubscriptionToServer(subscription);
-      
-      return subscription;
-    } catch (error) {
-      console.error('Push subscription failed:', error);
-      
-      // ลอง fallback method
-      console.log('Trying fallback subscription method...');
-      return await fallbackSubscribe();
-    }
-  };
-
+  // บันทึก subscription ไปยัง server
   const saveSubscriptionToServer = async (subscription) => {
     try {
       const response = await fetch('/api/subscribe', {
@@ -124,37 +65,48 @@ export function useNotification() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Subscription saved successfully:', result);
+        console.log('✅ Subscription saved:', result.message);
+        return true;
       } else {
-        console.error('Failed to save subscription:', response.status);
+        console.error('❌ Failed to save subscription:', response.status);
+        return false;
       }
     } catch (error) {
-      console.error('Error saving subscription:', error);
+      console.error('❌ Error saving subscription:', error);
+      return false;
     }
   };
 
-  // ฟังก์ชัน fallback subscription
-  const fallbackSubscribe = async () => {
+  // ขอ permission และ subscribe ในคำสั่งเดียว
+  const requestPermission = async () => {
+    if (!canUseNotification()) {
+      console.warn('❌ Notification ไม่รองรับในสภาพแวดล้อมนี้');
+      return false;
+    }
+
     try {
-      console.log('Starting fallback subscription...');
+      // ขอ permission
+      const result = await Notification.requestPermission();
+      setPermission(result);
       
-      // ลงทะเบียน Service Worker ใหม่โดยตรง
+      if (result !== 'granted') {
+        console.warn('❌ ไม่ได้รับ permission');
+        return false;
+      }
+
+      console.log('✅ Permission granted, starting subscription...');
+
+      // ลงทะเบียน Service Worker
       const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Fallback: SW registered', registration);
-      
-      // รอให้พร้อม
       await navigator.serviceWorker.ready;
-      console.log('Fallback: SW ready');
-      
-      // อัปเดต state
-      setSwRegistration(registration);
-      setIsSwReady(true);
+      console.log('✅ Service Worker ready');
       
       // ตรวจสอบ pushManager
       if (!registration.pushManager) {
-        throw new Error('PushManager ไม่รองรับในเบราว์เซอร์นี้');
+        throw new Error('PushManager ไม่รองรับ');
       }
       
+      // Subscribe
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
       const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
       
@@ -163,151 +115,56 @@ export function useNotification() {
         applicationServerKey: applicationServerKey
       });
       
-      console.log('Fallback subscription successful:', subscription);
+      console.log('✅ Push subscription successful');
       setPushSubscription(subscription);
       
+      // บันทึกไปยัง server
       await saveSubscriptionToServer(subscription);
       
-      return subscription;
+      return true;
     } catch (error) {
-      console.error('Fallback subscription failed:', error);
-      return null;
+      console.error('❌ Setup failed:', error);
+      return false;
     }
   };
 
-  // ฟังก์ชันรอให้ Service Worker พร้อม
-  const waitForServiceWorkerReady = async (maxWait = 30000) => {
-    console.log('Waiting for Service Worker to be ready...');
-    
-    const startTime = Date.now();
-    
-    // ถ้า SW พร้อมแล้ว return ทันที
-    if (swRegistration && isSwReady) {
-      console.log('Service Worker already ready!');
-      return swRegistration;
-    }
-    
-    // รอให้ SW ลงทะเบียนและพร้อม
-    while (Date.now() - startTime < maxWait) {
-      // เช็คว่ามี SW registration หรือไม่
-      if (swRegistration && isSwReady) {
-        console.log('Service Worker is ready!');
-        return swRegistration;
-      }
-      
-      // ถ้ายังไม่มี ลองลงทะเบียนใหม่
-      if (!swRegistration && 'serviceWorker' in navigator) {
-        try {
-          console.log('Attempting to register Service Worker...');
-          const registration = await navigator.serviceWorker.register('/sw.js');
-          await navigator.serviceWorker.ready;
-          setSwRegistration(registration);
-          setIsSwReady(true);
-          console.log('Service Worker registered and ready!');
-          return registration;
-        } catch (error) {
-          console.warn('SW registration attempt failed:', error);
-        }
-      }
-      
-      // รอ 500ms แล้วลองใหม่
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    throw new Error(`Service Worker ไม่พร้อมภายใน ${maxWait/1000} วินาที`);
-  };
-
-  const checkSubscriptionStatus = async () => {
-    if (swRegistration && isSwReady) {
-      try {
-        const currentSubscription = await swRegistration.pushManager.getSubscription();
-        
-        if (!currentSubscription && pushSubscription) {
-          console.log('Subscription หายไป กำลัง re-subscribe...');
-          setPushSubscription(null);
-          // Auto re-subscribe
-          await subscribeToPush();
-        } else if (currentSubscription && !pushSubscription) {
-          console.log('พบ subscription ที่ยังใช้ได้');
-          setPushSubscription(currentSubscription);
-        }
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
-      }
-    }
-  };
-
-  // useEffect สำหรับเช็คสถานะ subscription
-  useEffect(() => {
-    if (swRegistration && isSwReady) {
-      // เช็คสถานะทุก 30 วินาที
-      const interval = setInterval(() => {
-        checkSubscriptionStatus();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [swRegistration, isSwReady, pushSubscription]); // เพิ่ม pushSubscription เป็น dependency
-
-  const unsubscribeFromPush = async () => {
+  // ยกเลิก subscription
+  const unsubscribe = async () => {
     if (pushSubscription) {
       try {
         await pushSubscription.unsubscribe();
         setPushSubscription(null);
-        console.log('Unsubscribed from push notifications');
+        console.log('✅ Unsubscribed successfully');
+        return true;
       } catch (error) {
-        console.error('Error unsubscribing:', error);
+        console.error('❌ Unsubscribe failed:', error);
+        return false;
       }
-    }
-  };
-
-  const requestPermission = async () => {
-    if (!canUseNotification) {
-      console.warn('Notification ไม่สามารถใช้งานได้ในสภาพแวดล้อมนี้');
-      return false;
-    }
-
-    if ('Notification' in window) {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      
-      if (result === 'granted') {
-        try {
-          // รอให้ Service Worker พร้อมก่อน subscribe (รอนานขึ้น)
-          console.log('Permission granted, waiting for Service Worker...');
-          await waitForServiceWorkerReady(30000); // รอ 30 วินาที
-          await subscribeToPush();
-        } catch (error) {
-          console.error('Error during SW setup or subscription:', error);
-          // ไม่ throw error ให้ permission ยังคงเป็น granted
-        }
-      }
-      
-      return result === 'granted';
     }
     return false;
   };
 
+  // ส่ง Local Notification
   const sendLocalNotification = (title, body, options = {}) => {
     if (permission !== 'granted') {
-      console.warn('ไม่มีสิทธิ์ส่ง notification');
-      return;
+      console.warn('❌ ไม่มีสิทธิ์ส่ง notification');
+      return false;
     }
 
-    const defaultOptions = {
-      body: body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'local-notification',
-      ...options
-    };
-
-    if (swRegistration) {
-      swRegistration.showNotification(title, defaultOptions);
-    } else {
-      new Notification(title, defaultOptions);
+    try {
+      new Notification(title, {
+        body: body,
+        icon: '/favicon.ico',
+        ...options
+      });
+      return true;
+    } catch (error) {
+      console.error('❌ Local notification failed:', error);
+      return false;
     }
   };
 
+  // ส่ง Push Notification
   const sendPushNotification = async (title, body, options = {}) => {
     try {
       const response = await fetch('/api/send-notification', {
@@ -326,66 +183,41 @@ export function useNotification() {
       const result = await response.json();
       
       if (result.success) {
-        console.log('Push notification sent successfully:', result.message);
+        console.log('✅ Push notification sent:', result.message);
         return true;
       } else {
-        console.error('Failed to send push notification:', result.error);
+        console.error('❌ Push notification failed:', result.error);
         return false;
       }
     } catch (error) {
-      console.error('Error sending push notification:', error);
+      console.error('❌ Error sending push notification:', error);
       return false;
     }
   };
 
+  // ส่ง push notification ทดสอบ
   const sendTestPush = async () => {
     return await sendPushNotification(
       'ทดสอบ Push Notification',
-      'นี่คือข้อความทดสอบจาก Server!',
-      {
-        icon: '/favicon.ico',
-        url: '/'
-      }
+      'นี่คือข้อความทดสอบจาก Server! 🚀'
     );
   };
 
-  // เพิ่มฟังก์ชันเช็คสถานะแบบ manual
-  const manualCheckStatus = async () => {
-    console.log('=== Manual Status Check ===');
-    console.log('Permission:', permission);
-    console.log('SW Ready:', isSwReady);
-    console.log('Push Enabled:', pushSubscription !== null);
-    console.log('Push Subscription:', pushSubscription);
-    
-    if (swRegistration) {
-      const currentSub = await swRegistration.pushManager.getSubscription();
-      console.log('Current SW Subscription:', currentSub);
-      
-      if (currentSub && !pushSubscription) {
-        console.log('Found subscription, updating state...');
-        setPushSubscription(currentSub);
-      }
-    }
-  };
-
   return {
+    // States
     permission,
+    isPushEnabled: pushSubscription !== null,
+    isMobile,
+    
+    // Actions
     requestPermission,
-    swRegistration,
-    pushSubscription,
-    subscribeToPush,
-    unsubscribeFromPush,
+    unsubscribe,
     sendLocalNotification,
     sendPushNotification,
     sendTestPush,
-    manualCheckStatus, // เพิ่มฟังก์ชันนี้
-    waitForServiceWorkerReady, // เพิ่มฟังก์ชันนี้
-    fallbackSubscribe, // เพิ่มฟังก์ชันนี้
-    canSendNotification: permission === 'granted' && canUseNotification,
-    isPushEnabled: pushSubscription !== null,
-    isSwReady,
-    isMobile,
-    canUseNotification,
+    
+    // Helper
+    canUseNotification: canUseNotification(),
     needsHttps: isMobile && location.protocol !== 'https:'
   };
 }

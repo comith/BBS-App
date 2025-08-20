@@ -28,6 +28,21 @@ export default function AndroidNotificationFix() {
     }
   }, [permission]);
 
+
+  useEffect(() => {
+  // ปิด beforeinstallprompt event
+  const handleBeforeInstallPrompt = (e: Event) => {
+    e.preventDefault();
+    console.log('PWA install prompt blocked');
+  };
+
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  
+  return () => {
+    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  };
+}, []);
+
   const handleEnableNotifications = async () => {
     console.log('Android: Attempting to enable notifications...');
     

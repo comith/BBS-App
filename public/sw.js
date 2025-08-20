@@ -79,3 +79,48 @@ self.addEventListener('activate', function(event) {
   console.log('Service Worker: Activated');
   event.waitUntil(self.clients.claim()); // ควบคุม clients ทันที
 });
+
+
+self.addEventListener('install', function(event) {
+  console.log('SW: Installing on Android');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+  console.log('SW: Activated on Android');
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('push', function(event) {
+  console.log('SW: Push received on Android');
+  
+  let notificationData = {
+    title: 'การแจ้งเตือน Android',
+    body: 'ข้อความจาก service worker',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico'
+  };
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = { ...notificationData, ...data };
+    } catch (e) {
+      console.log('Error parsing push data:', e);
+    }
+  }
+
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    tag: 'android-notification',
+    requireInteraction: true, // สำคัญสำหรับ Android
+    vibrate: [200, 100, 200],
+    data: notificationData.data || {}
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, options)
+  );
+});

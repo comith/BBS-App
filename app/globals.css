@@ -112,6 +112,15 @@
   --sidebar-ring: oklch(0.646 0.222 41.116);
 }
 
+.mobile-notification-button {
+  position: fixed !important;
+  bottom: 1rem !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
 
 @layer base {
   * {

@@ -18,12 +18,32 @@ export default function NotificationTest() {
     isMobile,
     needsHttps,
     isSwReady,
-    waitForServiceWorkerReady
+    waitForServiceWorkerReady,
+    fallbackSubscribe,
   } = useNotification();
 
   const [customTitle, setCustomTitle] = useState("");
   const [customBody, setCustomBody] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleDebugInfo = () => {
+    console.log("=== Debug Information ===");
+    console.log("Permission:", permission);
+    console.log("SW Registration:", swRegistration);
+    console.log("SW Ready:", isSwReady);
+    console.log("Push Subscription:", pushSubscription);
+    console.log("Can Use Notification:", canUseNotification);
+    console.log("Service Worker Support:", "serviceWorker" in navigator);
+    console.log("Push Manager Support:", "PushManager" in window);
+
+    if (swRegistration) {
+      console.log("SW Registration Details:", {
+        scope: swRegistration.scope,
+        active: !!swRegistration.active,
+        pushManager: !!swRegistration.pushManager,
+      });
+    }
+  };
 
   const handleRequestPermission = async () => {
     const granted = await requestPermission();
@@ -43,6 +63,24 @@ export default function NotificationTest() {
         vibrate: [200, 100, 200],
       }
     );
+  };
+
+  const handleFallbackSubscribe = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Starting fallback subscribe...");
+      const subscription = await fallbackSubscribe();
+      if (subscription) {
+        alert("Fallback Subscribe สำเร็จ!");
+      } else {
+        alert("Fallback Subscribe ไม่สำเร็จ");
+      }
+    } catch (error) {
+      console.error("Fallback error:", error);
+      alert("Fallback Error: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSendTestPush = async () => {
@@ -118,31 +156,65 @@ export default function NotificationTest() {
   };
 
   const handleTestSwReady = async () => {
-  try {
-    console.log('Testing Service Worker readiness...');
-    const registration = await waitForServiceWorkerReady();
-    console.log('Service Worker is ready:', registration);
-    alert('Service Worker พร้อมแล้ว!');
-  } catch (error) {
-    console.error('Service Worker test failed:', error);
-    alert('Service Worker ไม่พร้อม: ' + error.message);
-  }
-};
-
-const handleManualSubscribe = async () => {
-  try {
-    console.log('Manual subscribe attempt...');
-    const subscription = await subscribeToPush();
-    if (subscription) {
-      alert('Subscribe สำเร็จ!');
-    } else {
-      alert('Subscribe ไม่สำเร็จ');
+    try {
+      console.log("Testing Service Worker readiness...");
+      const registration = await waitForServiceWorkerReady();
+      console.log("Service Worker is ready:", registration);
+      alert("Service Worker พร้อมแล้ว!");
+    } catch (error) {
+      console.error("Service Worker test failed:", error);
+      alert("Service Worker ไม่พร้อม: " + error.message);
     }
-  } catch (error) {
-    console.error('Manual subscribe error:', error);
-    alert('Error: ' + error.message);
-  }
-};
+  };
+
+  const handleManualSubscribe = async () => {
+    try {
+      console.log("Manual subscribe attempt...");
+      const subscription = await subscribeToPush();
+      if (subscription) {
+        alert("Subscribe สำเร็จ!");
+      } else {
+        alert("Subscribe ไม่สำเร็จ");
+      }
+    } catch (error) {
+      console.error("Manual subscribe error:", error);
+      alert("Error: " + error.message);
+    }
+  };
+
+  const handleRequestPermissionOnly = async () => {
+    if ("Notification" in window) {
+      const result = await Notification.requestPermission();
+      if (result === "granted") {
+        alert("ได้รับ Permission แล้ว! กดปุ่ม Subscribe แยกต่างหาก");
+      } else {
+        alert("ไม่ได้รับ Permission");
+      }
+    }
+  };
+
+  const handleSubscribeOnly = async () => {
+    if (permission !== "granted") {
+      alert("ต้องได้รับ Permission ก่อน");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log("Starting subscription process...");
+      const subscription = await subscribeToPush();
+      if (subscription) {
+        alert("Subscribe สำเร็จ!");
+      } else {
+        alert("Subscribe ไม่สำเร็จ (ดู Console)");
+      }
+    } catch (error) {
+      console.error("Subscribe error:", error);
+      alert("Subscribe Error: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div
@@ -151,7 +223,7 @@ const handleManualSubscribe = async () => {
         border: "1px solid #ccc",
         margin: "20px",
         maxWidth: "600px",
-        display:'none'
+        display: "none",
       }}
     >
       <h3>🔔 PWA Notification Test</h3>
@@ -422,21 +494,134 @@ const handleManualSubscribe = async () => {
         📋 ดู Subscriptions
       </button>
 
-      <button 
-  onClick={handleTestSwReady}
-  style={{ padding: '8px 16px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}
->
-  ⏳ ทดสอบ SW Ready
-</button>
+      <button
+        onClick={handleTestSwReady}
+        style={{
+          padding: "8px 16px",
+          backgroundColor: "#ffc107",
+          color: "black",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          marginRight: "10px",
+        }}
+      >
+        ⏳ ทดสอบ SW Ready
+      </button>
 
-{permission === 'granted' && !isPushEnabled && (
-  <button 
-    onClick={handleManualSubscribe}
-    style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}
-  >
-    🔄 Manual Subscribe
-  </button>
-)}
+      {permission === "granted" && !isPushEnabled && (
+        <button
+          onClick={handleManualSubscribe}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#28a745",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            marginRight: "10px",
+          }}
+        >
+          🔄 Manual Subscribe
+        </button>
+      )}
+
+      {permission === "default" && (
+        <>
+          <button
+            onClick={handleRequestPermissionOnly}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginRight: "10px",
+            }}
+          >
+            🔑 ขอ Permission
+          </button>
+        </>
+      )}
+
+      {permission === "granted" && !isPushEnabled && (
+        <>
+          <button
+            onClick={handleSubscribeOnly}
+            disabled={isLoading}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: isLoading ? "#6c757d" : "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              marginRight: "10px",
+            }}
+          >
+            {isLoading ? "⏳ กำลัง Subscribe..." : "📢 Subscribe Push"}
+          </button>
+
+          <button
+            onClick={handleTestSwReady}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#ffc107",
+              color: "black",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginRight: "10px",
+            }}
+          >
+            ⏳ ทดสอบ SW
+          </button>
+        </>
+      )}
+
+      <div
+        style={{
+          marginTop: "15px",
+          padding: "10px",
+          background: "#f8f9fa",
+          borderRadius: "4px",
+        }}
+      >
+        <h5>🛠️ Debug Tools</h5>
+        <button
+          onClick={handleDebugInfo}
+          style={{
+            padding: "6px 12px",
+            backgroundColor: "#17a2b8",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            marginRight: "10px",
+          }}
+        >
+          🔍 Debug Info
+        </button>
+
+        {permission === "granted" && !isPushEnabled && (
+          <button
+            onClick={handleFallbackSubscribe}
+            disabled={isLoading}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: isLoading ? "#6c757d" : "#dc3545",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              marginRight: "10px",
+            }}
+          >
+            {isLoading ? "⏳ กำลังลอง..." : "🚨 Fallback Subscribe"}
+          </button>
+        )}
+      </div>
 
       <p>
         <strong>Service Worker Ready:</strong>{" "}

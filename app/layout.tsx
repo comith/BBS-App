@@ -1,7 +1,11 @@
+'use client'
+import * as React from 'react';
 import { Providers } from './providers'
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { useNotification } from '@/hooks/useNotification';
+import NotificationTest from '@/components/NotificationTest';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +27,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { requestPermission } = useNotification();
+
+  React.useEffect(() => {
+    // ขอ permission หลังจากผู้ใช้ใช้งานแอปสักครู่
+    const timer = setTimeout(() => {
+      requestPermission();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [requestPermission]);
 
   return (
     <html lang="en">
@@ -35,7 +49,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-        {children}
+          {children}
+          <NotificationTest />
         </Providers>
       </body>
     </html>

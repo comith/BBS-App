@@ -7,6 +7,7 @@ import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotificationManager from "@/components/NotificationManager";
 import MobileNotificationButton from '@/components/MobileNotificationButton';
+import AndroidNotificationFix from '@/components/AndroidNotificationFix';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +42,7 @@ export default function RootLayout({
           <ErrorBoundary>
             <NotificationManager />
           </ErrorBoundary>
-          <MobileNotificationButton />
+          <AndroidNotificationFix />
           {children}
         </Providers>
       </body>

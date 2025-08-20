@@ -94,56 +94,62 @@ export function useNotification() {
 
   // ขอ permission และ subscribe ในคำสั่งเดียว
   const requestPermission = async () => {
-    if (!canUseNotification()) {
-      console.warn("❌ Notification ไม่รองรับในสภาพแวดล้อมนี้");
+  if (!canUseNotification()) {
+    console.warn('Notification ไม่รองรับในสภาพแวดล้อมนี้');
+    return false;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    
+    if (result !== 'granted') {
+      console.warn('ไม่ได้รับ permission:', result);
       return false;
     }
 
-    try {
-      // ขอ permission
-      const result = await Notification.requestPermission();
-      setPermission(result);
+    console.log('Permission granted, setting up service worker...');
 
-      if (result !== "granted") {
-        console.warn("❌ ไม่ได้รับ permission");
-        return false;
+    // สำหรับ Android ให้ delay มากขึ้น
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const delay = isAndroid ? 2000 : 1000;
+
+    setTimeout(async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        console.log('Service Worker ready on Android');
+        
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
+        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey
+        });
+        
+        setPushSubscription(subscription);
+        await saveSubscriptionToServer(subscription);
+        
+        // ส่ง notification ทดสอบ
+        setTimeout(() => {
+          new Notification('Android ใช้งานได้แล้ว!', {
+            body: 'การแจ้งเตือนทำงานปกติบน Android',
+            icon: '/favicon.ico'
+          });
+        }, 500);
+        
+      } catch (error) {
+        console.error('Android setup error:', error);
       }
-
-      console.log("✅ Permission granted, starting subscription...");
-
-      // ลงทะเบียน Service Worker
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-      console.log("✅ Service Worker ready");
-
-      // ตรวจสอบ pushManager
-      if (!registration.pushManager) {
-        throw new Error("PushManager ไม่รองรับ");
-      }
-
-      // Subscribe
-      const vapidPublicKey =
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-        "BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE";
-      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerKey,
-      });
-
-      console.log("✅ Push subscription successful");
-      setPushSubscription(subscription);
-
-      // บันทึกไปยัง server
-      await saveSubscriptionToServer(subscription);
-
-      return true;
-    } catch (error) {
-      console.error("❌ Setup failed:", error);
-      return false;
-    }
-  };
+    }, delay);
+    
+    return true;
+  } catch (error) {
+    console.error('Android permission error:', error);
+    return false;
+  }
+};
 
   // ยกเลิก subscription
   const unsubscribe = async () => {

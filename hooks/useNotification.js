@@ -68,17 +68,15 @@ export function useNotification() {
   const subscribeToPush = async () => {
     console.log('Attempting to subscribe to push...');
 
-    if (!swRegistration || !isSwReady) {
-      console.warn('Service Worker ยังไม่พร้อม กรุณารอสักครู่');
-      return null;
-    }
-
-    if (permission !== 'granted') {
-      console.warn('ไม่มี permission สำหรับ notification');
-      return null;
-    }
-
     try {
+      // รอให้ Service Worker พร้อมก่อน
+      await waitForServiceWorkerReady();
+      
+      if (permission !== 'granted') {
+        console.warn('ไม่มี permission สำหรับ notification');
+        return null;
+      }
+
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
       
       const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
@@ -122,6 +120,25 @@ export function useNotification() {
     } catch (error) {
       console.error('Error saving subscription:', error);
     }
+  };
+
+  // ฟังก์ชันรอให้ Service Worker พร้อม
+  const waitForServiceWorkerReady = async (maxWait = 10000) => {
+    console.log('Waiting for Service Worker to be ready...');
+    
+    const startTime = Date.now();
+    
+    while (!swRegistration || !isSwReady) {
+      if (Date.now() - startTime > maxWait) {
+        throw new Error('Service Worker ไม่พร้อมภายในเวลาที่กำหนด');
+      }
+      
+      // รอ 100ms แล้วลองใหม่
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('Service Worker is ready!');
+    return swRegistration;
   };
 
   const checkSubscriptionStatus = async () => {
@@ -177,7 +194,9 @@ export function useNotification() {
       const result = await Notification.requestPermission();
       setPermission(result);
       
-      if (result === 'granted' && swRegistration && isSwReady) {
+      if (result === 'granted') {
+        // รอให้ Service Worker พร้อมก่อน subscribe
+        await waitForServiceWorkerReady();
         await subscribeToPush();
       }
       
@@ -278,6 +297,7 @@ export function useNotification() {
     sendPushNotification,
     sendTestPush,
     manualCheckStatus, // เพิ่มฟังก์ชันนี้
+    waitForServiceWorkerReady, // เพิ่มฟังก์ชันนี้
     canSendNotification: permission === 'granted' && canUseNotification,
     isPushEnabled: pushSubscription !== null,
     isSwReady,

@@ -18,6 +18,7 @@ export default function NotificationTest() {
     isMobile,
     needsHttps,
     isSwReady,
+    waitForServiceWorkerReady
   } = useNotification();
 
   const [customTitle, setCustomTitle] = useState("");
@@ -115,6 +116,33 @@ export default function NotificationTest() {
       console.error("Error fetching subscriptions:", error);
     }
   };
+
+  const handleTestSwReady = async () => {
+  try {
+    console.log('Testing Service Worker readiness...');
+    const registration = await waitForServiceWorkerReady();
+    console.log('Service Worker is ready:', registration);
+    alert('Service Worker พร้อมแล้ว!');
+  } catch (error) {
+    console.error('Service Worker test failed:', error);
+    alert('Service Worker ไม่พร้อม: ' + error.message);
+  }
+};
+
+const handleManualSubscribe = async () => {
+  try {
+    console.log('Manual subscribe attempt...');
+    const subscription = await subscribeToPush();
+    if (subscription) {
+      alert('Subscribe สำเร็จ!');
+    } else {
+      alert('Subscribe ไม่สำเร็จ');
+    }
+  } catch (error) {
+    console.error('Manual subscribe error:', error);
+    alert('Error: ' + error.message);
+  }
+};
 
   return (
     <div
@@ -393,6 +421,22 @@ export default function NotificationTest() {
       >
         📋 ดู Subscriptions
       </button>
+
+      <button 
+  onClick={handleTestSwReady}
+  style={{ padding: '8px 16px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}
+>
+  ⏳ ทดสอบ SW Ready
+</button>
+
+{permission === 'granted' && !isPushEnabled && (
+  <button 
+    onClick={handleManualSubscribe}
+    style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginRight: '10px' }}
+  >
+    🔄 Manual Subscribe
+  </button>
+)}
 
       <p>
         <strong>Service Worker Ready:</strong>{" "}

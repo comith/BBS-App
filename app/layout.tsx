@@ -9,6 +9,7 @@ import NotificationManager from "@/components/NotificationManager";
 import MobileNotificationButton from '@/components/MobileNotificationButton';
 import AndroidNotificationFix from '@/components/AndroidNotificationFix';
 import AndroidTest from '@/components/AndroidTest';
+import AutoWelcomeNotification from '@/components/AutoWelcomeNotification';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,8 +44,7 @@ export default function RootLayout({
           <ErrorBoundary>
             <NotificationManager />
           </ErrorBoundary>
-          <AndroidNotificationFix />
-          <AndroidTest />
+          <AutoWelcomeNotification />
           {children}
         </Providers>
       </body>

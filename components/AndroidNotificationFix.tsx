@@ -44,24 +44,25 @@ export default function AndroidNotificationFix() {
 }, []);
 
   const handleEnableNotifications = async () => {
-    console.log('Android: Attempting to enable notifications...');
+  console.log('Android: Attempting to enable notifications...');
+  
+  try {
+    const result = await requestPermission();
+    console.log('Permission result:', result);
     
-    try {
-      // สำหรับ Android ลอง request หลายครั้ง
-      const result = await requestPermission();
-      console.log('First attempt result:', result);
-      
-      if (!result) {
-        // ลองอีกครั้งหลัง delay
-        setTimeout(async () => {
-          const secondResult = await requestPermission();
-          console.log('Second attempt result:', secondResult);
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('Android notification error:', error);
+    if (result) {
+      // ซ่อนปุ่มหลังจากสำเร็จ
+      setShowInstallPrompt(false);
     }
-  };
+  } catch (error) {
+    console.error('Android notification error:', error);
+    if (error instanceof Error) {
+      alert('ไม่สามารถเปิดการแจ้งเตือนได้: ' + error.message);
+    } else {
+      alert('ไม่สามารถเปิดการแจ้งเตือนได้: ' + String(error));
+    }
+  }
+};
 
   const handleInstallPWA = () => {
     alert('กรุณา:\n1. กดปุ่ม "Menu" (⋮) ในเบราว์เซอร์\n2. เลือก "Add to Home screen"\n3. เปิดแอปจาก Home screen\n4. ลองเปิด notification อีกครั้ง');

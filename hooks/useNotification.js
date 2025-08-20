@@ -110,43 +110,34 @@ export function useNotification() {
 
     console.log('Permission granted, setting up service worker...');
 
-    // สำหรับ Android ให้ delay มากขึ้น
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const delay = isAndroid ? 2000 : 1000;
-
-    setTimeout(async () => {
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        await navigator.serviceWorker.ready;
-        console.log('Service Worker ready on Android');
-        
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
-        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-        
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: applicationServerKey
-        });
-        
-        setPushSubscription(subscription);
-        await saveSubscriptionToServer(subscription);
-        
-        // ส่ง notification ทดสอบ
-        setTimeout(() => {
-          new Notification('Android ใช้งานได้แล้ว!', {
-            body: 'การแจ้งเตือนทำงานปกติบน Android',
-            icon: '/favicon.ico'
-          });
-        }, 500);
-        
-      } catch (error) {
-        console.error('Android setup error:', error);
-      }
-    }, delay);
+    // ลงทะเบียน service worker
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    console.log('Service Worker ready');
+    
+    // Subscribe to push
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+    
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey
+    });
+    
+    setPushSubscription(subscription);
+    await saveSubscriptionToServer(subscription);
+    
+    // ส่ง notification ผ่าน Service Worker แทน (สำหรับ Android)
+    await registration.showNotification('ยินดีต้อนรับ!', {
+      body: 'ระบบการแจ้งเตือนพร้อมใช้งานแล้ว',
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: 'welcome-notification'
+    });
     
     return true;
   } catch (error) {
-    console.error('Android permission error:', error);
+    console.error('Setup failed:', error);
     return false;
   }
 };
@@ -168,24 +159,38 @@ export function useNotification() {
   };
 
   // ส่ง Local Notification
-  const sendLocalNotification = (title, body, options = {}) => {
-    if (permission !== "granted") {
-      console.warn("❌ ไม่มีสิทธิ์ส่ง notification");
-      return false;
-    }
+  const sendLocalNotification = async (title, body, options = {}) => {
+  if (permission !== 'granted') {
+    console.warn('ไม่มีสิทธิ์ส่ง notification');
+    return false;
+  }
 
-    try {
-      new Notification(title, {
-        body: body,
-        icon: "/favicon.ico",
-        ...options,
-      });
-      return true;
-    } catch (error) {
-      console.error("❌ Local notification failed:", error);
-      return false;
-    }
+  const defaultOptions = {
+    body: body,
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: 'local-notification',
+    ...options
   };
+
+  try {
+    // ลองใช้ Service Worker ก่อน (สำหรับ Android)
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.showNotification(title, defaultOptions);
+        return true;
+      }
+    }
+    
+    // Fallback สำหรับ browser อื่น ๆ
+    new Notification(title, defaultOptions);
+    return true;
+  } catch (error) {
+    console.error('Failed to show notification:', error);
+    return false;
+  }
+};
 
   // ส่ง Push Notification
   const sendPushNotification = async (title, body, options = {}) => {

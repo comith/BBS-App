@@ -6,6 +6,7 @@ export function useNotification() {
   const [permission, setPermission] = useState('default');
   const [swRegistration, setSwRegistration] = useState(null);
   const [pushSubscription, setPushSubscription] = useState(null);
+  const [isSwReady, setIsSwReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [canUseNotification, setCanUseNotification] = useState(false);
 
@@ -28,11 +29,17 @@ export function useNotification() {
 
   const registerServiceWorker = async () => {
     try {
+      console.log('Registering service worker...');
+      
       const registration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker registered:', registration);
-      setSwRegistration(registration);
       
-      // เช็คว่ามี subscription อยู่แล้วหรือไม่
+      await navigator.serviceWorker.ready;
+      console.log('Service Worker is ready');
+      
+      setSwRegistration(registration);
+      setIsSwReady(true);
+      
       const existingSubscription = await registration.pushManager.getSubscription();
       if (existingSubscription) {
         setPushSubscription(existingSubscription);
@@ -43,7 +50,6 @@ export function useNotification() {
     }
   };
 
-  // ฟังก์ชันแปลง VAPID key
   const urlBase64ToUint8Array = (base64String) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
@@ -60,15 +66,22 @@ export function useNotification() {
   };
 
   const subscribeToPush = async () => {
-    if (!swRegistration || permission !== 'granted') {
-      console.warn('ไม่สามารถ subscribe ได้: ไม่มี permission หรือ service worker');
+    console.log('Attempting to subscribe to push...');
+
+    if (!swRegistration || !isSwReady) {
+      console.warn('Service Worker ยังไม่พร้อม กรุณารอสักครู่');
+      return null;
+    }
+
+    if (permission !== 'granted') {
+      console.warn('ไม่มี permission สำหรับ notification');
       return null;
     }
 
     try {
-      const applicationServerKey = urlBase64ToUint8Array(
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      );
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE';
+      
+      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
 
       const subscription = await swRegistration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -78,7 +91,6 @@ export function useNotification() {
       console.log('Push subscription successful:', subscription);
       setPushSubscription(subscription);
 
-      // ส่ง subscription ไปยัง server
       await saveSubscriptionToServer(subscription);
       
       return subscription;
@@ -102,14 +114,46 @@ export function useNotification() {
       });
 
       if (response.ok) {
-        console.log('Subscription saved to server');
+        const result = await response.json();
+        console.log('Subscription saved successfully:', result);
       } else {
-        console.error('Failed to save subscription to server');
+        console.error('Failed to save subscription:', response.status);
       }
     } catch (error) {
       console.error('Error saving subscription:', error);
     }
   };
+
+  const checkSubscriptionStatus = async () => {
+    if (swRegistration && isSwReady) {
+      try {
+        const currentSubscription = await swRegistration.pushManager.getSubscription();
+        
+        if (!currentSubscription && pushSubscription) {
+          console.log('Subscription หายไป กำลัง re-subscribe...');
+          setPushSubscription(null);
+          // Auto re-subscribe
+          await subscribeToPush();
+        } else if (currentSubscription && !pushSubscription) {
+          console.log('พบ subscription ที่ยังใช้ได้');
+          setPushSubscription(currentSubscription);
+        }
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
+      }
+    }
+  };
+
+  // useEffect สำหรับเช็คสถานะ subscription
+  useEffect(() => {
+    if (swRegistration && isSwReady) {
+      // เช็คสถานะทุก 30 วินาที
+      const interval = setInterval(() => {
+        checkSubscriptionStatus();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [swRegistration, isSwReady, pushSubscription]); // เพิ่ม pushSubscription เป็น dependency
 
   const unsubscribeFromPush = async () => {
     if (pushSubscription) {
@@ -117,15 +161,6 @@ export function useNotification() {
         await pushSubscription.unsubscribe();
         setPushSubscription(null);
         console.log('Unsubscribed from push notifications');
-        
-        // แจ้ง server ว่า unsubscribe แล้ว
-        await fetch('/api/unsubscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ endpoint: pushSubscription.endpoint })
-        });
       } catch (error) {
         console.error('Error unsubscribing:', error);
       }
@@ -138,17 +173,11 @@ export function useNotification() {
       return false;
     }
 
-    if (isMobile && location.protocol !== 'https:') {
-      alert('สำหรับมือถือ กรุณาใช้งานผ่าน HTTPS เพื่อเปิดใช้งาน Notification');
-      return false;
-    }
-
     if ('Notification' in window) {
       const result = await Notification.requestPermission();
       setPermission(result);
       
-      // ถ้าได้ permission แล้ว ให้ subscribe ทันที
-      if (result === 'granted' && swRegistration) {
+      if (result === 'granted' && swRegistration && isSwReady) {
         await subscribeToPush();
       }
       
@@ -178,7 +207,6 @@ export function useNotification() {
     }
   };
 
-  // ฟังก์ชันส่ง push notification จาก server
   const sendPushNotification = async (title, body, options = {}) => {
     try {
       const response = await fetch('/api/send-notification', {
@@ -209,7 +237,6 @@ export function useNotification() {
     }
   };
 
-
   const sendTestPush = async () => {
     return await sendPushNotification(
       'ทดสอบ Push Notification',
@@ -221,6 +248,25 @@ export function useNotification() {
     );
   };
 
+  // เพิ่มฟังก์ชันเช็คสถานะแบบ manual
+  const manualCheckStatus = async () => {
+    console.log('=== Manual Status Check ===');
+    console.log('Permission:', permission);
+    console.log('SW Ready:', isSwReady);
+    console.log('Push Enabled:', pushSubscription !== null);
+    console.log('Push Subscription:', pushSubscription);
+    
+    if (swRegistration) {
+      const currentSub = await swRegistration.pushManager.getSubscription();
+      console.log('Current SW Subscription:', currentSub);
+      
+      if (currentSub && !pushSubscription) {
+        console.log('Found subscription, updating state...');
+        setPushSubscription(currentSub);
+      }
+    }
+  };
+
   return {
     permission,
     requestPermission,
@@ -229,12 +275,14 @@ export function useNotification() {
     subscribeToPush,
     unsubscribeFromPush,
     sendLocalNotification,
-    canSendNotification: permission === 'granted' && canUseNotification,
-    isPushEnabled: pushSubscription !== null,
-    isMobile,
-    canUseNotification,
-    needsHttps: isMobile && location.protocol !== 'https:',
     sendPushNotification,
     sendTestPush,
+    manualCheckStatus, // เพิ่มฟังก์ชันนี้
+    canSendNotification: permission === 'granted' && canUseNotification,
+    isPushEnabled: pushSubscription !== null,
+    isSwReady,
+    isMobile,
+    canUseNotification,
+    needsHttps: isMobile && location.protocol !== 'https:'
   };
 }

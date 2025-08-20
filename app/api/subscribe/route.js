@@ -1,33 +1,29 @@
 // app/api/subscribe/route.js
 import { NextResponse } from 'next/server';
-
-let subscriptions = []; // ในการใช้งานจริงควรเก็บใน database
+import { addSubscription, clearExpiredSubscriptions, getAllSubscriptionsInfo } from '@/lib/subscriptions';
 
 export async function POST(request) {
   try {
     const { subscription, timestamp } = await request.json();
     
-    // เช็คว่า subscription มีอยู่แล้วหรือไม่
-    const existingIndex = subscriptions.findIndex(
-      sub => sub.endpoint === subscription.endpoint
-    );
+    console.log('=== Subscribe API Called ===');
+    console.log('Received subscription endpoint:', subscription.endpoint.substring(0, 50) + '...');
     
-    if (existingIndex !== -1) {
-      // อัพเดท subscription เดิม
-      subscriptions[existingIndex] = { subscription, timestamp };
-      console.log('Updated existing subscription');
-    } else {
-      // เพิ่ม subscription ใหม่
-      subscriptions.push({ subscription, timestamp });
-      console.log('Added new subscription');
-    }
+    // ล้าง subscription ที่หมดอายุ
+    clearExpiredSubscriptions();
     
-    console.log(`Total subscriptions: ${subscriptions.length}`);
+    // เพิ่ม subscription ใหม่
+    const totalSubscriptions = addSubscription(subscription, timestamp);
+    
+    const info = getAllSubscriptionsInfo();
+    console.log('All subscriptions info:', info);
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Subscription saved',
-      totalSubscriptions: subscriptions.length
+      message: 'Subscription saved successfully',
+      totalSubscriptions,
+      endpoint: subscription.endpoint.substring(0, 50) + '...',
+      allSubscriptions: info
     });
   } catch (error) {
     console.error('Error saving subscription:', error);
@@ -36,4 +32,9 @@ export async function POST(request) {
       error: error.message 
     }, { status: 500 });
   }
+}
+
+export async function GET() {
+  const info = getAllSubscriptionsInfo();
+  return NextResponse.json(info);
 }

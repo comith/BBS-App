@@ -1,10 +1,11 @@
 // app/layout.tsx (ลบ 'use client')
-import * as React from 'react';
-import { Providers } from './providers'
+import * as React from "react";
+import { Providers } from "./providers";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import NotificationManager from '@/components/NotificationManager';
+import ErrorBoundary from "@/components/ErrorBoundary";
+import NotificationManager from "@/components/NotificationManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +33,13 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/ith.png" />
         <meta name="theme-color" content="#000000" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <Providers>
-          <NotificationManager />
+          <ErrorBoundary>
+            <NotificationManager />
+          </ErrorBoundary>
           {children}
         </Providers>
       </body>

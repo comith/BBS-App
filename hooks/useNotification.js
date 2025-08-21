@@ -6,13 +6,16 @@ export function useNotification() {
   const [permission, setPermission] = useState("default");
   const [pushSubscription, setPushSubscription] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   const NOTIFICATION_STORAGE_KEY = "bbs_notification_settings";
 
   const saveNotificationSettings = (settings) => {
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(settings));
+        localStorage.setItem(
+          NOTIFICATION_STORAGE_KEY,
+          JSON.stringify(settings)
+        );
       } catch (error) {
         console.error("Error saving notification settings:", error);
       }
@@ -37,7 +40,8 @@ export function useNotification() {
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
-          const existingSubscription = await registration.pushManager.getSubscription();
+          const existingSubscription =
+            await registration.pushManager.getSubscription();
           if (existingSubscription) {
             setPushSubscription(existingSubscription);
             console.log("Restored existing subscription");
@@ -54,7 +58,11 @@ export function useNotification() {
     if (typeof window === "undefined") return;
 
     // ตั้งค่า isMobile
-    setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    setIsMobile(
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      )
+    );
 
     if ("Notification" in window) {
       const currentPermission = Notification.permission;
@@ -75,8 +83,15 @@ export function useNotification() {
     if (typeof window === "undefined") return false;
 
     try {
-      const isSecure = window.location.protocol === "https:" || window.location.hostname === "localhost";
-      return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window && isSecure;
+      const isSecure =
+        window.location.protocol === "https:" ||
+        window.location.hostname === "localhost";
+      return (
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window &&
+        isSecure
+      );
     } catch (error) {
       console.error("Error checking notification support:", error);
       return false;
@@ -85,7 +100,9 @@ export function useNotification() {
 
   const urlBase64ToUint8Array = (base64String) => {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
 
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
@@ -146,8 +163,10 @@ export function useNotification() {
 
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
-      
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE";
+
+      const vapidPublicKey =
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+        "BCVZmQM7FJ8nidZkk0x825ElILW7mtTm2xxe749klv4Rt8cDnOhlrQ8FWEuujpYKPZUF7i3L9z5HUREm6t4cZEE";
       const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
 
       const subscription = await registration.pushManager.subscribe({
@@ -159,11 +178,23 @@ export function useNotification() {
       await saveSubscriptionToServer(subscription);
 
       await registration.showNotification("ยินดีต้อนรับ!", {
-        body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
+        body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
         icon: "/favicon.ico",
         badge: "/favicon.ico",
-        tag: "welcome-notification",
+        vibrate: [200, 100, 200, 100, 200],
+        silent: true, // ปิดเสียงเดิม
+        data: { playSound: true }, // ส่งข้อมูลไป Service Worker
       });
+
+      if ("serviceWorker" in navigator) {
+        try {
+          const audio = new Audio("/sounds/approve.mp3");
+          audio.volume = 0.7;
+          await audio.play();
+        } catch (error) {
+          console.log("Audio play failed:", error);
+        }
+      }
 
       return true;
     } catch (error) {
@@ -177,16 +208,16 @@ export function useNotification() {
       try {
         await pushSubscription.unsubscribe();
         setPushSubscription(null);
-        
+
         saveNotificationSettings({
           isEnabled: false,
-          disabledAt: new Date().toISOString()
+          disabledAt: new Date().toISOString(),
         });
-        
-        console.log('Unsubscribed successfully');
+
+        console.log("Unsubscribed successfully");
         return true;
       } catch (error) {
-        console.error('Unsubscribe failed:', error);
+        console.error("Unsubscribe failed:", error);
         return false;
       }
     }
@@ -269,6 +300,9 @@ export function useNotification() {
     sendTestPush,
     loadNotificationSettings,
     canUseNotification: canUseNotification(),
-    needsHttps: typeof window !== "undefined" ? (isMobile && window.location.protocol !== "https:") : false,
+    needsHttps:
+      typeof window !== "undefined"
+        ? isMobile && window.location.protocol !== "https:"
+        : false,
   };
 }

@@ -348,7 +348,7 @@ function ModernBBSLogin() {
 
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
-  const { permission, loadNotificationSettings } = useNotification();
+  const { permission, loadNotificationSettings, isPushEnabled, requestPermission, unsubscribe } = useNotification();
   const [isEnableNotification, setIsEnableNotification] = useState(
     loadNotificationSettings()?.isEnabled || false
   );
@@ -433,22 +433,59 @@ function ModernBBSLogin() {
           findEmployeeData(storedData.employeerId);
         }
       }
-
-      if (isEnableNotification) {
-        setTimeout(() => {
-          if (
-            typeof window !== "undefined" &&
-            permission === "granted" &&
-            "Notification" in window
-          ) {
-            new Notification("ยินดีต้อนรับ!", {
-              body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
-            });
-          }
-        }, 500);
-      }
     }
   }, [employees, findEmployeeData]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const showWelcomeNotification = async () => {
+      if (permission !== "granted") return;
+
+      try {
+        // ใช้ Service Worker สำหรับ PWA
+        if (isEnableNotification) {
+          if ("serviceWorker" in navigator) {
+            const registration =
+              await navigator.serviceWorker.getRegistration();
+            if (registration) {
+              await registration.showNotification("ยินดีต้อนรับ!", {
+                body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
+                icon: "/favicon.ico",
+                badge: "/favicon.ico",
+                silent: true,
+              });
+
+              // เล่นเสียงกำหนดเอง
+              try {
+                const audio = new Audio("/sounds/approve.mp3");
+                audio.volume = 0.7;
+                await audio.play();
+              } catch (audioError) {
+                console.log("Audio play failed:", audioError);
+              }
+
+              return;
+            }
+          }
+        }
+
+        // Fallback สำหรับ browser ที่ไม่รองรับ Service Worker
+        new Notification("ยินดีต้อนรับ!", {
+          body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
+          icon: "/favicon.ico",
+        });
+      } catch (error) {
+        console.error("Notification failed:", error);
+      }
+    };
+
+    // ตรวจสอบเงื่อนไขและส่ง notification
+    if (permission === "granted" && isPushEnabled) {
+      const timer = setTimeout(showWelcomeNotification, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [permission, isPushEnabled]);
 
   // ✅ แสดง Loading Screen จาก React Query
   if (isLoading) {

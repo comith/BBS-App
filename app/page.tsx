@@ -348,10 +348,13 @@ function ModernBBSLogin() {
 
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
-  const { permission, loadNotificationSettings, isPushEnabled, requestPermission, unsubscribe } = useNotification();
-  const [isEnableNotification, setIsEnableNotification] = useState(
-    loadNotificationSettings()?.isEnabled || false
-  );
+  const {
+    permission,
+    loadNotificationSettings,
+    isPushEnabled,
+    requestPermission,
+    unsubscribe,
+  } = useNotification();
 
   const [formData, setFormData] = useState<FormData>({
     employeerId: "",
@@ -439,40 +442,49 @@ function ModernBBSLogin() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const notificationSetting = loadNotificationSettings()?.isEnabled;
+
     const showWelcomeNotification = async () => {
-      if (permission !== "granted") return;
+      if (permission !== "granted" || !isPushEnabled) return;
 
       try {
-        // ใช้ Service Worker สำหรับ PWA
-        if (isEnableNotification) {
           if ("serviceWorker" in navigator) {
             const registration =
               await navigator.serviceWorker.getRegistration();
             if (registration) {
-              await registration.showNotification("ยินดีต้อนรับ!", {
-                body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
-                icon: "/favicon.ico",
-                badge: "/favicon.ico",
-                silent: true,
-              });
+              if (isIOS) {
+                // iOS: ใช้เสียงระบบ
+                await registration.showNotification("ยินดีต้อนรับ!", {
+                  body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
+                  icon: "/favicon.ico",
+                  silent: false,
+                });
+              } else {
+                // Android และ Desktop: ใช้เสียงกำหนดเอง
+                await registration.showNotification("ยินดีต้อนรับ!", {
+                  body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
+                  icon: "/favicon.ico",
+                  silent: true,
+                });
 
-              // เล่นเสียงกำหนดเอง
-              try {
-                const audio = new Audio("/sounds/approve.mp3");
-                audio.volume = 0.7;
-                await audio.play();
-              } catch (audioError) {
-                console.log("Audio play failed:", audioError);
+                // เล่นเสียงกำหนดเอง
+                try {
+                  const audio = new Audio("/sounds/alert.mp3");
+                  audio.volume = 0.7;
+                  await audio.play();
+                } catch (audioError) {
+                  console.log("Custom audio failed:", audioError);
+                }
               }
-
               return;
             }
           }
-        }
 
-        // Fallback สำหรับ browser ที่ไม่รองรับ Service Worker
+        // Fallback
         new Notification("ยินดีต้อนรับ!", {
-          body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
+          body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
           icon: "/favicon.ico",
         });
       } catch (error) {
@@ -480,11 +492,8 @@ function ModernBBSLogin() {
       }
     };
 
-    // ตรวจสอบเงื่อนไขและส่ง notification
-    if (permission === "granted" && isPushEnabled) {
-      const timer = setTimeout(showWelcomeNotification, 1000);
-      return () => clearTimeout(timer);
-    }
+    const timer = notificationSetting ? setTimeout(showWelcomeNotification, 1000) : 0;
+    return () => clearTimeout(timer);
   }, [permission, isPushEnabled]);
 
   // ✅ แสดง Loading Screen จาก React Query

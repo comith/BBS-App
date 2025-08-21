@@ -2,6 +2,8 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { SquareUser, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useNotification } from "@/hooks/useNotification";
+import NotificationToggleButton from "@/components/NotificationToggleButton";
 import {
   useEmployeeData,
   useRefreshEmployeeData,
@@ -190,7 +192,7 @@ const MenuButtons = React.memo(
             </h2>
           </div>
 
-           <div
+          <div
             className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleReportClick}
           >
@@ -341,10 +343,15 @@ const RequiredMark = React.memo(() => <sup className="text-red-500">*</sup>);
 RequiredMark.displayName = "RequiredMark";
 
 function ModernBBSLogin() {
+  useNotification();
   const router = useRouter();
 
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
+  const { permission, loadNotificationSettings } = useNotification();
+  const [isEnableNotification, setIsEnableNotification] = useState(
+    loadNotificationSettings()?.isEnabled || false
+  );
 
   const [formData, setFormData] = useState<FormData>({
     employeerId: "",
@@ -426,6 +433,20 @@ function ModernBBSLogin() {
           findEmployeeData(storedData.employeerId);
         }
       }
+
+      if (isEnableNotification) {
+        setTimeout(() => {
+          if (
+            typeof window !== "undefined" &&
+            permission === "granted" &&
+            "Notification" in window
+          ) {
+            new Notification("ยินดีต้อนรับ!", {
+              body: "ระบบการแจ้งเตือนพร้อมใช้งานแล้ว",
+            });
+          }
+        }, 500);
+      }
     }
   }, [employees, findEmployeeData]);
 
@@ -441,6 +462,11 @@ function ModernBBSLogin() {
 
   return (
     <div className="min-h-screen flex">
+      {/* Notification Settings Button - มุมบนขวา */}
+      <div className="fixed top-4 right-4 z-50">
+        <NotificationToggleButton />
+      </div>
+
       {/* Left side - Abstract Design */}
       <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block">
         <div
@@ -547,12 +573,13 @@ function ModernBBSLogin() {
               placeholder="กรอกรหัสพนักงาน เช่น 5LD01234"
               className="w-full px-4 py-4 border-l-4 border-blue-500 bg-gray-50 rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
             />
-            
+
             {/* Show stored data indicator */}
             {formData.fullName && (
               <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-700">
-                  ✓ ข้อมูลพนักงาน: {formData.fullName} ({formData.department} - {formData.group})
+                  ✓ ข้อมูลพนักงาน: {formData.fullName} ({formData.department} -{" "}
+                  {formData.group})
                 </p>
               </div>
             )}

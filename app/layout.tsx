@@ -1,15 +1,9 @@
-// app/layout.tsx (ลบ 'use client')
+// app/layout.tsx
 import * as React from "react";
 import { Providers } from "./providers";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import NotificationManager from "@/components/NotificationManager";
-import MobileNotificationButton from '@/components/MobileNotificationButton';
-import AndroidNotificationFix from '@/components/AndroidNotificationFix';
-import AndroidTest from '@/components/AndroidTest';
-import AutoWelcomeNotification from '@/components/AutoWelcomeNotification';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,10 +35,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <ErrorBoundary>
-            <NotificationManager />
-          </ErrorBoundary>
-          <AutoWelcomeNotification />
           {children}
         </Providers>
       </body>

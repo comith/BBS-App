@@ -1,5 +1,5 @@
 //api/approve/route.js - ปรับปรุงเพื่อประสิทธิภาพดีขึ้น
-import { batchUpdateSheet, getSheetData } from '../config'; // ✅ ใช้ batchUpdateSheet
+import { batchUpdateSheet, getSheetData ,appendToSheet} from '../config'; // ✅ ใช้ batchUpdateSheet
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -83,8 +83,12 @@ export async function POST(request) {
       }
     ];
 
+    const employeeId = sheetData[rowIndex][2]; // Column C: Employee ID
+    const rowNotificationLogEmployee = [null ,data.status, data.approvedBy, employeeId, ""];
+
     // ✅ อัพเดตทุก field พร้อมกันด้วย batch update
     await batchUpdateSheet(updates);
+    await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
 
     const responseData = {
       recordId: data.recordId,
@@ -94,6 +98,7 @@ export async function POST(request) {
       approvedBy: data.approvedBy || 'SHE',
       updatedRow: googleSheetRowNumber
     };
+
 
     console.log('✅ Approval successful:', responseData);
 

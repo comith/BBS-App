@@ -366,8 +366,6 @@ const getStatusInfo = (status: string) => {
 function EmployeeReportStatus() {
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
-  const [department, setDepartment] = useState<string | null>(null);
-  const [group, setGroup] = useState<string | null>(null);
   const router = useRouter();
 
   const [reports, setReports] = useState<Report[]>([]);
@@ -377,9 +375,6 @@ function EmployeeReportStatus() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [openAccordions, setOpenAccordions] = useState<Set<number>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [subCategories, setSubCategories] = useState<any[]>([]);
   const [sheViolations, setSheViolations] = useState<SheViolation[]>([]);
   const [sheStats, setSheStats] = useState<{
     total: number;
@@ -411,7 +406,7 @@ function EmployeeReportStatus() {
 
       // กรองข้อมูลเฉพาะพนักงานคนนี้
       const filteredData = apiData.filter(
-        (item) => item.employee_code === employeeId
+        (item: SheViolation) => item.employee_code === employeeId
       );
 
       setSheViolations(filteredData);
@@ -530,8 +525,6 @@ function EmployeeReportStatus() {
         // ตั้งค่า state
         setEmployeeId(employeerId);
         setEmployeeName(fullName);
-        setDepartment(department);
-        setGroup(group);
 
         // ถ้ามี employeeId ให้ fetch ข้อมูล
         if (employeerId) {
@@ -547,11 +540,25 @@ function EmployeeReportStatus() {
     }
   }, [employeeId]);
 
-  const SheViolationsDashboard = () => {
+  function SheViolationsDashboard({
+    sheViolations,
+    sheStats,
+    getThaiMonth,
+  }: Readonly<{
+    sheViolations: SheViolation[];
+    sheStats: {
+      total: number;
+      byMonth: Record<string, number>;
+      byCategory: Record<string | number, number>;
+      byRiskLevel: Record<string, number>;
+      ppeViolations: number;
+    };
+    getThaiMonth: (monthKey: string) => string;
+  }>) {
     if (sheViolations.length === 0) {
       return null; // ไม่แสดงถ้าไม่มีข้อมูล
     }
-
+  
     return (
       <Card className="mb-6 p-6">
         <CardHeader>
@@ -581,7 +588,7 @@ function EmployeeReportStatus() {
                 </div>
               </div>
             </div>
-
+  
             <div className="bg-orange-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
@@ -598,7 +605,7 @@ function EmployeeReportStatus() {
               </div>
             </div>
           </div>
-
+  
           {/* สถิติรายเดือน */}
           <div className="mb-4">
             <h4 className="text-lg font-semibold mb-3">รายงานรายเดือน</h4>
@@ -626,64 +633,10 @@ function EmployeeReportStatus() {
                 ))}
             </div>
           </div>
-
-          {/* รายการล่าสุด */}
-          {/* <div>
-          <h4 className="text-lg font-semibold mb-3">รายการล่าสุด</h4>
-          <div className="space-y-2">
-            {sheViolations
-              .sort((a, b) => new Date(b.date) - new Date(a.date))
-              .slice(0, 3)
-              .map((violation, index) => (
-                <div key={violation.record_id || index} className="bg-gray-50 p-3 rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Badge 
-                          variant={violation.level_accident === 'เสี่ยงสูง' ? 'destructive' : 'secondary'}
-                        >
-                          {violation.level_accident || 'ไม่ระบุระดับ'}
-                        </Badge>
-                        <span className="text-sm text-gray-600">
-                          {format(new Date(violation.date), "dd/MM/yyyy")}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium">{violation.observed_Work}</p>
-                      <p className="text-xs text-gray-600">{violation.department_notice}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-red-600 font-medium">
-                        Unsafe: {violation.unsafeActionCount}
-                      </p>
-                      <p className="text-sm text-green-600">
-                        Safe: {violation.safeActionCount}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            }
-            
-            {sheViolations.length > 3 && (
-              <div className="text-center pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // TODO: Implement view all functionality
-                    console.log("View all SHE violations");
-                  }}
-                >
-                  ดูทั้งหมด ({sheViolations.length} รายการ)
-                </Button>
-              </div>
-            )}
-          </div>
-        </div> */}
         </CardContent>
       </Card>
     );
-  };
+  }
 
   const transformApiDataToReportWithCategories = (
     apiData: ApiReport[],
@@ -830,7 +783,6 @@ function EmployeeReportStatus() {
 
   const fetchReports = async () => {
     setIsLoading(true);
-    setError(null);
 
     try {
       // เรียกข้อมูลทั้งหมดพร้อมกัน
@@ -863,21 +815,11 @@ function EmployeeReportStatus() {
       );
 
       setReports(transformedReports);
-
-      if (transformedReports.length === 0) {
-        setError("ไม่พบรายงานของท่าน");
-      }
     } catch (error) {
       console.error("❌ Error fetching reports:", error);
-      setError(
-        error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-      );
+      
       // ใช้ mock data เป็น fallback เฉพาะตอน development
-      if (process.env.NODE_ENV === "development") {
-        setReports([]);
-      } else {
-        setReports([]);
-      }
+      setReports([]);
     } finally {
       setIsLoading(false);
     }
@@ -900,21 +842,6 @@ function EmployeeReportStatus() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* {error && !isLoading && (
-        <Card className="mb-6">
-          <CardContent className="py-8 text-center">
-            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button
-              onClick={fetchReports}
-              className="bg-orange-500 hover:bg-orange-600"
-            >
-              ลองใหม่อีกครั้ง
-            </Button>
-          </CardContent>
-        </Card>
-      )} */}
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -1084,7 +1011,11 @@ function EmployeeReportStatus() {
         </Card>
 
         {/* SHE Violations Dashboard */}
-        <SheViolationsDashboard />
+        <SheViolationsDashboard
+          sheViolations={sheViolations}
+          sheStats={sheStats}
+          getThaiMonth={getThaiMonth}
+        />
 
         {/* Calendar */}
 
@@ -1137,18 +1068,17 @@ function EmployeeReportStatus() {
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? (
-                          dateRange.to ? (
-                            <>
-                              {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                              {format(dateRange.to, "dd/MM/yyyy")}
-                            </>
-                          ) : (
-                            format(dateRange.from, "dd/MM/yyyy")
-                          )
-                        ) : (
-                          "เลือกช่วงวันที่"
-                        )}
+                        {(() => {
+                          let dateLabel = "เลือกช่วงวันที่";
+                          if (dateRange.from) {
+                            if (dateRange.to) {
+                              dateLabel = `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`;
+                            } else {
+                              dateLabel = format(dateRange.from, "dd/MM/yyyy");
+                            }
+                          }
+                          return dateLabel;
+                        })()}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1219,23 +1149,28 @@ function EmployeeReportStatus() {
         </Card>
 
         {/* Reports List with Accordion */}
-        <div className="space-y-4 h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-              <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
-            </div>
-          ) : filteredReports.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
-                  ไม่พบรายงานที่ตรงกับเงื่อนไขการค้นหา
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredReports.map((report) => {
+        {(() => {
+          let reportsContent;
+          if (isLoading) {
+            reportsContent = (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                <p className="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+              </div>
+            );
+          } else if (filteredReports.length === 0) {
+            reportsContent = (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">
+                    ไม่พบรายงานที่ตรงกับเงื่อนไขการค้นหา
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          } else {
+            reportsContent = filteredReports.map((report) => {
               const statusInfo = getStatusInfo(report.status);
               const StatusIcon = statusInfo.icon;
               const isOpen = openAccordions.has(report.id);
@@ -1390,26 +1325,15 @@ function EmployeeReportStatus() {
                   </Collapsible>
                 </Card>
               );
-            })
-          )}
-        </div>
+            });
+          }
+          return (
+            <div className="space-y-4 h-[400px] overflow-y-auto">
+              {reportsContent}
+            </div>
+          );
+        })()}
 
-        {/* Export Button */}
-        {/* {filteredReports.length > 0 && (
-          <div className="mt-6 text-center">
-            <Button
-              variant="outline"
-              className="w-full md:w-auto"
-              onClick={() => {
-                // TODO: Implement export functionality
-                console.log("Export reports");
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              ส่งออกรายงาน PDF
-            </Button>
-          </div>
-        )} */}
       </div>
 
       {/* Report Detail Modal (Simple version) */}
@@ -1527,18 +1451,19 @@ function EmployeeReportStatus() {
                 {selectedReport.adminNote && (
                   <div>
                     <p className="text-sm text-gray-600">หมายเหตุจากผู้ดูแล</p>
-                    <div
-                      className={cn(
-                        "p-3 rounded-lg border",
-                        selectedReport.status === "approved"
-                          ? "bg-green-50 border-green-200"
-                          : selectedReport.status === "rejected"
-                          ? "bg-red-50 border-red-200"
-                          : "bg-gray-50 border-gray-200"
-                      )}
-                    >
-                      <p className="text-sm">{selectedReport.adminNote}</p>
-                    </div>
+                    {(() => {
+                      let noteClass = "bg-gray-50 border-gray-200";
+                      if (selectedReport.status === "approved") {
+                        noteClass = "bg-green-50 border-green-200";
+                      } else if (selectedReport.status === "rejected") {
+                        noteClass = "bg-red-50 border-red-200";
+                      }
+                      return (
+                        <div className={cn("p-3 rounded-lg border", noteClass)}>
+                          <p className="text-sm">{selectedReport.adminNote}</p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

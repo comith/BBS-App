@@ -4,7 +4,7 @@ import MobileTabBar from "@/components/MobileTab"
 export default function FormLayout({
   children,
 }: {
-  children: React.ReactNode
+  readonly children: React.ReactNode
 }) {
   return (
     <div className="flex bg-gray-100">

@@ -2,5 +2,5 @@ projectKey=sonar-code
 serverUrl=http://172.16.0.24:9000
 serverVersion=25.8.0.112029
 dashboardUrl=http://172.16.0.24:9000/dashboard?id=sonar-code
-ceTaskId=756dd2e8-709d-48e5-a7e3-7d92be63d083
-ceTaskUrl=http://172.16.0.24:9000/api/ce/task?id=756dd2e8-709d-48e5-a7e3-7d92be63d083
+ceTaskId=9bc8a02f-0c4d-4235-98f9-a9dd5565b928
+ceTaskUrl=http://172.16.0.24:9000/api/ce/task?id=9bc8a02f-0c4d-4235-98f9-a9dd5565b928

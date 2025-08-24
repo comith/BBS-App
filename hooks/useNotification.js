@@ -177,25 +177,6 @@ export function useNotification() {
       setPushSubscription(subscription);
       await saveSubscriptionToServer(subscription);
 
-      await registration.showNotification("ยินดีต้อนรับ!", {
-        body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
-        vibrate: [200, 100, 200, 100, 200],
-        silent: true, // ปิดเสียงเดิม
-        data: { playSound: true }, // ส่งข้อมูลไป Service Worker
-      });
-
-      if ("serviceWorker" in navigator) {
-        try {
-          const audio = new Audio("/sounds/approve.mp3");
-          audio.volume = 0.7;
-          await audio.play();
-        } catch (error) {
-          console.log("Audio play failed:", error);
-        }
-      }
-
       return true;
     } catch (error) {
       console.error("Setup failed:", error);

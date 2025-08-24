@@ -11,7 +11,7 @@ export async function POST(request) {
 
     if (data.type === "employee") {
       const row = [
-        ,
+        null,
         data.data.employeerId,
         data.data.fullName,
         data.data.department,
@@ -102,18 +102,21 @@ export async function POST(request) {
       data.levelOfSafety || "", // T: levelOfSafety
     ];
 
+    const rowNotificationLogEmployee = [null ,"create", data.employeeId, "SHE", ""];
+
     console.log("💾 Saving to Google Sheet...");
 
     // บันทึกลง Google Sheet
-    if (data.group !== "SHE") {
+
+    if (data.group !== "SHE" || !data.codeemployee) {
+      // บันทึกข้อมูลของพนักงานทั่วไปที่ไม่ใช่ SHE
       await appendToSheet("record!A:R", [row]);
+      await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
     } else {
-      if(!data.codeemployee) {
-        await appendToSheet("record!A:R", [row]);
-      }else {
-        await appendToSheet("record!A:R", [row]);
-        await appendToSheet("record_she!A:T", [rowByshe]);
-      }
+      // บันทึกข้อมูลของพนักงาน SHE
+      await appendToSheet("record!A:R", [row]);
+      await appendToSheet("record_she!A:T", [rowByshe]);
+      await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
     }
 
     const responseData = {

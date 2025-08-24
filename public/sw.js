@@ -53,8 +53,7 @@ self.addEventListener('notificationclick', function(event) {
   event.waitUntil(
     clients.matchAll().then(function(clientList) {
       // หาหน้าต่างที่เปิดอยู่แล้ว
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
+      for (const client of clientList) {
         if (client.url === '/' && 'focus' in client) {
           return client.focus();
         }

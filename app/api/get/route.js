@@ -25,54 +25,76 @@ function formatDataByType(data, type) {
   const headers = data[0];
   const rows = data.slice(1);
 
+  function formatSubcategory(header, value) {
+    if (header === "departcategory_id") {
+      const parsed = safeJSONParse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+    if (header === "id" || header === "category_id") {
+      return value ? parseInt(value, 10) : 0;
+    }
+    return value;
+  }
+
+  function formatCategory(header, value) {
+    if (header === "id") {
+      return value ? parseInt(value, 10) : 0;
+    }
+    return value;
+  }
+
+  // formatDepartmentOrGroup is intended for department/group specific formatting
+  function formatDepartmentOrGroup(header, value) {
+    if (header === "id") {
+      return value ? parseInt(value, 10) : 0;
+    }
+    // Example: handle 'shortname' field for departments/groups
+    if (header === "shortname") {
+      return value ? value.toString().trim() : "";
+    }
+    return value;
+  }
+
+  function formatRecord(header, value) {
+    if (header === "selectedOptions") {
+      const parsed = safeJSONParse(value);
+      return typeof parsed === "string" ? parsed.split(",") : [];
+    }
+    if (header === "vehicleEquipment") {
+      const parsed = safeJSONParse(value);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    }
+    if (header === "attachment") {
+      const parsed = safeJSONParse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+    if (header === "safeActionCount" || header === "unsafeActionCount") {
+      return value ? parseInt(value, 10) : 0;
+    }
+    return value;
+  }
+
   return rows.map((row) => {
     const item = {};
     headers.forEach((header, index) => {
       let value = row[index] || "";
-
       switch (type) {
         case "subcategory":
-          if (header === "departcategory_id") {
-            const parsed = safeJSONParse(value);
-            value = Array.isArray(parsed) ? parsed : [];
-          } else if (header === "id" || header === "category_id") {
-            value = value ? parseInt(value, 10) : 0;
-          }
+          value = formatSubcategory(header, value);
           break;
-
         case "category":
-          if (header === "id") {
-            value = value ? parseInt(value, 10) : 0;
-          }
+          value = formatCategory(header, value);
           break;
-
         case "department":
         case "group":
-          if (header === "id") {
-            value = value ? parseInt(value, 10) : 0;
-          }
+          value = formatDepartmentOrGroup(header, value);
           break;
-
         case "record":
-          if (header === "selectedOptions") {
-            const parsed = safeJSONParse(value);
-            value = parsed.split(",");
-
-          } else if (header === "vehicleEquipment") {
-            const parsed = safeJSONParse(value);
-            value = parsed && typeof parsed === "object" ? parsed : {};
-          } else if (header === "attachment") {
-            const parsed = safeJSONParse(value);
-            value = Array.isArray(parsed) ? parsed : [];
-          } else if (header === "safeActionCount" || header === "unsafeActionCount") {
-            value = value ? parseInt(value, 10) : 0;
-          }
+          value = formatRecord(header, value);
           break;
-
         default:
           break;
       }
-
       item[header] = value;
     });
     return item;

@@ -2,12 +2,12 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { SquareUser, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useNotification } from "@/hooks/useNotification";
 import NotificationToggleButton from "@/components/NotificationToggleButton";
 import {
   useEmployeeData,
   useRefreshEmployeeData,
 } from "@/hooks/useEmployeeData";
+
 
 interface FormData {
   employeerId: string;
@@ -165,7 +165,8 @@ const MenuButtons = React.memo(
     if (formData.position === "SHE") {
       return (
         <div className="grid grid-cols-2 gap-4 w-full max-w-xl pb-4 md:grid-cols-3">
-          <div
+          <button
+            type="button"
             className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleFormClick}
           >
@@ -177,8 +178,9 @@ const MenuButtons = React.memo(
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
               บันทึกรายงานพฤติกรรม
             </h2>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleDashboardClick}
           >
@@ -190,9 +192,10 @@ const MenuButtons = React.memo(
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
               สรุปผลรายงานพฤติกรรม (All)
             </h2>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleReportClick}
           >
@@ -204,7 +207,7 @@ const MenuButtons = React.memo(
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
               สรุปผลรายงานพฤติกรรม (คุณ)
             </h2>
-          </div>
+          </button>
         </div>
       );
     }
@@ -212,7 +215,8 @@ const MenuButtons = React.memo(
     if (formData.position === "AC" || formData.position === "Manager") {
       return (
         <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-          <div
+          <button
+            type="button"
             className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleFormClick}
           >
@@ -224,8 +228,9 @@ const MenuButtons = React.memo(
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
               บันทึกรายงานพฤติกรรม
             </h2>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
             onClick={handleDashboardClick}
           >
@@ -237,14 +242,15 @@ const MenuButtons = React.memo(
             <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
               สรุปผลรายงานพฤติกรรม
             </h2>
-          </div>
+          </button>
         </div>
       );
     }
 
     return (
       <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-        <div
+        <button
+          type="button"
           className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
           onClick={handleFormClick}
         >
@@ -256,8 +262,9 @@ const MenuButtons = React.memo(
           <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
             บันทึกรายงานพฤติกรรม
           </h2>
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
           className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
           onClick={handleReportClick}
         >
@@ -269,7 +276,7 @@ const MenuButtons = React.memo(
           <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
             สรุปผลรายงานพฤติกรรม
           </h2>
-        </div>
+        </button>
       </div>
     );
   }
@@ -342,20 +349,13 @@ ClearDataButton.displayName = "ClearDataButton";
 const RequiredMark = React.memo(() => <sup className="text-red-500">*</sup>);
 RequiredMark.displayName = "RequiredMark";
 
+// #############################   Main Component  ######################
+
 function ModernBBSLogin() {
-  useNotification();
   const router = useRouter();
 
   // ✅ ใช้ React Query hooks
   const { data: employees, isLoading, error, refetch } = useEmployeeData();
-  const {
-    permission,
-    loadNotificationSettings,
-    isPushEnabled,
-    requestPermission,
-    unsubscribe,
-  } = useNotification();
-
   const [formData, setFormData] = useState<FormData>({
     employeerId: "",
     fullName: "",
@@ -429,7 +429,7 @@ function ModernBBSLogin() {
     if (typeof window !== "undefined") {
       // โหลดข้อมูลจาก localStorage เท่านั้น
       const storedData = loadFromLocalStorage();
-      if (storedData && storedData.employeerId) {
+      if (storedData?.employeerId) {
         setFormData(storedData);
         // Verify employee still exists in current data
         if (employees) {
@@ -439,62 +439,6 @@ function ModernBBSLogin() {
     }
   }, [employees, findEmployeeData]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const notificationSetting = loadNotificationSettings()?.isEnabled;
-
-    const showWelcomeNotification = async () => {
-      if (permission !== "granted" || !isPushEnabled) return;
-
-      try {
-          if ("serviceWorker" in navigator) {
-            const registration =
-              await navigator.serviceWorker.getRegistration();
-            if (registration) {
-              if (isIOS) {
-                // iOS: ใช้เสียงระบบ
-                await registration.showNotification("ยินดีต้อนรับ!", {
-                  body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
-                  icon: "/favicon.ico",
-                  silent: false,
-                });
-              } else {
-                // Android และ Desktop: ใช้เสียงกำหนดเอง
-                await registration.showNotification("ยินดีต้อนรับ!", {
-                  body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
-                  icon: "/favicon.ico",
-                  silent: true,
-                });
-
-                // เล่นเสียงกำหนดเอง
-                try {
-                  const audio = new Audio("/sounds/alert.mp3");
-                  audio.volume = 0.7;
-                  await audio.play();
-                } catch (audioError) {
-                  console.log("Custom audio failed:", audioError);
-                }
-              }
-              return;
-            }
-          }
-
-        // Fallback
-        new Notification("ยินดีต้อนรับ!", {
-          body: "ระบบการแจ้งเตือนพร้อมใช้งาน",
-          icon: "/favicon.ico",
-        });
-      } catch (error) {
-        console.error("Notification failed:", error);
-      }
-    };
-
-    const timer = notificationSetting ? setTimeout(showWelcomeNotification, 1000) : 0;
-    return () => clearTimeout(timer);
-  }, [permission, isPushEnabled]);
 
   // ✅ แสดง Loading Screen จาก React Query
   if (isLoading) {

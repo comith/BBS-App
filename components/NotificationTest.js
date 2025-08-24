@@ -7,12 +7,10 @@ export default function NotificationTest() {
   const { 
     permission, 
     isPushEnabled,
-    requestPermission,
     unsubscribe,
     sendLocalNotification, 
     sendTestPush,
     sendPushNotification,
-    isMobile,
     needsHttps
   } = useNotification();
 
@@ -20,16 +18,6 @@ export default function NotificationTest() {
   const [customTitle, setCustomTitle] = useState('');
   const [customBody, setCustomBody] = useState('');
   const [showTestPanel, setShowTestPanel] = useState(false);
-
-  const handleSetup = async () => {
-    setIsLoading(true);
-    const success = await requestPermission();
-    setIsLoading(false);
-    
-    if (success) {
-      setShowTestPanel(true);
-    }
-  };
 
   const handleUnsubscribe = async () => {
     const success = await unsubscribe();

@@ -2,6 +2,20 @@
 import { getSheetData, batchUpdateSheet } from "../config";
 import { NextResponse } from "next/server";
 
+function findEmployeeRowIndex(sheetData, id, employeerId) {
+  for (let i = 1; i < sheetData.length; i++) {
+    if (employeerId === "") {
+      if (sheetData[i][0] === id) {
+        return i + 1;
+      }
+    }
+    if (employeerId !== "" && sheetData[i][1] === employeerId) {
+      return i + 1;
+    }
+  }
+  return -1;
+}
+
 export async function PUT(request) {
   try {
     const { type, id, data } = await request.json();
@@ -23,22 +37,7 @@ export async function PUT(request) {
       );
     }
 
-    let rowIndex = -1;
-    if (data.employeerId === "") {
-      for (let i = 1; i < sheetData.length; i++) {
-        if (sheetData[i][0] === id) {
-          rowIndex = i + 1;
-          break;
-        }
-      }
-    }else{
-      for (let i = 1; i < sheetData.length; i++) {
-        if (sheetData[i][1] === data.employeerId) {
-          rowIndex = i + 1;
-          break;
-        }
-      }
-    }
+    const rowIndex = findEmployeeRowIndex(sheetData, id, data.employeerId);
 
     if (rowIndex === -1) {
       return NextResponse.json(
@@ -49,7 +48,7 @@ export async function PUT(request) {
 
     // เตรียมข้อมูลที่จะอัพเดท
     const updatedRow = [
-      ,
+      null,
       data.employeerId || "",
       data.fullName || "",
       data.department || "",

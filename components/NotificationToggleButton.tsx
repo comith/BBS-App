@@ -1,6 +1,6 @@
 // components/NotificationToggleButton.tsx
 'use client'
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bell, BellOff, Info, X } from 'lucide-react';
 import { useNotification } from '@/hooks/useNotification';
 
@@ -90,16 +90,33 @@ export default function NotificationToggleButton() {
             </div>
             
             <div className="p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">สถานะ Permission:</span>
-                <span className={`text-sm font-medium ${
-                  permission === 'granted' ? 'text-green-600' : 
-                  permission === 'denied' ? 'text-red-600' : 'text-orange-600'
-                }`}>
-                  {permission === 'granted' ? 'อนุญาต' : 
-                   permission === 'denied' ? 'ปฏิเสธ' : 'รอการอนุญาต'}
-                </span>
-              </div>
+              {/* Extracted permission color class */}
+              {(() => {
+                let permissionColorClass = '';
+                if (permission === 'granted') {
+                  permissionColorClass = 'text-green-600';
+                } else if (permission === 'denied') {
+                  permissionColorClass = 'text-red-600';
+                } else {
+                  permissionColorClass = 'text-orange-600';
+                }
+                let permissionText = '';
+                if (permission === 'granted') {
+                  permissionText = 'อนุญาต';
+                } else if (permission === 'denied') {
+                  permissionText = 'ปฏิเสธ';
+                } else {
+                  permissionText = 'รอการอนุญาต';
+                }
+                return (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">สถานะ Permission:</span>
+                    <span className={`text-sm font-medium ${permissionColorClass}`}>
+                      {permissionText}
+                    </span>
+                  </div>
+                );
+              })()}
               
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Push Notifications:</span>

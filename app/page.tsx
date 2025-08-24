@@ -381,9 +381,9 @@ function ModernBBSLogin() {
           group: employee.group || "",
           position: employee.position || "",
         };
+        saveToLocalStorage(newFormData);
         setFormData(newFormData);
         // Auto save to localStorage when employee found
-        saveToLocalStorage(newFormData);
       } else {
         setFormData((prev) => ({
           ...prev,

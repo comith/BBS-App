@@ -114,7 +114,7 @@ const updateLogNotification = (log: any) => {
                 showAlert("รายงานใหม่", "มีรายงานพฤติกรรมใหม่จาก " + log.action_from);
                 updateLogNotification(log);
               }else if(log.notification_to === userData.employeerId) {
-                showAlert("รายงานของทาน", changeStatus(log.action) + " จาก " + log.action_from + " เรียบร้อยแล้ว");
+                showAlert("รายงานของทาน", changeStatus(log.action) + " จาก " + log.action_from);
                 updateLogNotification(log);
               }
             })

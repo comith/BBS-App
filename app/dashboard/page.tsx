@@ -326,7 +326,7 @@ interface ApiReport {
   adminNote?: string;
   approvedDate?: string;
   approvedBy?: string;
-  comment?: string; 
+  comment?: string;
 }
 
 interface Report {
@@ -494,7 +494,7 @@ const transformApiDataToDashboardReport = (
       priority: priority,
       actionType: item.actionType || "",
       actionTypeunsafe: item.actionTypeunsafe || "",
-      other:item.other || "",
+      other: item.other || "",
       comment: item.comment || "",
     };
   });
@@ -521,7 +521,6 @@ function AdminDashboard() {
   const [employeeName, setEmployeeName] = useState<string | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [group, setGroup] = useState<string | null>(null);
-
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -695,7 +694,6 @@ function AdminDashboard() {
     setIsSubmittingApproval(true);
 
     try {
-
       const response = await fetch("/api/approve", {
         method: "POST",
         headers: {
@@ -709,7 +707,17 @@ function AdminDashboard() {
         }),
       });
 
-      if (!response.ok) {
+      const notificationResponse = await fetch("/api/notification-logs", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "approved",
+          action_from: "SHE",
+          notification_to: "5LD02067",
+        }),
+      });
+      const notification = await notificationResponse.json();
+
+      if (!response.ok && notification.success === true) {
         const errorData = await response.json();
         throw new Error(
           errorData.message || "Failed to update approval status"
@@ -768,7 +776,6 @@ function AdminDashboard() {
     setError(null);
 
     try {
-
       const [recordResponse, categoryResponse, subCategoryResponse] =
         await Promise.all([
           fetch("/api/get?type=record"),
@@ -785,7 +792,6 @@ function AdminDashboard() {
         categoryResponse.json(),
         subCategoryResponse.json(),
       ]);
-
 
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
@@ -916,7 +922,6 @@ function AdminDashboard() {
 
         let weekNumber = 1;
         while (current <= lastDay) {
-
           if (weekNumber > 5) break;
 
           const weekStart = new Date(current);
@@ -945,8 +950,7 @@ function AdminDashboard() {
         return reports.filter((report) => {
           const reportDate = report.submittedDate;
           return (
-            reportDate.getFullYear() === year &&
-            reportDate.getMonth() === month 
+            reportDate.getFullYear() === year && reportDate.getMonth() === month
             // &&
             // report.department !== "ITH-OE"
           );
@@ -1902,7 +1906,16 @@ function AdminDashboard() {
         const ithOeEmployees = [
           ...new Set(
             reports
-              .filter((r) => r.department === "ITH-OE" || r.group === "CV0" || r.group === "MO0" || r.group === "MT0" || r.group === "AUX0" || r.group === "SV0" || r.group === "Manager")
+              .filter(
+                (r) =>
+                  r.department === "ITH-OE" ||
+                  r.group === "CV0" ||
+                  r.group === "MO0" ||
+                  r.group === "MT0" ||
+                  r.group === "AUX0" ||
+                  r.group === "SV0" ||
+                  r.group === "Manager"
+              )
               .map((r) => r.employeeId)
           ),
         ].map((employeeId) => {
@@ -1922,7 +1935,7 @@ function AdminDashboard() {
         const otherDepartmentGroups = [
           ...new Set(
             reports
-              .filter((r) => r.department !== "ITH-OE" )
+              .filter((r) => r.department !== "ITH-OE")
               .map((r) => r.department)
           ),
         ].map((department) => {
@@ -1934,7 +1947,9 @@ function AdminDashboard() {
                   (r) =>
                     r.department === department &&
                     r.group !== "ITH-OE" &&
-                    !["CV0", "MO0", "MT0", "AUX0", "SV0", "Manager"].includes(r.group)
+                    !["CV0", "MO0", "MT0", "AUX0", "SV0", "Manager"].includes(
+                      r.group
+                    )
                 )
                 .map((r) => r.group)
             ),
@@ -1974,8 +1989,7 @@ function AdminDashboard() {
           // นับจำนวนรายงาน BBS ในช่วงเดือนที่ approved
           const employeeMonthlyReports = monthlyReports.filter(
             (r) =>
-              r.employeeId === employee.employeeId &&
-              r.status === "approved"
+              r.employeeId === employee.employeeId && r.status === "approved"
           );
 
           const bbsCount = employeeMonthlyReports.length;
@@ -2751,16 +2765,20 @@ function AdminDashboard() {
 
           {/* Legend */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">เกณฑ์การจ่ายเงิน (ระบบใหม่ - นับรวมต่อเดือน):</h4>
+            <h4 className="font-semibold mb-2">
+              เกณฑ์การจ่ายเงิน (ระบบใหม่ - นับรวมต่อเดือน):
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="font-medium text-green-600">✅ ได้รับเงิน:</p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
                   <li>
-                    <strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS รวม 12 ครั้งต่อเดือน + ไม่มี SHE ละเมิด
+                    <strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS รวม 12
+                    ครั้งต่อเดือน + ไม่มี SHE ละเมิด
                   </li>
                   <li>
-                    <strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มส่ง BBS รวม 12 ครั้งต่อเดือน + ไม่มีสมาชิกละเมิด SHE
+                    <strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มส่ง BBS รวม 12
+                    ครั้งต่อเดือน + ไม่มีสมาชิกละเมิด SHE
                   </li>
                 </ul>
               </div>
@@ -2768,19 +2786,32 @@ function AdminDashboard() {
                 <p className="font-medium text-red-600">❌ ไม่ได้รับเงิน:</p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
                   <li>BBS ส่งไม่ครบ 12 ครั้งต่อเดือน</li>
-                  <li>PPE ละเมิด ≥ 3 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 12 ครั้ง/เดือน (รายกลุ่ม)</li>
-                  <li>เสี่ยงสูง ละเมิด ≥ 2 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 8 ครั้ง/เดือน (รายกลุ่ม)</li>
-                  <li>อุบัติเหตุ ≥ 1 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 4 ครั้ง/เดือน (รายกลุ่ม)</li>
+                  <li>
+                    PPE ละเมิด ≥ 3 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 12 ครั้ง/เดือน
+                    (รายกลุ่ม)
+                  </li>
+                  <li>
+                    เสี่ยงสูง ละเมิด ≥ 2 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 8
+                    ครั้ง/เดือน (รายกลุ่ม)
+                  </li>
+                  <li>
+                    อุบัติเหตุ ≥ 1 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 4 ครั้ง/เดือน
+                    (รายกลุ่ม)
+                  </li>
                 </ul>
               </div>
             </div>
             <div className="mt-4 p-3 bg-blue-100 rounded border-l-4 border-blue-500">
               <p className="text-sm text-blue-800">
                 <strong>หมายเหตุ (ระบบใหม่):</strong>
-                <br />• <strong>ช่วงเวลาการนับ:</strong> วันที่ 21 ของเดือนก่อนหน้า ถึง วันที่ 20 ของเดือนปัจจุบัน
-                <br />• <strong>การนับ BBS:</strong> นับรวมทั้งเดือน 12 ครั้ง (ไม่แบ่งตามสัปดาห์)
-                <br />• <strong>ITH-OE:</strong> แต่ละคนต้องส่งครบ 12 ครั้งต่อเดือน
-                <br />• <strong>แผนกอื่นๆ:</strong> กลุ่มรวมกันส่งครบ 12 ครั้งต่อเดือน ถ้าผ่านเกณฑ์ทุกคนในกลุ่มได้รับเงิน
+                <br />• <strong>ช่วงเวลาการนับ:</strong> วันที่ 21
+                ของเดือนก่อนหน้า ถึง วันที่ 20 ของเดือนปัจจุบัน
+                <br />• <strong>การนับ BBS:</strong> นับรวมทั้งเดือน 12 ครั้ง
+                (ไม่แบ่งตามสัปดาห์)
+                <br />• <strong>ITH-OE:</strong> แต่ละคนต้องส่งครบ 12
+                ครั้งต่อเดือน
+                <br />• <strong>แผนกอื่นๆ:</strong> กลุ่มรวมกันส่งครบ 12
+                ครั้งต่อเดือน ถ้าผ่านเกณฑ์ทุกคนในกลุ่มได้รับเงิน
               </p>
             </div>
           </div>
@@ -2867,50 +2898,48 @@ function AdminDashboard() {
     document.body.removeChild(link);
   };
 
-
   const STORAGE_KEY = "bbs_employee_data";
 
-const loadFromLocalStorage = () => {
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error("Error loading from localStorage:", error);
-      return null;
+  const loadFromLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+        return null;
+      }
     }
-  }
-  return null;
-};
+    return null;
+  };
 
   useEffect(() => {
-    
-     if (typeof window !== 'undefined') {
-  // โหลดข้อมูลจาก localStorage เท่านั้น
-  const employeeData = loadFromLocalStorage();
-  
-  if (employeeData) {
-    const {
-      employeerId = "",
-      fullName = "",
-      department = "",
-      group = "",
-      position = ""
-    } = employeeData;
+    if (typeof window !== "undefined") {
+      // โหลดข้อมูลจาก localStorage เท่านั้น
+      const employeeData = loadFromLocalStorage();
 
-    // ตั้งค่า state
-    setSheid(employeerId);
-    setEmployeeId(employeerId);
-    setEmployeeName(fullName);
-    setDepartment(department);
-    setGroup(group);
-    
-    // fetch ข้อมูลรายงาน
-    fetchReports();
-  } else {
-    console.warn("No employee data found in localStorage");
-  }}
+      if (employeeData) {
+        const {
+          employeerId = "",
+          fullName = "",
+          department = "",
+          group = "",
+          position = "",
+        } = employeeData;
 
+        // ตั้งค่า state
+        setSheid(employeerId);
+        setEmployeeId(employeerId);
+        setEmployeeName(fullName);
+        setDepartment(department);
+        setGroup(group);
+
+        // fetch ข้อมูลรายงาน
+        fetchReports();
+      } else {
+        console.warn("No employee data found in localStorage");
+      }
+    }
   }, []);
 
   return (
@@ -2957,8 +2986,7 @@ const loadFromLocalStorage = () => {
 
                 <Button
                   variant="outline"
-                   onClick={() => 
-                  {
+                  onClick={() => {
                     const params = new URLSearchParams({
                       employeeId: employeeId || "",
                       fullName: employeeName || "",
@@ -3963,9 +3991,9 @@ const loadFromLocalStorage = () => {
                             variant="secondary"
                             className="text-xs !text-wrap"
                           >
-                            {option === "8. อื่นๆ" ? 
-                            'อื่นๆ: ' + selectedReport.other : option
-                              }
+                            {option === "8. อื่นๆ"
+                              ? "อื่นๆ: " + selectedReport.other
+                              : option}
                           </Badge>
                         ))}
                       </div>
@@ -3979,8 +4007,14 @@ const loadFromLocalStorage = () => {
                         <strong className="text-green-600">
                           Safe Actions:
                         </strong>{" "}
-                        {selectedReport.safeCount} คน 
-                        {selectedReport.actionType != '' ? " และได้ดำเนินการ " : ""} <strong className="text-green-600"> { selectedReport.actionType}</strong>
+                        {selectedReport.safeCount} คน
+                        {selectedReport.actionType != ""
+                          ? " และได้ดำเนินการ "
+                          : ""}{" "}
+                        <strong className="text-green-600">
+                          {" "}
+                          {selectedReport.actionType}
+                        </strong>
                       </p>
 
                       <p>
@@ -3988,8 +4022,13 @@ const loadFromLocalStorage = () => {
                           Unsafe Actions:
                         </strong>{" "}
                         {selectedReport.unsafeCount} คน
-
-                        {selectedReport.actionTypeunsafe != '' ? " และได้ดำเนินการ " : ""} <strong className="text-red-600"> { selectedReport.actionTypeunsafe}</strong>
+                        {selectedReport.actionTypeunsafe != ""
+                          ? " และได้ดำเนินการ "
+                          : ""}{" "}
+                        <strong className="text-red-600">
+                          {" "}
+                          {selectedReport.actionTypeunsafe}
+                        </strong>
                       </p>
                     </div>
                   </div>
@@ -4034,7 +4073,7 @@ const loadFromLocalStorage = () => {
                         <strong>สถานะ:</strong>{" "}
                         {getStatusInfo(selectedReport.status).label}
                         {selectedReport.status === "rejected" && (
-                          <span className="text-gray-500 ml-2"> 
+                          <span className="text-gray-500 ml-2">
                             ({selectedReport.comment})
                           </span>
                         )}

@@ -37,6 +37,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: n8n@2025
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 120s
+          command_timeout: 30m
           script: |
             cd /home/computer/bbs/ # ไปยัง directory ที่มี docker-compose.yml
             docker-compose pull

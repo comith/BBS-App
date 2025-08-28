@@ -31,11 +31,20 @@ jobs:
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
 
   deploy:
-    runs-on: [self-hosted, Linux, X64]    # ใช้ runner ที่คุณตั้งชื่อไว้
+    runs-on: [self-hosted, Linux, X64]
     needs: build_and_push
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Install Docker Compose
+        run: |
+          # ติดตั้ง Docker Compose โดยใช้ curl
+          # (คำสั่งอาจแตกต่างกันไปตามเวอร์ชันของ Docker Compose)
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          # ตรวจสอบเวอร์ชันเพื่อยืนยันการติดตั้ง
+          docker-compose --version
 
       - name: Deploy with Docker Compose
         run: |

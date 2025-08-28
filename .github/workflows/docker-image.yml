@@ -31,7 +31,7 @@ jobs:
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
 
   deploy:
-    runs-on: [self-hosted, vmn8n]    # ใช้ runner ที่คุณตั้งชื่อไว้
+    runs-on: [self-hosted, Linux, X64]    # ใช้ runner ที่คุณตั้งชื่อไว้
     needs: build_and_push
     steps:
       - name: Checkout repository

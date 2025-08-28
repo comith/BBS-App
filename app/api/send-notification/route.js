@@ -4,11 +4,19 @@ import webpush from 'web-push';
 import { getSubscriptions, removeSubscription, getAllSubscriptionsInfo } from '@/lib/subscriptions';
 
 // ตั้งค่า VAPID
+const vapidDetails = {
+    publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    privateKey: process.env.VAPID_PRIVATE_KEY,
+    subject: 'mailto:koronero93@gmail.com'
+};
+
 webpush.setVapidDetails(
-  'mailto:koronero93@gmail.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+    vapidDetails.subject,
+    vapidDetails.publicKey,
+    vapidDetails.privateKey
 );
+
+
 
 export async function POST(request) {
   try {

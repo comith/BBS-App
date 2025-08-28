@@ -1,30 +1,28 @@
 # Stage 1: ใช้ Node.js official image เป็น Base image
 FROM node:18-alpine AS builder
 
-WORKDIR /app
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-# Copy package.json และ package-lock.json
-COPY package*.json ./
-RUN npm install
+WORKDIR /app
 
 # Copy source code ทั้งหมดไปยัง working directory
 # คำสั่งนี้จะคัดลอกทั้งโฟลเดอร์ 'public' และไฟล์อื่นๆ ที่จำเป็น
 COPY . .
 
-# Sensitive environment variables should be provided at runtime using Docker secrets or docker run -e
-# Use ARG to pass build-time environment variables
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
-ARG VAPID_PRIVATE_KEY
-
-# Use ENV to set environment variables for the build
-ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
-ENV VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
+# Copy package.json และ package-lock.json
+COPY package*.json ./
+RUN npm install
 
 # รัน build command ของ Next.js
 RUN npm run build
 
 # Stage 2: สร้าง Production image
 FROM node:18-alpine
+
+# Set environment variables for the production runtime
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 WORKDIR /app
 

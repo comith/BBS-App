@@ -35,6 +35,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
+          password: n8n@2025
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/computer/bbs/ # ไปยัง directory ที่มี docker-compose.yml

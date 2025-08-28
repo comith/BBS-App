@@ -11,6 +11,15 @@ RUN npm install
 # คำสั่งนี้จะคัดลอกทั้งโฟลเดอร์ 'public' และไฟล์อื่นๆ ที่จำเป็น
 COPY . .
 
+# Sensitive environment variables should be provided at runtime using Docker secrets or docker run -e
+# Use ARG to pass build-time environment variables
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG VAPID_PRIVATE_KEY
+
+# Use ENV to set environment variables for the build
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
+
 # รัน build command ของ Next.js
 RUN npm run build
 

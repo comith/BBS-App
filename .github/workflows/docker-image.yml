@@ -29,3 +29,15 @@ jobs:
           build-args: |
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/computer/bbs/ # ไปยัง directory ที่มี docker-compose.yml
+            docker-compose pull
+            docker-compose up -d --force-recreate
+            docker image prune -f # ลบ image เก่าเพื่อประหยัดพื้นที่

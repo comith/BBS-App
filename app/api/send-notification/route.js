@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { getSubscriptions, removeSubscription, getAllSubscriptionsInfo } from '@/lib/subscriptions';
 
-// ตั้งค่า VAPID
+export async function POST(request) {
+
+  // ตั้งค่า VAPID
 const vapidDetails = {
     publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     privateKey: process.env.VAPID_PRIVATE_KEY,
@@ -17,8 +19,6 @@ webpush.setVapidDetails(
 );
 
 
-
-export async function POST(request) {
   try {
     const { title, body, icon, url } = await request.json();
     

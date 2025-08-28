@@ -25,4 +25,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/bbs-app:latest
+          tags: ${{ secrets.NAMEACCOUNT }}/bbs-app:latest

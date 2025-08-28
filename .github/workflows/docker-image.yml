@@ -25,10 +25,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_NAMEACCOUNT }}/bbs-app:lastest
-          # ส่งค่า VAPID_PUBLIC_KEY เป็น build-args
+          tags: ${{ secrets.DOCKER_NAMEACCOUNT }}/bbs-app:latest
           build-args: |
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-          # ส่งค่า VAPID_PRIVATE_KEY เป็น secret เพื่อไม่ให้รั่วไหล
-          secrets: |
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}

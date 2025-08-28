@@ -461,12 +461,12 @@ function ModernBBSLogin() {
       <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block">
         <div
           className="absolute inset-0"
-          style={{
-            backgroundImage: "url('/img/bg_login.jpg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
         />
+        {/* <img
+          src="/img/bg_login.png"
+          alt="Background"
+          className="absolute inset-0 object-cover w-full h-full"
+        /> */}
         <div className="absolute inset-0">
           <BackgroundSVG />
         </div>

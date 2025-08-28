@@ -29,19 +29,17 @@ jobs:
           build-args: |
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
-            
-      - name: Deploy to Server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: n8n@2025
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 120s
-          command_timeout: 30m
-          script: |
-            cd /home/computer/bbs/ # ไปยัง directory ที่มี docker-compose.yml
-            docker-compose pull
-            docker-compose up -d --force-recreate
-            docker image prune -f # ลบ image เก่าเพื่อประหยัดพื้นที่
+
+  deploy:
+    runs-on: [self-hosted, vmn8n]    # ใช้ runner ที่คุณตั้งชื่อไว้
+    needs: build_and_push
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd /home/computer/bbs/
+          docker-compose pull
+          docker-compose up -d --force-recreate
+          docker image prune -f

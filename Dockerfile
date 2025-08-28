@@ -1,42 +1,45 @@
-# Stage 1: ใช้ Node.js official image เป็น Base image
+# Stage 1: Build stage
 FROM node:18-alpine AS builder
-
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
-ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 WORKDIR /app
 
-# Copy source code ทั้งหมดไปยัง working directory
-# คำสั่งนี้จะคัดลอกทั้งโฟลเดอร์ 'public' และไฟล์อื่นๆ ที่จำเป็น
-COPY . .
-
-# Copy package.json และ package-lock.json
+# Copy package.json ก่อน เพื่อใช้ Docker cache
 COPY package*.json ./
 RUN npm install
 
-# รัน build command ของ Next.js
+# Copy source code ทั้งหมด
+COPY . .
+
+# รับ build args (ใช้ได้เฉพาะตอน build)
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG VAPID_PRIVATE_KEY
+
+# set env สำหรับ build (Next.js จะใช้ตอน build)
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
+
+# รัน build
 RUN npm run build
 
-# Stage 2: สร้าง Production image
+# Stage 2: Production image
 FROM node:18-alpine
-
-# Set environment variables for the production runtime
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
-ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 WORKDIR /app
 
-# Copy ไฟล์ build ที่จำเป็นจาก builder stage
+# รับ build args อีกรอบ (ถ้าจะส่งค่าเข้า runtime container)
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG VAPID_PRIVATE_KEY
+
+# set env สำหรับ runtime
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
+
+# Copy ไฟล์จำเป็นจาก builder stage
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-
-# *** ส่วนสำคัญ: Copy โฟลเดอร์ public ***
-# โฟลเดอร์นี้จะต้องมีใน Final image เพื่อให้เข้าถึง Assets ได้
-COPY public ./public
-
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-# กำหนด command ที่จะรันเมื่อ container เริ่มต้น
 CMD ["npm", "run", "start"]

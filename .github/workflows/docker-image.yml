@@ -49,6 +49,9 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           cd /home/computer/bbs/
+          # ลบคอนเทนเนอร์, อิมเมจที่ไม่ได้ใช้งาน (และ volumes) ก่อน pull
+          sudo docker system prune --volumes -f
           sudo docker-compose pull
           sudo docker-compose up -d --force-recreate
-          sudo docker image prune -f
+          # ลบอิมเมจที่ห้อยอยู่ (dangling images)
+          sudo docker images --filter "dangling=true" --format "{{.ID}}" | xargs -r docker rmi

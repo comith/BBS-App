@@ -48,7 +48,7 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
-          cd /home/bbs/
+          cd /home/computer/bbs/
           docker-compose pull
           docker-compose up -d --force-recreate
           docker image prune -f

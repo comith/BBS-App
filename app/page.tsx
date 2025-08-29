@@ -462,11 +462,11 @@ function ModernBBSLogin() {
         <div
           className="absolute inset-0"
         />
-        {/* <img
+        <img
           src="/img/bg_login.png"
           alt="Background"
           className="absolute inset-0 object-cover w-full h-full"
-        /> */}
+        />
         <div className="absolute inset-0">
           <BackgroundSVG />
         </div>

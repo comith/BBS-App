@@ -37,6 +37,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Cleanup runner logs and workdir
+        run: |
+          echo "🧹 Cleaning up old runner files..."
+          sudo rm -rf /home/computer/actions-runner/_diag/*
+          sudo rm -rf /home/computer/actions-runner/_work/*
+
       - name: Install Docker Compose
         run: |
           # ติดตั้ง Docker Compose โดยใช้ curl

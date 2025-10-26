@@ -31,12 +31,13 @@ export function Providers({ children }: Readonly<{ children: React.ReactNode }>)
   return (
     <QueryClientProvider client={queryClient}>
       {/* ✅ ครอบด้วย NotificationLogProvider */}
-      <NotificationLogProvider 
+      {/* <NotificationLogProvider 
         refreshInterval={30000}  // รีเฟรชทุก 30 วินาที
         enableRealtime={true}    // เปิดใช้ real-time updates
       >
         {children}
-      </NotificationLogProvider>
+      </NotificationLogProvider> */}
+       {children}
       
       {/* แสดง DevTools เฉพาะใน development */}
       {process.env.NODE_ENV === 'development' && (

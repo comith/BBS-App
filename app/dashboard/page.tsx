@@ -11,7 +11,7 @@ import {
   startOfDay,
   endOfDay,
 } from "date-fns";
-import { th } from "date-fns/locale";
+import { da, th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -45,6 +45,10 @@ import {
   House,
   DollarSign,
   UserRoundCog,
+  HardHat,
+  Wrench,
+  Bike,
+  ReceiptText
 } from "lucide-react";
 import {
   Select,
@@ -53,6 +57,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Define EmployeeInfo interface
+interface EmployeeInfo {
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  group: string;
+  [key: string]: any;
+}
 import {
   Collapsible,
   CollapsibleContent,
@@ -72,6 +85,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmployeeSendReport } from "@/components/EmployeeSendReport";
 
 // Custom Calendar Component
 type CustomCalendarProps = {
@@ -117,6 +131,9 @@ const CustomCalendar = ({
   interface EmployeeInfo {
     employeeId: string;
     employeeName: string;
+    depatment: string;
+    group: string;
+    position: string;
   }
 
   interface DepartmentGroup {
@@ -521,6 +538,12 @@ function AdminDashboard() {
   const [employeeName, setEmployeeName] = useState<string | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [group, setGroup] = useState<string | null>(null);
+  const [employeeList, setEmployeeList] = useState<EmployeeInfo[]>([]);
+  const [showLiseEmployeeSendReport, setShowLiseEmployeeSendReport] =
+    useState<boolean>(false);
+  const [dataLiseEmployeeSendReport, setDataLiseEmployeeSendReport] =
+    useState<any>([]);
+  const [dataEmplooyeesInGroup, setDataEmplooyeesInGroup] = useState<any>([]);
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -558,9 +581,30 @@ function AdminDashboard() {
           startOfDay(r.submittedDate).getTime() ===
           startOfDay(new Date()).getTime()
       ).length,
+      ppe: reports.filter((r) => r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved" ).length,
+      // รวมค่า safe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
+      ppe_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      // รวมค่า unsafe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
+      ppe_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      tools: reports.filter((r) => r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved").length,
+      // รวมค่า safe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
+      tools_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      // รวมค่า unsafe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
+      tools_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      unsafe_actions: reports.filter((r) => r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved").length,
+      // รวมค่า safe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
+      unsafe_actions_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      // รวมค่า unsafe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
+      unsafe_actions_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      unsafe_condition: reports.filter((r) => r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved").length,
+      // รวมค่า safe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
+      unsafe_condition_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      // รวมค่า unsafe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
+      unsafe_condition_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
     }),
     [reports]
   );
+
 
   // Toggle accordion
   const toggleAccordion = useCallback(
@@ -776,22 +820,29 @@ function AdminDashboard() {
     setError(null);
 
     try {
-      const [recordResponse, categoryResponse, subCategoryResponse] =
-        await Promise.all([
-          fetch("/api/get?type=record"),
-          fetch("/api/get?type=category"),
-          fetch("/api/get?type=subcategory"),
-        ]);
+      const [
+        recordResponse,
+        categoryResponse,
+        subCategoryResponse,
+        employeeListResponse,
+      ] = await Promise.all([
+        fetch("/api/get?type=record"),
+        fetch("/api/get?type=category"),
+        fetch("/api/get?type=subcategory"),
+        fetch("/api/get?type=employee"),
+      ]);
 
       if (!recordResponse.ok) {
         throw new Error(`HTTP error! status: ${recordResponse.status}`);
       }
 
-      const [apiData, categoryData, subCategoryData] = await Promise.all([
-        recordResponse.json(),
-        categoryResponse.json(),
-        subCategoryResponse.json(),
-      ]);
+      const [apiData, categoryData, subCategoryData, employeeListData] =
+        await Promise.all([
+          recordResponse.json(),
+          categoryResponse.json(),
+          subCategoryResponse.json(),
+          employeeListResponse.json(),
+        ]);
 
       if (!Array.isArray(apiData)) {
         throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
@@ -801,7 +852,7 @@ function AdminDashboard() {
         categoryData,
         subCategoryData
       );
-
+      setEmployeeList(employeeListData);
       setReports(transformedReports);
     } catch (error) {
       console.error("❌ Error fetching reports:", error);
@@ -1958,12 +2009,72 @@ function AdminDashboard() {
           return {
             department,
             subGroups: subGroups.map((group) => {
-              const groupReports = reports.filter(
-                (r) => r.department === department && r.group === group
+              //ข้อมูลพนักงานที่ส่งรายงานเข้ามาในกลุ่มนี้
+              const groupReports = reports
+                .filter((r) => {
+                  const reportDate = new Date(r.submittedDate);
+                  return (
+                    reportDate >= monthlyRange.start &&
+                    reportDate <= monthlyRange.end &&
+                    r.department === department &&
+                    r.group === group &&
+                    r.status === "approved"
+                  );
+                })
+                .map((r) => ({
+                  date: r.submittedDate,
+                  employeeId: r.employeeId,
+                  employeeName: r.employeeName,
+                  group: r.group,
+                })); // ดึงเฉพาะ employeeId,employeeName,group ในช่วงเดือนนี้ (21 ถึง 20)
+
+              // หาพนักงานที่ไม่ซ้ำกันในกลุ่มนี้ โดยกรองจาก employeeId
+              const uniqueEmployeesMap = new Map();
+
+              employeeList.forEach((r) => {
+                // ใช้ employeeId เป็น key ใน Map เพื่อรับประกันว่าซ้ำไม่ได้
+                if (!uniqueEmployeesMap.has(r.employeerId)) {
+                  uniqueEmployeesMap.set(r.employeerId, {
+                    employeeId: r.employeerId,
+                    employeeName: r.fullName,
+                    department: r.department,
+                    group: r.group,
+                  });
+                }
+              });
+
+              // แปลงค่าใน Map กลับมาเป็น Array ของพนักงานที่ไม่ซ้ำกัน
+              const groupEmployees = Array.from(
+                uniqueEmployeesMap.values()
+              ).filter((emp) => emp.group === group);
+
+              // ======================================  กรองเฉพาะคนที่ส่งในกลุ่มว่าส่งกี่ครั้ง ============
+
+              const employeeCountsSendReport = new Map();
+
+              groupReports.forEach((item) => {
+                const employeeId = item.employeeId;
+
+                if (employeeCountsSendReport.has(employeeId)) {
+                  // ถ้าเคยเจอ employeeId นี้แล้ว: ให้อัปเดตเฉพาะจำนวนนับ
+                  const currentData = employeeCountsSendReport.get(employeeId);
+                  currentData.count += 1;
+                  // ไม่ต้อง set ใหม่ก็ได้ เพราะ Map เก็บ Reference ของ Object
+                } else {
+                  // ถ้าเป็น employeeId ใหม่: เพิ่มรายการใหม่พร้อมนับ = 1
+                  employeeCountsSendReport.set(employeeId, {
+                    employeeId: item.employeeId,
+                    employeeName: item.employeeName,
+                    group: item.group,
+                    count: 1, // เริ่มต้นนับเป็น 1
+                  });
+                }
+              });
+
+              // แปลงค่าใน Map กลับมาเป็น Array ของผลลัพธ์สุดท้าย
+              const uniqueEmployeesWithCount = Array.from(
+                employeeCountsSendReport.values()
               );
-              const groupEmployees = [
-                ...new Set(groupReports.map((r) => r.employeeId)),
-              ];
 
               return {
                 groupId: `${department}-${group}`,
@@ -1971,13 +2082,8 @@ function AdminDashboard() {
                 department,
                 group,
                 employeeCount: groupEmployees.length,
-                employees: groupEmployees.map((empId) => {
-                  const emp = groupReports.find((r) => r.employeeId === empId);
-                  return {
-                    employeeId: empId,
-                    employeeName: emp?.employeeName || empId,
-                  };
-                }),
+                employees: groupEmployees,
+                employeesSendReport: uniqueEmployeesWithCount,
                 paymentType: "group", // คิดรายกลุ่ม
               };
             }),
@@ -2167,7 +2273,6 @@ function AdminDashboard() {
             };
           })
         );
-
         // รวมผลลัพธ์
         const allResults = [...ithOeResults, ...groupResults];
 
@@ -2199,7 +2304,7 @@ function AdminDashboard() {
         });
       };
 
-      // Export รายงาน Payroll
+      // ============================================>  Export รายงาน Payroll
       const exportPayrollReport = () => {
         const monthRange = payrollData.monthRange;
         const startStr = format(monthRange.start, "dd-MM-yyyy");
@@ -2207,57 +2312,21 @@ function AdminDashboard() {
 
         // Headers สำหรับ Individual (ITH-OE)
         const individualHeaders = [
-          "ประเภท",
-          "รหัสพนักงาน",
-          "ชื่อพนักงาน",
-          "แผนก",
           "กลุ่ม",
-          "BBS ส่งจริง",
-          "BBS เป้าหมาย",
-          "BBS ผ่าน",
-          "PPE ละเมิด",
-          "เสี่ยงสูง ละเมิด",
-          "อุบัติเหตุ ละเมิด",
-          "SHE ผ่าน",
-          "สถานะการจ่าย",
-          "หมายเหตุ",
-        ];
-
-        // Headers สำหรับ Group (แผนกอื่นๆ)
-        const groupHeaders = [
-          "ประเภท",
-          "ชื่อกลุ่ม",
-          "แผนก",
-          "จำนวนสมาชิก",
-          "รายชื่อสมาชิก",
-          "BBS ส่งจริง",
-          "BBS เป้าหมาย",
-          "BBS ผ่าน",
-          "PPE ละเมิด",
-          "เสี่ยงสูง ละเมิด",
-          "อุบัติเหตุ ละเมิด",
-          "SHE ผ่าน",
-          "สถานะการจ่าย",
-          "หมายเหตุ",
+          "รหัสพนักงาน",
+          "ชื่อ-สกุล",
+          "การรายงาน (ครั้ง)",
         ];
 
         // ข้อมูล Individual
-        const individualData = payrollData.individuals.map((emp) => [
-          "รายบุคคล",
-          emp.employeeId,
-          emp.employeeName,
-          emp.department,
-          emp.group,
-          emp.bbsCount,
-          emp.bbsTarget,
-          emp.meetsBbsRequirement ? "ผ่าน" : "ไม่ผ่าน",
-          emp.ppeViolations,
-          emp.highRiskViolations,
-          emp.accidentViolations,
-          emp.hasShePenalty ? "ไม่ผ่าน" : "ผ่าน",
-          emp.isEligible ? "ได้รับเงิน" : "ไม่ได้รับเงิน",
-          emp.isEligible ? "" : emp.paymentStatus.replace("ไม่ได้รับ: ", ""),
-        ]);
+        const individualData = payrollData.individuals
+          .filter((r) => r.isEligible) // กรองเฉพาะพนักงานที่ได้รับเงิน
+          .map((emp, index) => [
+            "รายบุคคล",
+            emp.employeeId,
+            emp.employeeName,
+            emp.bbsCount,
+          ]);
 
         // ข้อมูล Group
         interface GroupEmployee {
@@ -2281,75 +2350,80 @@ function AdminDashboard() {
           paymentStatus: string;
         }
 
-        const groupData: (string | number)[][] = payrollData.groups.map(
-          (group: GroupDataRow) => [
-            "รายกลุ่ม",
-            group.groupName,
-            group.department,
-            group.employeeCount,
-            group.employees
-              .map((e: GroupEmployee) => `${e.employeeName}(${e.employeeId})`)
-              .join(", "),
-            group.bbsCount,
-            group.bbsTarget,
-            group.meetsBbsRequirement ? "ผ่าน" : "ไม่ผ่าน",
-            group.ppeViolations,
-            group.highRiskViolations,
-            group.accidentViolations,
-            group.hasShePenalty ? "ไม่ผ่าน" : "ผ่าน",
-            group.isEligible ? "ได้รับเงิน" : "ไม่ได้รับเงิน",
-            group.isEligible
-              ? ""
-              : group.paymentStatus.replace("ไม่ได้รับ: ", ""),
-          ]
-        );
+        // กรองเฉพาะกลุ่มที่ได้รับเงิน
+        const groupData = payrollData.groups
+          .filter((r) => r.isEligible)
+          .sort((a, b) => {
+            const nameA = a.groupName;
+            const nameB = b.groupName;
+
+            // ฟังก์ชันช่วยแยกตัวอักษรและตัวเลข
+            interface GroupNameParts {
+              prefix: string;
+              number: number;
+            }
+
+            const getParts = (name: string): GroupNameParts => {
+              // ใช้ RegExp เพื่อแยก Prefix (ตัวอักษร: 'CV') และ Number (ตัวเลข: '1', '10')
+              // Match[1] = Prefix, Match[2] = Number
+              const match = name.match(/^([a-zA-Z]+)(\d+)$/);
+              if (match) {
+                return { prefix: match[1], number: parseInt(match[2], 10) };
+              }
+              // หากไม่ตรงตามรูปแบบ ให้คืนค่ากลับเพื่อใช้การเรียงแบบปกติ
+              return { prefix: name, number: 0 };
+            };
+
+            const partA = getParts(nameA);
+            const partB = getParts(nameB);
+
+            // 1. เปรียบเทียบตาม Prefix (ตัวอักษร) ก่อน (CV vs CV)
+            if (partA.prefix !== partB.prefix) {
+              return partA.prefix.localeCompare(partB.prefix);
+            }
+
+            // 2. ถ้า Prefix เหมือนกัน (เช่น ทั้งคู่คือ 'CV') ให้เปรียบเทียบตามตัวเลข
+            return partA.number - partB.number;
+          });
+        interface GroupEmployee {
+          employeeId: string;
+          employeeName: string;
+        }
+
+        interface GroupData {
+          group: string;
+          employees: GroupEmployee[];
+          bbsCount: number;
+          // Add other fields if needed
+        }
+
+        const listEmployeeInGroup: Array<[string, string, string, number]> =
+          groupData.flatMap((group: GroupData) =>
+            (group.employees || []).map(
+              (emp: GroupEmployee): [string, string, string, number] => [
+                group.group,
+                emp.employeeId,
+                emp.employeeName,
+                group.bbsCount,
+              ]
+            )
+          );
 
         // รวมข้อมูลทั้งหมด (ใช้ headers ที่ยาวกว่า)
-        const allHeaders = groupHeaders;
+        const allHeaders = individualHeaders;
         const allData = [
           allHeaders,
-          // เพิ่มแถวว่างเพื่อแยกส่วน
-          [
-            "=== ITH-OE (รายบุคคล) ===",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-          ],
+          // Data แบบเดี่ยว
           ...individualData.map((row) => {
             // เพิ่มคอลัมน์ว่างเพื่อให้ตรงกับ group headers
             const newRow = [...row];
-            newRow.splice(4, 0, ""); // เพิ่มคอลัมน์ "รายชื่อสมาชิก" ว่าง
             return newRow;
           }),
-          // เพิ่มแถวว่างเพื่อแยกส่วน
-          ["", "", "", "", "", "", "", "", "", "", "", "", "", ""],
-          [
-            "=== แผนกอื่นๆ (รายกลุ่ม) ===",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-          ],
-          ...groupData,
+
+          ...listEmployeeInGroup.map((row) => {
+            const newRow = [...row];
+            return newRow;
+          }),
         ];
 
         const csvContent = allData
@@ -2371,6 +2445,8 @@ function AdminDashboard() {
         link.click();
         document.body.removeChild(link);
       };
+
+      /// ========================================= > end export payroll
 
       const monthNames = [
         "มกราคม",
@@ -2428,7 +2504,7 @@ function AdminDashboard() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col md:flex-row items-center space-x-4">
               <Button
                 onClick={fetchSheViolations}
                 disabled={isLoadingShe}
@@ -2603,6 +2679,14 @@ function AdminDashboard() {
           )}
 
           {/* Other Departments Group Results */}
+
+          {showLiseEmployeeSendReport && (
+            <EmployeeSendReport
+              setShowLiseEmployeeSendReport={setShowLiseEmployeeSendReport}
+              data={dataLiseEmployeeSendReport}
+              employeesInGroup={dataEmplooyeesInGroup}
+            />
+          )}
           {payrollData.groups.length > 0 && (
             <div>
               <h4 className="text-lg font-semibold mb-3 text-purple-600">
@@ -2654,19 +2738,21 @@ function AdminDashboard() {
                               >
                                 <td className="border border-gray-300 p-3">
                                   <div>
-                                    <div className="font-medium">
+                                    <a
+                                      className="font-medium cursor-pointer text-blue-600 hover:underline"
+                                      onClick={() => {
+                                        setShowLiseEmployeeSendReport(true),
+                                          setDataLiseEmployeeSendReport(
+                                            group.employeesSendReport
+                                          );
+                                        setDataEmplooyeesInGroup(
+                                          group.employees
+                                        );
+                                      }}
+                                    >
                                       {group.groupName}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {group.employees
-                                        .map(
-                                          (e: {
-                                            employeeId: string;
-                                            employeeName: string;
-                                          }) => e.employeeName
-                                        )
-                                        .join(", ")}
-                                    </div>
+                                    </a>
+                                    <div className="text-xs text-gray-500 mt-1"></div>
                                   </div>
                                 </td>
                                 <td className="border border-gray-300 p-3 text-center font-medium">
@@ -3134,6 +3220,111 @@ function AdminDashboard() {
                       </div>
                       <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
                         <FileText className="h-6 w-6 text-gray-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* เพิ่มสรุปสำหรับหัวข้อรายงานหลัก 4 หัวข้อ */}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">PPE</p>
+                        <div className="flex flex-row items-center space-x-4">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {stats.ppe}
+                          </p>
+                          <div>
+                            <p className="text-sm text-green-600">
+                              Safe Act. : {stats.ppe_safe}
+                            </p>
+                            <p className="text-sm text-red-600">
+                              UnSafe Act. : {stats.ppe_unsafe}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <HardHat className="h-6 w-6 text-orange-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Tools</p>
+                        <div className="flex flex-row items-center space-x-4">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {stats.tools}
+                          </p>
+                          <div>
+                            <p className="text-sm text-green-600">
+                              Safe Act. : {stats.tools_safe}
+                            </p>
+                            <p className="text-sm text-red-600">
+                              UnSafe Act. : {stats.tools_unsafe}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Wrench className="h-6 w-6 text-gray-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Unsafe Action</p>
+                        <div className="flex flex-row items-center space-x-4">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {stats.unsafe_actions}
+                          </p>
+                          <div>
+                            <p className="text-sm text-green-600">
+                              Safe Act. : {stats.unsafe_actions_safe}
+                            </p>
+                            <p className="text-sm text-red-600">
+                              UnSafe Act. : {stats.unsafe_actions_unsafe}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <Bike className="h-6 w-6 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Unsafe Condition</p>
+                        <div className="flex flex-row items-center space-x-4">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {stats.unsafe_condition}
+                          </p>
+                          <div>
+                            <p className="text-sm text-green-600">
+                              Safe Act. : {stats.unsafe_condition_safe}
+                            </p>
+                            <p className="text-sm text-red-600">
+                              UnSafe Act. : {stats.unsafe_condition_unsafe}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <ReceiptText className="h-6 w-6 text-blue-600" />
                       </div>
                     </div>
                   </CardContent>

@@ -41,8 +41,8 @@ jobs:
           echo "🧹 Cleaning up old runner files..."
           # การล้างไฟล์ระบบของ Runner ยังคงต้องใช้ sudo
           # (หากขั้นตอนนี้ยังล้มเหลว แสดงว่า NOPASSWD ไม่ได้ผล ให้นำคำสั่งนี้ออกชั่วคราว)
-          sudo rm -rf /home/computer/actions-runner/_diag/*
-          sudo rm -rf /home/computer/actions-runner/_work/*
+          # sudo rm -rf /home/computer/actions-runner/_diag/*
+          # sudo rm -rf /home/computer/actions-runner/_work/*
 
       # 2. Deploy with Docker Compose: ขั้นตอนนี้จะทำงานต่อ
       # (สมมติว่า Docker Compose ถูกติดตั้งล่วงหน้าบนเซิร์ฟเวอร์แล้ว)

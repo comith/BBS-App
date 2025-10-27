@@ -42,16 +42,36 @@ jobs:
           sudo rm -rf /home/computer/actions-runner/_diag/*
           sudo rm -rf /home/computer/actions-runner/_work/*
 
-      # 2. Install Docker Compose: ลบ sudo ที่เรียกใช้ docker-compose
-      # (ยังคงต้องใช้ sudo สำหรับ curl/chmod เพราะติดตั้งใน /usr/local/bin)
+      # 2. Install Docker Compose: เพิ่มการตรวจสอบสิทธิ์และใช้ Shell ที่เหมาะสม
       - name: Install Docker Compose
+        # ตั้งค่า shell: bash เพื่อให้แน่ใจว่าใช้ shell มาตรฐาน
+        shell: bash
         run: |
           echo "Installing Docker Compose..."
-          # ใช้ sudo สำหรับการดาวน์โหลดและ chmod เพราะติดตั้งในไดเรกทอรีระบบ
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          # ตรวจสอบเวอร์ชัน: ควรจะทำงานได้โดยไม่ต้องใช้ sudo หากติดตั้งถูกต้อง
-          docker-compose --version
+          
+          # ตรวจสอบว่าผู้ใช้มีสิทธิ์ใช้ sudo โดยไม่ต้องใส่รหัสผ่านหรือไม่
+          # ถ้าไม่มี NOPASSWD หรือมีปัญหา permission อื่นๆ จะล้มเหลวที่นี่
+          # คำสั่งติดตั้ง Docker Compose แบบดั้งเดิม
+          
+          # ตรวจสอบการติดตั้ง Docker Compose
+          if command -v docker-compose &>/dev/null; then
+              echo "Docker Compose is already installed."
+              docker-compose --version
+          else
+              echo "Installing Docker Compose using sudo curl..."
+              
+              # ใช้ sudo สำหรับการดาวน์โหลดและ chmod เพราะติดตั้งในไดเรกทอรีระบบ
+              # บังคับใช้ Shell เพื่อให้แน่ใจว่าคำสั่งทำงานได้ถูกต้อง
+              sudo /bin/bash -c "curl -L 'https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)' -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
+              
+              # ตรวจสอบเวอร์ชันหลังการติดตั้ง
+              docker-compose --version
+              
+              if [ $? -ne 0 ]; then
+                  echo "::error::Docker Compose installation failed. Check server sudo permissions."
+                  exit 1
+              fi
+          fi
 
       # 3. Deploy: ลบคำสั่ง sudo ทั้งหมดที่เกี่ยวข้องกับ Docker
       - name: Deploy with Docker Compose

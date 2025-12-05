@@ -1233,7 +1233,41 @@ function SafetyObservationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {(() => {
+                          <SelectItem key={2} value="ITH-CV">
+                            ITH-CV
+                          </SelectItem>
+                          <SelectItem key={3} value="ITH-MO">
+                            ITH-MO
+                          </SelectItem>
+                          <SelectItem key={4} value="ITH-MT">
+                            ITH-MT
+                          </SelectItem>
+                          <SelectItem key={5} value="ITH-AUX">
+                            ITH-AUX
+                          </SelectItem>
+                          <SelectItem key={6} value="ITH-OE">
+                            ITH-OE
+                          </SelectItem>
+                          <SelectItem key={7} value="ITH-SV">
+                            ITH-SV
+                          </SelectItem>
+                          <SelectItem key={8} value="VCS-Sub">
+                            VCS-Sub
+                          </SelectItem>
+                          <SelectItem key={9} value="STN-Sub">
+                            STN-Sub
+                          </SelectItem>
+                          <SelectItem key={10} value="SDS-Sub">
+                            SDS-Sub
+                          </SelectItem>
+                          <SelectItem key={11} value="3SL-Sub">
+                            3SL-Sub
+                          </SelectItem>
+                          <SelectItem key={12} value="SSK-Sub">
+                            SSK-Sub
+                          </SelectItem>
+
+                          {/* {(() => {
                             // ถ้าเลือก Safety Category 4 ให้ใช้ข้อมูลจาก id = 10
                             if (selectedSafetyCategory === "4") {
                               return sub_safetyCategoryData
@@ -1289,7 +1323,7 @@ function SafetyObservationForm() {
                                 กรุณาเลือก Category ก่อน
                               </SelectItem>
                             );
-                          })()}
+                          })()} */}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -1,24 +1,31 @@
-// jest.config.mjs
+
 import nextJest from 'next/jest.js';
 
 const createJestConfig = nextJest({
+  // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
   dir: './',
 });
 
-const customJestConfig = {
+// Add any custom config to be passed to Jest
+/** @type {import('jest').Config} */
+const config = {
+  coverageProvider: 'v8',
+  testEnvironment: 'jsdom',
+  // Add more setup options before each test is run
   setupFilesAfterEnv: ['<rootDir>/jest.setup.mjs'],
-  testEnvironment: 'jsdom', // Corrected to 'jsdom'
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  // เพิ่มส่วนนี้เพื่อสร้าง Test Report ด้วย Jest-Junit และ LCOV
   collectCoverage: true,
   coverageReporters: ['lcov', 'text'],
-  reporters: ['default', ['jest-junit', {
-    outputDirectory: 'test-results',
-    outputName: 'junit.xml',
-  }]],
+  reporters: [
+    'default',
+    ['jest-junit', {
+      outputDirectory: 'test-results',
+      outputName: 'junit.xml',
+    }]
+  ],
 };
 
-export default createJestConfig(customJestConfig);
+// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+export default createJestConfig(config);

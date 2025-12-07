@@ -1,11 +1,21 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // output: 'exstandaloneort',
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  // Uncomment for standalone build (Docker deployment)
+  // output: 'standalone',
+
   eslint: {
-    ignoreDuringBuilds: true,
+    // Temporarily disable ESLint during builds
+    // TODO: Fix linting errors and re-enable
+    ignoreDuringBuilds: false,
   },
-  images: { unoptimized: true },
-  reactStrictMode: false,
+
+  images: {
+    unoptimized: true
+  },
+
+  // Enable React Strict Mode for better development experience
+  reactStrictMode: true,
 };
 
-module.exports = nextConfig;
+export default nextConfig;

@@ -1,6 +1,7 @@
 // api/put/route.js
 import { getSheetData, batchUpdateSheet } from "../config";
 import { NextResponse } from "next/server";
+import { apiLogger } from '@/lib/logger';
 
 function findEmployeeRowIndex(sheetData, id, employeerId) {
   for (let i = 1; i < sheetData.length; i++) {
@@ -71,7 +72,7 @@ export async function PUT(request) {
       data: { id, ...data },
     });
   } catch (error) {
-    console.error("Error updating employee:", error);
+    apiLogger.error("Error updating employee:", error);
     return NextResponse.json(
       { message: "Error updating employee", error: error.message },
       { status: 500 }

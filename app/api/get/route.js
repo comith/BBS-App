@@ -1,7 +1,7 @@
 // api/get/route.js - เพิ่ม debug และ error handling
 import { getSheetData } from "../config";
 import { NextResponse } from "next/server";
-
+import { apiLogger } from '@/lib/logger';
 
 function safeJSONParse(str) {
   if (typeof str === "string" && str.trim() !== "") {
@@ -10,7 +10,7 @@ function safeJSONParse(str) {
       try {
         return JSON.parse(str);
       } catch (error) {
-        console.error("JSON parse error:", error);
+        apiLogger.error("JSON parse error:", error);
         return null;
       }
     }
@@ -103,23 +103,23 @@ function formatDataByType(data, type) {
 
 async function fetchAndFormatData(sheetRange, type) {
   try {
-    console.log(`🔍 Fetching data for type: ${type}, range: ${sheetRange}`);
-    
+    apiLogger.info(`🔍 Fetching data for type: ${type}, range: ${sheetRange}`);
+
     // ตรวจสอบว่า getSheetData function มีอยู่ไหม
     if (typeof getSheetData !== 'function') {
       throw new Error('getSheetData function is not available');
     }
 
     const data = await getSheetData(sheetRange);
-    console.log(`📊 Data received:`, data ? `${data.length} rows` : 'null');
+    apiLogger.info(`📊 Data received:`, data ? `${data.length} rows` : 'null');
 
     if (!data || data.length === 0) {
       return { success: false, data: [], message: "No data found." };
     }
 
     if (type === "subcategory") {
-      console.log("🔧 Processing subcategory with additional data...");
-      
+      apiLogger.info("🔧 Processing subcategory with additional data...");
+
       const dataWithSubcategory = await getSheetData("list_option!A1:C");
       const datawithDepartment = await getSheetData("list_department!A1:D");
 
@@ -152,8 +152,8 @@ async function fetchAndFormatData(sheetRange, type) {
           return item;
         });
 
-        console.log(`✅ Subcategory processed: ${formattedData.length} items`);
-        
+        apiLogger.info(`✅ Subcategory processed: ${formattedData.length} items`);
+
         return {
           success: true,
           data: formattedData,
@@ -169,16 +169,16 @@ async function fetchAndFormatData(sheetRange, type) {
     }
 
     const formattedData = formatDataByType(data, type);
-    console.log(`✅ Data formatted: ${formattedData.length} items`);
-    
+    apiLogger.info(`✅ Data formatted: ${formattedData.length} items`);
+
     return {
       success: true,
       data: formattedData,
       message: `${type.charAt(0).toUpperCase() + type.slice(1)} data fetched successfully.`,
     };
   } catch (error) {
-    console.error("❌ API Error:", error);
-    console.error("Error stack:", error.stack);
+    apiLogger.error("❌ API Error:", error);
+    apiLogger.error("Error stack:", error.stack);
     return {
       success: false,
       data: [],
@@ -190,18 +190,18 @@ async function fetchAndFormatData(sheetRange, type) {
 
 // GET method สำหรับดึงข้อมูลทั้งหมด
 export async function GET(request) {
-  console.log("🔗 GET request received at /api/get");
+  apiLogger.info("🔗 GET request received at /api/get");
   try {
-    console.log("🚀 API GET request received");
-    
+    apiLogger.info("🚀 API GET request received");
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
-    
-    console.log(`📝 Request type: ${type}`);
+
+    apiLogger.info(`📝 Request type: ${type}`);
 
     // ตรวจสอบว่ามี type parameter ไหม
     if (!type) {
-      console.log("❌ No type parameter provided");
+      apiLogger.warn("❌ No type parameter provided");
       return NextResponse.json(
         { message: "Type parameter is required" },
         { status: 400 }
@@ -234,7 +234,7 @@ export async function GET(request) {
         break;
 
       default:
-        console.log(`❌ Invalid type: ${type}`);
+        apiLogger.warn(`❌ Invalid type: ${type}`);
         return NextResponse.json(
           {
             message: "Invalid type parameter. Use: record, category, subcategory, department, group, employee, or she_violations",
@@ -243,7 +243,7 @@ export async function GET(request) {
         );
     }
 
-    console.log(`📤 Result:`, result.success ? 'Success' : 'Failed');
+    apiLogger.info(`📤 Result: ${result.success ? 'Success' : 'Failed'}`);
 
     if (!result.success) {
       return NextResponse.json(
@@ -251,11 +251,11 @@ export async function GET(request) {
         { status: result.data.length === 0 ? 404 : 500 }
       );
     }
-    console.log(`📊 Returning data for type: ${type}`);
+    apiLogger.info(`📊 Returning data for type: ${type}`);
     return NextResponse.json(result.data);
-    
+
   } catch (error) {
-    console.error("💥 Unexpected error in GET handler:", error);
+    apiLogger.error("💥 Unexpected error in GET handler:", error);
     return NextResponse.json(
       { message: "Internal server error", error: error.message },
       { status: 500 }

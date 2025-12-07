@@ -113,7 +113,7 @@ export function useNotification() {
     return outputArray;
   };
 
-  const saveSubscriptionToServer = async (subscription) => {
+  const saveSubscriptionToServer = async (subscription, userInfo = {}) => {
     try {
       const response = await fetch("/api/subscribe", {
         method: "POST",
@@ -121,6 +121,8 @@ export function useNotification() {
         body: JSON.stringify({
           subscription: subscription,
           timestamp: new Date().toISOString(),
+          userId: userInfo.userId || null,
+          roles: userInfo.roles || [],
         }),
       });
 
@@ -138,7 +140,7 @@ export function useNotification() {
     }
   };
 
-  const requestPermission = async () => {
+  const requestPermission = async (userInfo = {}) => {
     if (!canUseNotification()) {
       console.warn("Notification ไม่รองรับในสภาพแวดล้อมนี้");
       return false;
@@ -175,7 +177,7 @@ export function useNotification() {
       });
 
       setPushSubscription(subscription);
-      await saveSubscriptionToServer(subscription);
+      await saveSubscriptionToServer(subscription, userInfo);
 
       return true;
     } catch (error) {

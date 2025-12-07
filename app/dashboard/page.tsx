@@ -85,7 +85,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EmployeeSendReport } from "@/components/EmployeeSendReport";
+import PayrollReportSummary from "./PayrollReportSummary";
+import { AnalyticsDashboard } from "./AnalyticsDashboard";
 
 // Custom Calendar Component
 type CustomCalendarProps = {
@@ -254,7 +255,7 @@ const CustomCalendar = ({
             "h-9 w-9 rounded-md text-sm font-normal transition-colors hover:bg-gray-100",
             isInRange && "bg-orange-100 text-orange-900",
             (isRangeStart || isRangeEnd) &&
-              "bg-orange-500 text-white hover:bg-orange-600",
+            "bg-orange-500 text-white hover:bg-orange-600",
             isToday && !isInRange && "bg-gray-200 font-medium",
             "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           )}
@@ -465,22 +466,22 @@ const transformApiDataToDashboardReport = (
     // แปลง selectedOptions
     const selectedOptionsArray = Array.isArray(item.selectedOptions)
       ? item.selectedOptions.map((opt) =>
-          typeof opt === "string" ? opt : opt.name || "ไม่ระบุ"
-        )
+        typeof opt === "string" ? opt : opt.name || "ไม่ระบุ"
+      )
       : [];
 
     // ส่งค่าไฟล์แนบเป็นอาเรย์ของอ็อบเจกต์
     const attachmentArray = Array.isArray(item.attachment)
       ? item.attachment.map((file) => {
-          if (typeof file === "string") {
-            return { id: "", name: file, webViewLink: "" };
-          }
-          return {
-            id: file.id || "",
-            name: file.name || "ไม่ระบุ",
-            webViewLink: file.webViewLink || "",
-          };
-        })
+        if (typeof file === "string") {
+          return { id: "", name: file, webViewLink: "" };
+        }
+        return {
+          id: file.id || "",
+          name: file.name || "ไม่ระบุ",
+          webViewLink: file.webViewLink || "",
+        };
+      })
       : [];
 
     return {
@@ -517,6 +518,8 @@ const transformApiDataToDashboardReport = (
   });
 };
 
+
+
 function AdminDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
   // Removed duplicate filteredReports state, use useMemo version below
@@ -539,11 +542,7 @@ function AdminDashboard() {
   const [department, setDepartment] = useState<string | null>(null);
   const [group, setGroup] = useState<string | null>(null);
   const [employeeList, setEmployeeList] = useState<EmployeeInfo[]>([]);
-  const [showLiseEmployeeSendReport, setShowLiseEmployeeSendReport] =
-    useState<boolean>(false);
-  const [dataLiseEmployeeSendReport, setDataLiseEmployeeSendReport] =
-    useState<any>([]);
-  const [dataEmplooyeesInGroup, setDataEmplooyeesInGroup] = useState<any>([]);
+
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -581,26 +580,26 @@ function AdminDashboard() {
           startOfDay(r.submittedDate).getTime() ===
           startOfDay(new Date()).getTime()
       ).length,
-      ppe: reports.filter((r) => r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved" ).length,
+      ppe: reports.filter((r) => r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved").length,
       // รวมค่า safe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
-      ppe_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      ppe_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
       // รวมค่า unsafe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
-      ppe_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      ppe_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
       tools: reports.filter((r) => r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved").length,
       // รวมค่า safe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
-      tools_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      tools_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
       // รวมค่า unsafe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
-      tools_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      tools_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
       unsafe_actions: reports.filter((r) => r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved").length,
       // รวมค่า safe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
-      unsafe_actions_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      unsafe_actions_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
       // รวมค่า unsafe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
-      unsafe_actions_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      unsafe_actions_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
       unsafe_condition: reports.filter((r) => r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved").length,
       // รวมค่า safe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
-      unsafe_condition_safe: reports.reduce((sum, r) => {if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") {return sum + r.safeCount;}return sum;}, 0),
+      unsafe_condition_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
       // รวมค่า unsafe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
-      unsafe_condition_unsafe: reports.reduce((sum, r) => {if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") {return sum + r.unsafeCount;}return sum;}, 0),
+      unsafe_condition_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
     }),
     [reports]
   );
@@ -797,6 +796,26 @@ function AdminDashboard() {
       const actionText =
         approvalAction === "approve" ? "อนุมัติ" : "ไม่อนุมัติ";
       setSuccessMessage(`${actionText}รายงาน #${selectedReport.id} สำเร็จแล้ว`);
+      
+      // ✅ TRIGGER NOTIFICATION TO SUBMITTER
+      if (selectedReport && selectedReport.employeeId) {
+        try {
+            await fetch("/api/send-notification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: `รายงานของคุณได้รับการ${actionText}แล้ว`,
+                    body: `รายงานวันที่ ${format(new Date(selectedReport.submittedDate), "dd/MM/yyyy")} สถานะ: ${actionText} โดย ${sheid || "เจ้าหน้าที่ SHE"}`,
+                    icon: approvalAction === "approve" ? "/icons/approved.png" : "/icons/rejected.png",
+                    url: "/employeer", // Redirect users to their report view
+                    targetUserIds: [selectedReport.employeeId]
+                })
+            });
+            console.log("Notification sent to submitter:", selectedReport.employeeId);
+        } catch (notifError) {
+            console.error("Failed to send notification to submitter:", notifError);
+        }
+      }
 
       // ซ่อน success message หลัง 3 วินาที
       setTimeout(() => {
@@ -964,7 +983,7 @@ function AdminDashboard() {
         const lastDay = new Date(year, month + 1, 0);
 
         const weeks = [];
-        let current = new Date(firstDay);
+        const current = new Date(firstDay);
 
         // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
         while (current.getDay() !== 1) {
@@ -1073,11 +1092,11 @@ function AdminDashboard() {
                 approvalRate:
                   groupReports.length > 0
                     ? Math.round(
-                        (groupReports.filter((r) => r.status === "approved")
-                          .length /
-                          groupReports.length) *
-                          100
-                      )
+                      (groupReports.filter((r) => r.status === "approved")
+                        .length /
+                        groupReports.length) *
+                      100
+                    )
                     : 0,
               };
             })
@@ -1169,157 +1188,7 @@ function AdminDashboard() {
             </div>
           </div>
 
-          {/* Group Summary */}
-          <div>
-            <h4 className="text-md font-semibold mb-3">สรุปตามกลุ่ม</h4>
-            <div className="space-y-2">
-              {monthlyStats.groupSummary.map((group, index) => (
-                <div key={group.group} className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-3">
-                      <div className="text-sm font-medium">{group.group}</div>
-                      <Badge variant="secondary" className="text-xs">
-                        {group.approvalRate}% อนุมัติ
-                      </Badge>
-                    </div>
-                    <div className="flex space-x-4 text-sm">
-                      <span className="text-gray-600">
-                        ทั้งหมด: {group.total}
-                      </span>
-                      <span className="text-green-600">
-                        อนุมัติ: {group.approved}
-                      </span>
-                      <span className="text-yellow-600">
-                        รอ: {group.pending}
-                      </span>
-                      <span className="text-red-600">
-                        ไม่อนุมัติ: {group.rejected}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full flex">
-                      {group.total > 0 && (
-                        <>
-                          <div
-                            className="bg-green-500 h-full"
-                            style={{
-                              width: `${(group.approved / group.total) * 100}%`,
-                            }}
-                          />
-                          <div
-                            className="bg-yellow-500 h-full"
-                            style={{
-                              width: `${(group.pending / group.total) * 100}%`,
-                            }}
-                          />
-                          <div
-                            className="bg-red-500 h-full"
-                            style={{
-                              width: `${(group.rejected / group.total) * 100}%`,
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Weekly Breakdown */}
-          <div>
-            <h4 className="text-md font-semibold mb-3">สรุปรายสัปดาห์</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="text-left p-3 font-medium">สัปดาห์</th>
-                    <th className="text-left p-3 font-medium">ช่วงวันที่</th>
-                    <th className="text-center p-3 font-medium">
-                      รายงานทั้งหมด
-                    </th>
-                    {[...new Set(monthlyReports.map((r) => r.group))]
-                      .sort()
-                      .map((group) => (
-                        <th key={group} className="text-center p-3 font-medium">
-                          {group}
-                        </th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeklySummary.map((week, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="p-3 font-medium">{week.label}</td>
-                      <td className="p-3 text-gray-600">
-                        {format(week.start, "dd/MM")} -{" "}
-                        {format(week.end, "dd/MM")}
-                      </td>
-                      <td className="p-3 text-center font-medium">
-                        {week.totalReports}
-                      </td>
-                      {[...new Set(monthlyReports.map((r) => r.group))]
-                        .sort()
-                        .map((group) => {
-                          const groupStat = week.groupStats.find(
-                            (g) => g.group === group
-                          );
-                          return (
-                            <td key={group} className="p-3 text-center">
-                              {groupStat ? (
-                                <div className="space-y-1">
-                                  <div className="font-medium">
-                                    {groupStat.total}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    <span className="text-green-600">
-                                      {groupStat.approved}
-                                    </span>
-                                    /
-                                    <span className="text-yellow-600">
-                                      {groupStat.pending}
-                                    </span>
-                                    /
-                                    <span className="text-red-600">
-                                      {groupStat.rejected}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-2 text-xs text-gray-500 flex items-center space-x-4">
-              <span>📊 รูปแบบ: ทั้งหมด</span>
-              <span className="text-green-600">🟢 อนุมัติ</span>
-              <span className="text-yellow-600">🟡 รอการอนุมัติ</span>
-              <span className="text-red-600">🔴 ไม่อนุมัติ</span>
-            </div>
-          </div>
-
-          {/* Export Monthly Report Button */}
-          <div className="flex justify-end">
-            <Button
-              onClick={() =>
-                exportMonthlyReport(weeklySummary, monthlyStats, selectedMonth)
-              }
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Export รายงานประจำเดือน
-            </Button>
-          </div>
         </div>
       );
     }
@@ -1355,7 +1224,7 @@ function AdminDashboard() {
         const lastDay = new Date(year, month + 1, 0);
 
         const weeks = [];
-        let current = new Date(firstDay);
+        const current = new Date(firstDay);
 
         // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
         while (current.getDay() !== 1) {
@@ -1414,11 +1283,11 @@ function AdminDashboard() {
               approvalRate:
                 employeeReports.length > 0
                   ? Math.round(
-                      (employeeReports.filter((r) => r.status === "approved")
-                        .length /
-                        employeeReports.length) *
-                        100
-                    )
+                    (employeeReports.filter((r) => r.status === "approved")
+                      .length /
+                      employeeReports.length) *
+                    100
+                  )
                   : 0,
             };
           })
@@ -1754,8 +1623,8 @@ function AdminDashboard() {
                               individual.approvalRate >= 80
                                 ? "bg-green-100 text-green-800"
                                 : individual.approvalRate >= 60
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
                             }
                           >
                             {individual.approvalRate}%
@@ -1895,1024 +1764,11 @@ function AdminDashboard() {
 
   IndividualReportSummary.displayName = "IndividualReportSummary";
 
-  const PayrollReportSummary = React.memo(
-    ({ reports }: { reports: Report[] }) => {
-      const [selectedMonth, setSelectedMonth] = useState(new Date());
-      interface SheViolation {
-        employee_code: string;
-        date: string;
-        level_accident?: string;
-        // เพิ่ม field อื่นๆ ตามที่ API ส่งมา
-        [key: string]: any;
-      }
-      const [sheViolations, setSheViolations] = useState<SheViolation[]>([]);
-      const [isLoadingShe, setIsLoadingShe] = useState(false);
-
-      // ฟังก์ชันคำนวณช่วงเดือน (21 ของเดือนก่อนหน้า ถึง 20 ของเดือนปัจจุบัน)
-      const getMonthlyRange = (date: Date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-
-        // วันที่ 21 ของเดือนก่อนหน้า
-        const startDate = new Date(year, month - 1, 21);
-        startDate.setHours(0, 0, 0, 0);
-
-        // วันที่ 20 ของเดือนปัจจุบัน
-        const endDate = new Date(year, month, 20);
-        endDate.setHours(23, 59, 59, 999);
-
-        return { start: startDate, end: endDate };
-      };
-
-      // โหลดข้อมูลการรายงานจาก SHE
-      const fetchSheViolations = async () => {
-        setIsLoadingShe(true);
-        try {
-          // เรียก API สำหรับข้อมูล SHE violations
-          const response = await fetch("/api/get?type=she_violations");
-          if (response.ok) {
-            const data = await response.json();
-            setSheViolations(data);
-          }
-        } catch (error) {
-          console.error("Error fetching SHE violations:", error);
-        } finally {
-          setIsLoadingShe(false);
-        }
-      };
-
-      // คำนวณข้อมูล Payroll สำหรับเดือนที่เลือก
-      const payrollData = useMemo(() => {
-        const monthlyRange = getMonthlyRange(selectedMonth);
-
-        // กรองรายงาน BBS ในช่วงเดือนนี้ (21 ถึง 20)
-        const monthlyReports = reports.filter((report) => {
-          const reportDate = new Date(report.submittedDate);
-          return (
-            reportDate >= monthlyRange.start && reportDate <= monthlyRange.end
-          );
-        });
-
-        // แยกการประมวลผลตามแผนก
-        const ithOeEmployees = [
-          ...new Set(
-            reports
-              .filter(
-                (r) =>
-                  r.department === "ITH-OE" ||
-                  r.group === "CV0" ||
-                  r.group === "MO0" ||
-                  r.group === "MT0" ||
-                  r.group === "AUX0" ||
-                  r.group === "SV0" ||
-                  r.group === "Manager"
-              )
-              .map((r) => r.employeeId)
-          ),
-        ].map((employeeId) => {
-          const employeeReports = reports.filter(
-            (r) => r.employeeId === employeeId
-          );
-          return {
-            employeeId,
-            employeeName: employeeReports[0]?.employeeName || employeeId,
-            department: employeeReports[0]?.department || "",
-            group: employeeReports[0]?.group || "",
-            paymentType: "individual", // คิดรายบุคคล
-          };
-        });
-
-        // สำหรับแผนกอื่นๆ จัดกลุ่มตาม group
-        const otherDepartmentGroups = [
-          ...new Set(
-            reports
-              .filter((r) => r.department !== "ITH-OE")
-              .map((r) => r.department)
-          ),
-        ].map((department) => {
-          // หากลุ่มย่อยในแผนกนี้
-          const subGroups = [
-            ...new Set(
-              reports
-                .filter(
-                  (r) =>
-                    r.department === department &&
-                    r.group !== "ITH-OE" &&
-                    !["CV0", "MO0", "MT0", "AUX0", "SV0", "Manager"].includes(
-                      r.group
-                    )
-                )
-                .map((r) => r.group)
-            ),
-          ];
-
-          return {
-            department,
-            subGroups: subGroups.map((group) => {
-              //ข้อมูลพนักงานที่ส่งรายงานเข้ามาในกลุ่มนี้
-              const groupReports = reports
-                .filter((r) => {
-                  const reportDate = new Date(r.submittedDate);
-                  return (
-                    reportDate >= monthlyRange.start &&
-                    reportDate <= monthlyRange.end &&
-                    r.department === department &&
-                    r.group === group &&
-                    r.status === "approved"
-                  );
-                })
-                .map((r) => ({
-                  date: r.submittedDate,
-                  employeeId: r.employeeId,
-                  employeeName: r.employeeName,
-                  group: r.group,
-                })); // ดึงเฉพาะ employeeId,employeeName,group ในช่วงเดือนนี้ (21 ถึง 20)
-
-              // หาพนักงานที่ไม่ซ้ำกันในกลุ่มนี้ โดยกรองจาก employeeId
-              const uniqueEmployeesMap = new Map();
-
-              employeeList.forEach((r) => {
-                // ใช้ employeeId เป็น key ใน Map เพื่อรับประกันว่าซ้ำไม่ได้
-                if (!uniqueEmployeesMap.has(r.employeerId)) {
-                  uniqueEmployeesMap.set(r.employeerId, {
-                    employeeId: r.employeerId,
-                    employeeName: r.fullName,
-                    department: r.department,
-                    group: r.group,
-                  });
-                }
-              });
-
-              // แปลงค่าใน Map กลับมาเป็น Array ของพนักงานที่ไม่ซ้ำกัน
-              const groupEmployees = Array.from(
-                uniqueEmployeesMap.values()
-              ).filter((emp) => emp.group === group);
-
-              // ======================================  กรองเฉพาะคนที่ส่งในกลุ่มว่าส่งกี่ครั้ง ============
-
-              const employeeCountsSendReport = new Map();
-
-              groupReports.forEach((item) => {
-                const employeeId = item.employeeId;
-
-                if (employeeCountsSendReport.has(employeeId)) {
-                  // ถ้าเคยเจอ employeeId นี้แล้ว: ให้อัปเดตเฉพาะจำนวนนับ
-                  const currentData = employeeCountsSendReport.get(employeeId);
-                  currentData.count += 1;
-                  // ไม่ต้อง set ใหม่ก็ได้ เพราะ Map เก็บ Reference ของ Object
-                } else {
-                  // ถ้าเป็น employeeId ใหม่: เพิ่มรายการใหม่พร้อมนับ = 1
-                  employeeCountsSendReport.set(employeeId, {
-                    employeeId: item.employeeId,
-                    employeeName: item.employeeName,
-                    group: item.group,
-                    count: 1, // เริ่มต้นนับเป็น 1
-                  });
-                }
-              });
-
-              // แปลงค่าใน Map กลับมาเป็น Array ของผลลัพธ์สุดท้าย
-              const uniqueEmployeesWithCount = Array.from(
-                employeeCountsSendReport.values()
-              );
-
-              return {
-                groupId: `${department}-${group}`,
-                groupName: group,
-                department,
-                group,
-                employeeCount: groupEmployees.length,
-                employees: groupEmployees,
-                employeesSendReport: uniqueEmployeesWithCount,
-                paymentType: "group", // คิดรายกลุ่ม
-              };
-            }),
-          };
-        });
-
-        // ประมวลผล ITH-OE (รายบุคคล)
-        const ithOeResults = ithOeEmployees.map((employee) => {
-          // นับจำนวนรายงาน BBS ในช่วงเดือนที่ approved
-          const employeeMonthlyReports = monthlyReports.filter(
-            (r) =>
-              r.employeeId === employee.employeeId && r.status === "approved"
-          );
-
-          const bbsCount = employeeMonthlyReports.length;
-          const bbsTarget = 12; // เป้าหมาย 12 ครั้งต่อเดือน
-          const meetsBbsRequirement = bbsCount >= bbsTarget;
-
-          // คำนวณการละเมิด SHE ในช่วงเดือน
-          const sheReports = sheViolations.filter((violation) => {
-            const violationDate = new Date(violation.date);
-            return (
-              violation.employee_code === employee.employeeId &&
-              violationDate >= monthlyRange.start &&
-              violationDate <= monthlyRange.end
-            );
-          });
-
-          // นับการละเมิดแต่ละประเภท (เกณฑ์รายเดือน)
-          const ppeViolations = sheReports.filter(
-            (r) =>
-              r.level_accident === "PPE" ||
-              r.level_accident?.toLowerCase().includes("ppe")
-          ).length;
-
-          const highRiskViolations = sheReports.filter(
-            (r) =>
-              r.level_accident === "เสี่ยงสูง" ||
-              r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
-          ).length;
-
-          const accidentViolations = sheReports.filter(
-            (r) =>
-              r.level_accident === "อุบัติเหตุ" ||
-              r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
-          ).length;
-
-          // ตรวจสอบเงื่อนไขการไม่ได้รับเงิน (เกณฑ์รายเดือน)
-          const sheViolationReasons = [];
-          if (ppeViolations >= 3)
-            sheViolationReasons.push(`PPE (${ppeViolations} ครั้ง)`);
-          if (highRiskViolations >= 2)
-            sheViolationReasons.push(`เสี่ยงสูง (${highRiskViolations} ครั้ง)`);
-          if (accidentViolations >= 1)
-            sheViolationReasons.push(
-              `อุบัติเหตุ (${accidentViolations} ครั้ง)`
-            );
-          const hasShePenalty = sheViolationReasons.length > 0;
-
-          // สถานะการจ่ายเงิน
-          const isEligible = meetsBbsRequirement && !hasShePenalty;
-
-          let paymentStatus = "";
-          let statusColor = "";
-
-          if (isEligible) {
-            paymentStatus = "ได้รับเงิน";
-            statusColor = "bg-green-100 text-green-800";
-          } else {
-            const reasons = [];
-            if (!meetsBbsRequirement)
-              reasons.push(`BBS ไม่ครบ (${bbsCount}/${bbsTarget})`);
-            if (hasShePenalty)
-              reasons.push(`SHE: ${sheViolationReasons.join(", ")}`);
-            paymentStatus = `ไม่ได้รับ: ${reasons.join(" | ")}`;
-            statusColor = "bg-red-100 text-red-800";
-          }
-
-          return {
-            ...employee,
-            bbsCount,
-            bbsTarget,
-            meetsBbsRequirement,
-            ppeViolations,
-            highRiskViolations,
-            accidentViolations,
-            hasShePenalty,
-            sheViolationReasons,
-            isEligible,
-            paymentStatus,
-            statusColor,
-            monthlyRange, // เพิ่มข้อมูลช่วงเวลา
-          };
-        });
-
-        // ประมวลผลแผนกอื่นๆ (รายกลุ่ม)
-        const groupResults = otherDepartmentGroups.flatMap((departmentInfo) =>
-          departmentInfo.subGroups.map((groupInfo): any => {
-            // นับจำนวนรายงาน BBS ของกลุ่มในช่วงเดือน
-            const groupMonthlyReports = monthlyReports.filter(
-              (r) =>
-                r.department === groupInfo.department &&
-                r.group === groupInfo.group &&
-                r.status === "approved"
-            );
-
-            const bbsCount = groupMonthlyReports.length;
-            const bbsTarget = 12; // เป้าหมาย 12 ครั้งต่อเดือนสำหรับกลุ่ม
-            const meetsBbsRequirement = bbsCount >= bbsTarget;
-
-            // คำนวณการละเมิด SHE ของสมาชิกในกลุ่ม
-            const groupSheReports = sheViolations.filter((violation) => {
-              const violationDate = new Date(violation.date);
-              return (
-                groupInfo.employees.some(
-                  (emp) => emp.employeeId === violation.employee_code
-                ) &&
-                violationDate >= monthlyRange.start &&
-                violationDate <= monthlyRange.end
-              );
-            });
-
-            const ppeViolations = groupSheReports.filter(
-              (r) =>
-                r.level_accident === "PPE" ||
-                r.level_accident?.toLowerCase().includes("ppe")
-            ).length;
-
-            const highRiskViolations = groupSheReports.filter(
-              (r) =>
-                r.level_accident === "เสี่ยงสูง" ||
-                r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
-            ).length;
-
-            const accidentViolations = groupSheReports.filter(
-              (r) =>
-                r.level_accident === "อุบัติเหตุ" ||
-                r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
-            ).length;
-
-            // เกณฑ์การละเมิดสำหรับกลุ่ม (สมาชิกคนใดคนหนึ่งละเมิดเกินเกณฑ์ = กลุ่มไม่ผ่าน)
-            const sheViolationReasons = [];
-            if (ppeViolations >= 12)
-              sheViolationReasons.push(`PPE (${ppeViolations} ครั้ง)`);
-            if (highRiskViolations >= 8)
-              sheViolationReasons.push(
-                `เสี่ยงสูง (${highRiskViolations} ครั้ง)`
-              );
-            if (accidentViolations >= 4)
-              sheViolationReasons.push(
-                `อุบัติเหตุ (${accidentViolations} ครั้ง)`
-              );
-
-            const hasShePenalty = sheViolationReasons.length > 0;
-            const isEligible = meetsBbsRequirement && !hasShePenalty;
-
-            let paymentStatus = "";
-            let statusColor = "";
-
-            if (isEligible) {
-              paymentStatus = "ได้รับเงิน";
-              statusColor = "bg-green-100 text-green-800";
-            } else {
-              const reasons = [];
-              if (!meetsBbsRequirement)
-                reasons.push(`BBS ไม่ครบ (${bbsCount}/${bbsTarget})`);
-              if (hasShePenalty)
-                reasons.push(`SHE: ${sheViolationReasons.join(", ")}`);
-              paymentStatus = `ไม่ได้รับ: ${reasons.join(" | ")}`;
-              statusColor = "bg-red-100 text-red-800";
-            }
-
-            return {
-              ...groupInfo,
-              bbsCount,
-              bbsTarget,
-              meetsBbsRequirement,
-              ppeViolations,
-              highRiskViolations,
-              accidentViolations,
-              hasShePenalty,
-              sheViolationReasons,
-              isEligible,
-              paymentStatus,
-              statusColor,
-              monthlyRange, // เพิ่มข้อมูลช่วงเวลา
-            };
-          })
-        );
-        // รวมผลลัพธ์
-        const allResults = [...ithOeResults, ...groupResults];
-
-        return {
-          monthRange: monthlyRange,
-          individuals: ithOeResults,
-          groups: groupResults,
-          all: allResults,
-          summary: {
-            totalIndividuals: ithOeResults.length,
-            totalGroups: groupResults.length,
-            eligibleIndividuals: ithOeResults.filter((e) => e.isEligible)
-              .length,
-            eligibleGroups: groupResults.filter((g) => g.isEligible).length,
-            totalPaymentUnits: allResults.filter((item) => item.isEligible)
-              .length,
-            totalUnits: allResults.length,
-          },
-        };
-      }, [reports, sheViolations, selectedMonth]);
-
-      // เปลี่ยนเดือน
-      const changeMonth = (direction: "prev" | "next") => {
-        setSelectedMonth((prev) => {
-          const newDate = new Date(prev);
-          const offset = direction === "prev" ? -1 : 1;
-          newDate.setMonth(newDate.getMonth() + offset);
-          return newDate;
-        });
-      };
-
-      // ============================================>  Export รายงาน Payroll
-      const exportPayrollReport = () => {
-        const monthRange = payrollData.monthRange;
-        const startStr = format(monthRange.start, "dd-MM-yyyy");
-        const endStr = format(monthRange.end, "dd-MM-yyyy");
-
-        // Headers สำหรับ Individual (ITH-OE)
-        const individualHeaders = [
-          "กลุ่ม",
-          "รหัสพนักงาน",
-          "ชื่อ-สกุล",
-          "การรายงาน (ครั้ง)",
-        ];
-
-        // ข้อมูล Individual
-        const individualData = payrollData.individuals
-          .filter((r) => r.isEligible) // กรองเฉพาะพนักงานที่ได้รับเงิน
-          .map((emp, index) => [
-            "รายบุคคล",
-            emp.employeeId,
-            emp.employeeName,
-            emp.bbsCount,
-          ]);
-
-        // ข้อมูล Group
-        interface GroupEmployee {
-          employeeId: string;
-          employeeName: string;
-        }
-
-        interface GroupDataRow {
-          groupName: string;
-          department: string;
-          employeeCount: number;
-          employees: GroupEmployee[];
-          bbsCount: number;
-          bbsTarget: number;
-          meetsBbsRequirement: boolean;
-          ppeViolations: number;
-          highRiskViolations: number;
-          accidentViolations: number;
-          hasShePenalty: boolean;
-          isEligible: boolean;
-          paymentStatus: string;
-        }
-
-        // กรองเฉพาะกลุ่มที่ได้รับเงิน
-        const groupData = payrollData.groups
-          .filter((r) => r.isEligible)
-          .sort((a, b) => {
-            const nameA = a.groupName;
-            const nameB = b.groupName;
-
-            // ฟังก์ชันช่วยแยกตัวอักษรและตัวเลข
-            interface GroupNameParts {
-              prefix: string;
-              number: number;
-            }
-
-            const getParts = (name: string): GroupNameParts => {
-              // ใช้ RegExp เพื่อแยก Prefix (ตัวอักษร: 'CV') และ Number (ตัวเลข: '1', '10')
-              // Match[1] = Prefix, Match[2] = Number
-              const match = name.match(/^([a-zA-Z]+)(\d+)$/);
-              if (match) {
-                return { prefix: match[1], number: parseInt(match[2], 10) };
-              }
-              // หากไม่ตรงตามรูปแบบ ให้คืนค่ากลับเพื่อใช้การเรียงแบบปกติ
-              return { prefix: name, number: 0 };
-            };
-
-            const partA = getParts(nameA);
-            const partB = getParts(nameB);
-
-            // 1. เปรียบเทียบตาม Prefix (ตัวอักษร) ก่อน (CV vs CV)
-            if (partA.prefix !== partB.prefix) {
-              return partA.prefix.localeCompare(partB.prefix);
-            }
-
-            // 2. ถ้า Prefix เหมือนกัน (เช่น ทั้งคู่คือ 'CV') ให้เปรียบเทียบตามตัวเลข
-            return partA.number - partB.number;
-          });
-        interface GroupEmployee {
-          employeeId: string;
-          employeeName: string;
-        }
-
-        interface GroupData {
-          group: string;
-          employees: GroupEmployee[];
-          bbsCount: number;
-          // Add other fields if needed
-        }
-
-        const listEmployeeInGroup: Array<[string, string, string, number]> =
-          groupData.flatMap((group: GroupData) =>
-            (group.employees || []).map(
-              (emp: GroupEmployee): [string, string, string, number] => [
-                group.group,
-                emp.employeeId,
-                emp.employeeName,
-                group.bbsCount,
-              ]
-            )
-          );
-
-        // รวมข้อมูลทั้งหมด (ใช้ headers ที่ยาวกว่า)
-        const allHeaders = individualHeaders;
-        const allData = [
-          allHeaders,
-          // Data แบบเดี่ยว
-          ...individualData.map((row) => {
-            // เพิ่มคอลัมน์ว่างเพื่อให้ตรงกับ group headers
-            const newRow = [...row];
-            return newRow;
-          }),
-
-          ...listEmployeeInGroup.map((row) => {
-            const newRow = [...row];
-            return newRow;
-          }),
-        ];
-
-        const csvContent = allData
-          .map((row) =>
-            row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-          )
-          .join("\n");
-
-        const filename = `Payroll_Report_Month_${startStr}_to_${endStr}.csv`;
-        const blob = new Blob(["\uFEFF" + csvContent], {
-          type: "text/csv;charset=utf-8;",
-        });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", filename);
-        link.style.visibility = "hidden";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      };
-
-      /// ========================================= > end export payroll
-
-      const monthNames = [
-        "มกราคม",
-        "กุมภาพันธ์",
-        "มีนาคม",
-        "เมษายน",
-        "พฤษภาคม",
-        "มิถุนายน",
-        "กรกฎาคม",
-        "สิงหาคม",
-        "กันยายน",
-        "ตุลาคม",
-        "พฤศจิกายน",
-        "ธันวาคม",
-      ];
-
-      // Load SHE data เมื่อ component mount
-      useEffect(() => {
-        fetchSheViolations();
-      }, []);
-
-      // Format วันที่สำหรับแสดง
-      const formatDateRange = (range: { start: Date; end: Date }) => {
-        const startStr = format(range.start, "dd/MM/yyyy");
-        const endStr = format(range.end, "dd/MM/yyyy");
-        return `${startStr} - ${endStr}`;
-      };
-
-      return (
-        <div className="space-y-6">
-          {/* Month Selector */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => changeMonth("prev")}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="text-center">
-                <h3 className="text-lg font-semibold">
-                  {monthNames[selectedMonth.getMonth()]}{" "}
-                  {selectedMonth.getFullYear()}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  ({formatDateRange(payrollData.monthRange)})
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => changeMonth("next")}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex flex-col md:flex-row items-center space-x-4">
-              <Button
-                onClick={fetchSheViolations}
-                disabled={isLoadingShe}
-                variant="outline"
-                size="sm"
-              >
-                {isLoadingShe ? "กำลังโหลด SHE..." : "รีเฟรช SHE"}
-              </Button>
-              <div className="text-sm text-gray-600">
-                สมาชิก: {payrollData.summary.totalUnits} หน่วย | ได้รับเงิน:{" "}
-                {payrollData.summary.totalPaymentUnits} หน่วย
-              </div>
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
-                {payrollData.summary.totalIndividuals}
-              </div>
-              <div className="text-sm text-blue-700">ITH-OE (รายบุคคล)</div>
-            </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {payrollData.summary.totalGroups}
-              </div>
-              <div className="text-sm text-purple-700">กลุ่มอื่นๆ</div>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {payrollData.summary.totalPaymentUnits}
-              </div>
-              <div className="text-sm text-green-700">ได้รับเงิน</div>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">
-                {payrollData.summary.eligibleIndividuals +
-                  payrollData.summary.eligibleGroups}
-              </div>
-              <div className="text-sm text-yellow-700">หน่วยผ่านเกณฑ์</div>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">
-                {payrollData.summary.totalUnits -
-                  payrollData.summary.totalPaymentUnits}
-              </div>
-              <div className="text-sm text-red-700">ไม่ผ่านเกณฑ์</div>
-            </div>
-          </div>
-
-          {/* ITH-OE Individual Results */}
-          {payrollData.individuals.length > 0 && (
-            <div>
-              <h4 className="text-lg font-semibold mb-3 text-blue-600">
-                🧑‍💼 ITH-OE (คิดรายบุคคล)
-              </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-blue-100">
-                      <th className="border border-gray-300 text-left p-3 font-medium">
-                        รหัสพนักงาน
-                      </th>
-                      <th className="border border-gray-300 text-left p-3 font-medium">
-                        ชื่อพนักงาน
-                      </th>
-                      <th className="border border-gray-300 text-center p-3 font-medium">
-                        BBS (12 ครั้ง/เดือน)
-                      </th>
-                      <th className="border border-gray-300 text-center p-3 font-medium">
-                        PPE
-                      </th>
-                      <th className="border border-gray-300 text-center p-3 font-medium">
-                        เสี่ยงสูง
-                      </th>
-                      <th className="border border-gray-300 text-center p-3 font-medium">
-                        อุบัติเหตุ
-                      </th>
-                      <th className="border border-gray-300 text-center p-3 font-medium">
-                        สถานะ
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payrollData.individuals.map((employee, index) => (
-                      <tr
-                        key={employee.employeeId}
-                        className={index % 2 === 0 ? "bg-blue-50" : "bg-white"}
-                      >
-                        <td className="border border-gray-300 p-3 font-medium">
-                          {employee.employeeId}
-                        </td>
-                        <td className="border border-gray-300 p-3">
-                          {employee.employeeName}
-                        </td>
-                        <td className="border border-gray-300 p-3 text-center">
-                          <div className="space-y-1">
-                            <div
-                              className={`font-medium ${
-                                employee.meetsBbsRequirement
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
-                            >
-                              {employee.bbsCount}/{employee.bbsTarget}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {employee.meetsBbsRequirement
-                                ? "✓ ผ่าน"
-                                : "✗ ไม่ผ่าน"}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="border border-gray-300 p-3 text-center">
-                          <span
-                            className={
-                              employee.ppeViolations >= 3
-                                ? "text-red-600 font-bold"
-                                : "text-gray-600"
-                            }
-                          >
-                            {employee.ppeViolations}
-                            {employee.ppeViolations >= 3 && " ❌"}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 p-3 text-center">
-                          <span
-                            className={
-                              employee.highRiskViolations >= 2
-                                ? "text-red-600 font-bold"
-                                : "text-gray-600"
-                            }
-                          >
-                            {employee.highRiskViolations}
-                            {employee.highRiskViolations >= 2 && " ❌"}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 p-3 text-center">
-                          <span
-                            className={
-                              employee.accidentViolations >= 1
-                                ? "text-red-600 font-bold"
-                                : "text-gray-600"
-                            }
-                          >
-                            {employee.accidentViolations}
-                            {employee.accidentViolations >= 1 && " ❌"}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 p-3 text-center">
-                          <Badge className={employee.statusColor}>
-                            {employee.isEligible
-                              ? "💰 ได้รับเงิน"
-                              : "❌ ไม่ได้รับ"}
-                          </Badge>
-                          {!employee.isEligible && (
-                            <div className="text-xs text-gray-500 mt-1 max-w-xs">
-                              {employee.paymentStatus.replace(
-                                "ไม่ได้รับ: ",
-                                ""
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Other Departments Group Results */}
-
-          {showLiseEmployeeSendReport && (
-            <EmployeeSendReport
-              setShowLiseEmployeeSendReport={setShowLiseEmployeeSendReport}
-              data={dataLiseEmployeeSendReport}
-              employeesInGroup={dataEmplooyeesInGroup}
-            />
-          )}
-          {payrollData.groups.length > 0 && (
-            <div>
-              <h4 className="text-lg font-semibold mb-3 text-purple-600">
-                👥 แผนกอื่นๆ (คิดรายกลุ่ม)
-              </h4>
-              {/* จัดกลุ่มตามแผนก */}
-              {[...new Set(payrollData.groups.map((g) => g.department))].map(
-                (department) => (
-                  <div key={department} className="mb-6">
-                    <h5 className="font-medium text-purple-600 mb-2 text-lg">
-                      📂 {department}
-                    </h5>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse border border-gray-300">
-                        <thead>
-                          <tr className="bg-purple-100">
-                            <th className="border border-gray-300 text-left p-3 font-medium">
-                              กลุ่ม
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              จำนวนสมาชิก
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              BBS กลุ่ม (12 ครั้ง/เดือน)
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              PPE
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              เสี่ยงสูง
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              อุบัติเหตุ
-                            </th>
-                            <th className="border border-gray-300 text-center p-3 font-medium">
-                              สถานะ
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {payrollData.groups
-                            .filter((group) => group.department === department)
-                            .map((group, index) => (
-                              <tr
-                                key={group.groupId}
-                                className={
-                                  index % 2 === 0 ? "bg-purple-50" : "bg-white"
-                                }
-                              >
-                                <td className="border border-gray-300 p-3">
-                                  <div>
-                                    <a
-                                      className="font-medium cursor-pointer text-blue-600 hover:underline"
-                                      onClick={() => {
-                                        setShowLiseEmployeeSendReport(true),
-                                          setDataLiseEmployeeSendReport(
-                                            group.employeesSendReport
-                                          );
-                                        setDataEmplooyeesInGroup(
-                                          group.employees
-                                        );
-                                      }}
-                                    >
-                                      {group.groupName}
-                                    </a>
-                                    <div className="text-xs text-gray-500 mt-1"></div>
-                                  </div>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center font-medium">
-                                  {group.employeeCount} คน
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
-                                  <div className="space-y-1">
-                                    <div
-                                      className={`font-medium ${
-                                        group.meetsBbsRequirement
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                      }`}
-                                    >
-                                      {group.bbsCount}/{group.bbsTarget}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {group.meetsBbsRequirement
-                                        ? "✓ ผ่าน"
-                                        : "✗ ไม่ผ่าน"}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
-                                  <span
-                                    className={
-                                      group.ppeViolations >= 12
-                                        ? "text-red-600 font-bold"
-                                        : "text-gray-600"
-                                    }
-                                  >
-                                    {group.ppeViolations}
-                                    {group.ppeViolations >= 12 && " ❌"}
-                                  </span>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
-                                  <span
-                                    className={
-                                      group.highRiskViolations >= 8
-                                        ? "text-red-600 font-bold"
-                                        : "text-gray-600"
-                                    }
-                                  >
-                                    {group.highRiskViolations}
-                                    {group.highRiskViolations >= 8 && " ❌"}
-                                  </span>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
-                                  <span
-                                    className={
-                                      group.accidentViolations >= 4
-                                        ? "text-red-600 font-bold"
-                                        : "text-gray-600"
-                                    }
-                                  >
-                                    {group.accidentViolations}
-                                    {group.accidentViolations >= 4 && " ❌"}
-                                  </span>
-                                </td>
-                                <td className="border border-gray-300 p-3 text-center">
-                                  <Badge className={group.statusColor}>
-                                    {group.isEligible
-                                      ? "💰 ได้รับเงิน"
-                                      : "❌ ไม่ได้รับ"}
-                                  </Badge>
-                                  {!group.isEligible && (
-                                    <div className="text-xs text-gray-500 mt-1 max-w-xs">
-                                      {group.paymentStatus.replace(
-                                        "ไม่ได้รับ: ",
-                                        ""
-                                      )}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-
-          {/* Export Button */}
-          <div className="flex justify-end space-x-2">
-            <Button
-              onClick={exportPayrollReport}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Export รายงานการจ่ายเงิน
-            </Button>
-          </div>
-
-          {/* Legend */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">
-              เกณฑ์การจ่ายเงิน (ระบบใหม่ - นับรวมต่อเดือน):
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="font-medium text-green-600">✅ ได้รับเงิน:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>
-                    <strong>ITH-OE (รายบุคคล):</strong> ส่ง BBS รวม 12
-                    ครั้งต่อเดือน + ไม่มี SHE ละเมิด
-                  </li>
-                  <li>
-                    <strong>แผนกอื่น (รายกลุ่ม):</strong> กลุ่มส่ง BBS รวม 12
-                    ครั้งต่อเดือน + ไม่มีสมาชิกละเมิด SHE
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-red-600">❌ ไม่ได้รับเงิน:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>BBS ส่งไม่ครบ 12 ครั้งต่อเดือน</li>
-                  <li>
-                    PPE ละเมิด ≥ 3 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 12 ครั้ง/เดือน
-                    (รายกลุ่ม)
-                  </li>
-                  <li>
-                    เสี่ยงสูง ละเมิด ≥ 2 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 8
-                    ครั้ง/เดือน (รายกลุ่ม)
-                  </li>
-                  <li>
-                    อุบัติเหตุ ≥ 1 ครั้ง/เดือน (รายบุคคล) หรือ ≥ 4 ครั้ง/เดือน
-                    (รายกลุ่ม)
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-blue-100 rounded border-l-4 border-blue-500">
-              <p className="text-sm text-blue-800">
-                <strong>หมายเหตุ (ระบบใหม่):</strong>
-                <br />• <strong>ช่วงเวลาการนับ:</strong> วันที่ 21
-                ของเดือนก่อนหน้า ถึง วันที่ 20 ของเดือนปัจจุบัน
-                <br />• <strong>การนับ BBS:</strong> นับรวมทั้งเดือน 12 ครั้ง
-                (ไม่แบ่งตามสัปดาห์)
-                <br />• <strong>ITH-OE:</strong> แต่ละคนต้องส่งครบ 12
-                ครั้งต่อเดือน
-                <br />• <strong>แผนกอื่นๆ:</strong> กลุ่มรวมกันส่งครบ 12
-                ครั้งต่อเดือน ถ้าผ่านเกณฑ์ทุกคนในกลุ่มได้รับเงิน
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  );
-
-  PayrollReportSummary.displayName = "PayrollReportSummary";
-
-  const exportMonthlyReport = (
+  function exportMonthlyReport(
     weeklySummary: any[],
     monthlyStats: any,
     selectedMonth: Date
-  ) => {
+  ) {
     const monthNames = [
       "มกราคม",
       "กุมภาพันธ์",
@@ -3026,6 +1882,37 @@ function AdminDashboard() {
         console.warn("No employee data found in localStorage");
       }
     }
+  }, []);
+
+  // Fetch employee list for payroll calculations
+  useEffect(() => {
+    const fetchEmployeeList = async () => {
+      try {
+        const response = await fetch("/api/get?type=employee");
+        if (response.ok) {
+          const data = await response.json();
+
+          // Transform data to match expected field names
+          const transformedData = Array.isArray(data)
+            ? data.map(emp => ({
+              ...emp,
+              employeeId: emp.employeerId || emp.employeeId || '',
+              employeeName: emp.fullName || emp.employeeName || '',
+            }))
+            : [];
+
+          setEmployeeList(transformedData);
+        } else {
+          console.warn("Failed to fetch employee list:", response.status);
+          setEmployeeList([]);
+        }
+      } catch (error) {
+        console.error("Error fetching employee list:", error);
+        setEmployeeList([]);
+      }
+    };
+
+    fetchEmployeeList();
   }, []);
 
   return (
@@ -3152,7 +2039,7 @@ function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -3334,8 +2221,21 @@ function AdminDashboard() {
 
             {/* Filters */}
             <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col gap-4">
+              <Collapsible>
+                <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      ตัวกรองและการค้นหา
+                   </CardTitle>
+                   <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-9 p-0">
+                        <ChevronDown className="h-4 w-4" />
+                        <span className="sr-only">Toggle filters</span>
+                      </Button>
+                   </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent className="px-4 pb-4">
+                 <div className="flex flex-col gap-4">
                   {/* First row: Search and basic filters */}
                   <div className="flex flex-col lg:flex-row gap-4">
                     <div className="flex-1">
@@ -3519,16 +2419,32 @@ function AdminDashboard() {
                     </Button>
 
                     {/* Show filtered results count */}
-                    <div className="text-sm text-gray-600 whitespace-nowrap">
-                      แสดง {filteredReports.length} จาก {reports.length} รายการ
+                    <div className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
+                       <span>แสดง {filteredReports.length} จาก {reports.length} รายการ</span>
+                       {(statusFilter !== "all" || departmentFilter !== "all" || searchTerm || dateRange.from) && (
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           onClick={() => {
+                             setStatusFilter("all");
+                             setDepartmentFilter("all");
+                             setSearchTerm("");
+                             setDateRange({ from: undefined, to: undefined });
+                           }}
+                           className="h-auto p-0 text-red-500 hover:text-red-600 hover:bg-transparent"
+                         >
+                           ล้างตัวกรอง
+                         </Button>
+                       )}
                     </div>
                   </div>
                 </div>
-              </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
             </Card>
 
             {/* Reports List */}
-            <div className="space-y-4 overflow-auto h-[40dvh] md:h-[80dvh]">
+            <div className="space-y-2 overflow-auto h-[60dvh] md:h-[calc(100vh-320px)] pr-1">
               {isLoading ? (
                 <div className="text-center py-8">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -3553,130 +2469,137 @@ function AdminDashboard() {
                   return (
                     <Card
                       key={report.id}
-                      className="hover:shadow-md transition-shadow"
+                      className="hover:shadow-md transition-shadow border-l-4 border-l-transparent data-[status=pending]:border-l-yellow-400 data-[status=approved]:border-l-green-500 data-[status=rejected]:border-l-red-500"
+                      data-status={report.status}
                     >
                       <Collapsible
                         open={isOpen}
                         onOpenChange={() => toggleAccordion(report.id)}
                       >
                         <CollapsibleTrigger asChild>
-                          <CardContent className="p-4 cursor-pointer hover:bg-gray-50">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <h3 className="text-lg font-semibold text-gray-900">
-                                    รายงาน #{report.id}
-                                  </h3>
-                                  <Badge className={statusInfo.color}>
+                          <CardContent className="p-3 md:p-4 cursor-pointer hover:bg-gray-50">
+                            <div className="flex flex-col gap-2">
+                              {/* Header: ID, Status, Date */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-900">
+                                    #{report.id}
+                                  </span>
+                                  <Badge className={cn("hidden md:flex", statusInfo.color)}>
                                     <StatusIcon className="h-3 w-3 mr-1" />
                                     {statusInfo.label}
                                   </Badge>
-                                  <Badge className={priorityInfo.color}>
-                                    {priorityInfo.label}
+                                  <Badge className={cn("md:hidden text-[10px] px-1.5 h-5", statusInfo.color)}>
+                                    {statusInfo.label}
                                   </Badge>
-                                  {report.status === "pending" && (
-                                    <span className="text-xs text-gray-500">
-                                      ส่งเมื่อ{" "}
-                                      {format(
-                                        report.submittedDate,
-                                        "dd/MM/yyyy HH:mm"
-                                      )}
-                                    </span>
+                                  {report.priority === 'high' && (
+                                     <Badge variant="outline" className="text-red-600 border-red-200 text-[10px] h-5 px-1.5">
+                                        สำคัญ
+                                     </Badge>
                                   )}
                                 </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
-                                  <div>
-                                    <span className="text-gray-600">
-                                      พนักงาน:{" "}
-                                    </span>
-                                    <span className="font-medium">
-                                      {report.employeeName}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      รหัส:{" "}
-                                    </span>
-                                    <span className="font-medium">
-                                      {report.employeeId}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      แผนก:{" "}
-                                    </span>
-                                    <span className="font-medium">
-                                      {report.department}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">
-                                      Safe/Unsafe:{" "}
-                                    </span>
-                                    <span className="text-green-600 font-medium">
-                                      {report.safeCount}
-                                    </span>
-                                    <span className="text-gray-400 mx-1">
-                                      /
-                                    </span>
-                                    <span className="text-red-600 font-medium">
-                                      {report.unsafeCount}
-                                    </span>
-                                  </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-500">
+                                    {format(report.submittedDate, "dd/MM/yy HH:mm")}
+                                  </span>
+                                  {isOpen ? (
+                                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                  )}
                                 </div>
                               </div>
 
-                              <div className="flex items-center space-x-2">
-                                {report.status === "pending" && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleApprovalAction("approve", report);
-                                      }}
-                                      className="text-green-600 border-green-600 hover:bg-green-50"
-                                    >
-                                      <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleApprovalAction("reject", report);
-                                      }}
-                                      className="text-red-600 border-red-600 hover:bg-red-50"
-                                    >
-                                      <Ban className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedReport(report);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                {isOpen ? (
-                                  <ChevronUp className="h-5 w-5 text-gray-400" />
-                                ) : (
-                                  <ChevronDown className="h-5 w-5 text-gray-400" />
-                                )}
+                              {/* Content Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center">
+                                {/* Employee Info */}
+                                <div className="md:col-span-4">
+                                  <div className="flex items-center gap-2">
+                                     <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 uppercase">
+                                        {report.employeeName.substring(0, 2)}
+                                     </div>
+                                     <div>
+                                        <p className="text-sm font-medium text-gray-900 line-clamp-1">{report.employeeName}</p>
+                                        <p className="text-xs text-gray-500 line-clamp-1">{report.department}</p>
+                                     </div>
+                                  </div>
+                                </div>
+
+                                {/* Category (Desktop) */}
+                                <div className="hidden md:block md:col-span-4">
+                                   <p className="text-sm text-gray-600 line-clamp-1" title={report.safetyCategory}>
+                                      {report.safetyCategory}
+                                   </p>
+                                </div>
+
+                                {/* Counts */}
+                                <div className="md:col-span-2 flex items-center gap-3 text-sm">
+                                  <div className="flex items-center gap-1.5" title="Safe Actions">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <span className="font-medium text-gray-700">{report.safeCount}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5" title="Unsafe Actions">
+                                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                    <span className="font-medium text-gray-700">{report.unsafeCount}</span>
+                                  </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="md:col-span-2 flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                  {report.status === "pending" && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleApprovalAction("approve", report);
+                                        }}
+                                        title="อนุมัติ"
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleApprovalAction("reject", report);
+                                        }}
+                                        title="ไม่อนุมัติ"
+                                      >
+                                        <Ban className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedReport(report);
+                                    }}
+                                    title="ดูรายละเอียด"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Mobile Category */}
+                              <div className="md:hidden text-xs text-gray-500 line-clamp-1 mt-1">
+                                {report.safetyCategory}
                               </div>
                             </div>
                           </CardContent>
                         </CollapsibleTrigger>
 
                         <CollapsibleContent>
-                          <CardContent className="pt-0 pb-4 px-4">
-                            <div className="border-t pt-4">
+                          <CardContent className="pt-4 pb-4 px-4 bg-gray-50/50 border-t">
+                            <div className="pt-2">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                   <p className="text-sm text-gray-600">
@@ -3807,17 +2730,6 @@ function AdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="py-4 px-0 md:p-6">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>สรุปรายบุคคล ITH-OE</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <IndividualReportSummary reports={reports} />
-              </CardContent>
-            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="py-6">
@@ -3976,7 +2888,16 @@ function AdminDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="payroll" className="space-y-6">
+          <TabsContent value="analytics" className="space-y-6">
+            <AnalyticsDashboard
+              reports={reports}
+              employeeList={employeeList}
+              stats={stats}
+              departmentList={departmentList}
+            />
+          </TabsContent>
+
+          <TabsContent value="payroll" className="space-y-4">
             <Card className="py-4 px-0 md:p-6">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -3984,8 +2905,8 @@ function AdminDashboard() {
                   <span>รายงานการจ่ายเงิน BBS</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <PayrollReportSummary reports={reports} />
+              <CardContent className="py-4 px-2 md:p-6">
+                <PayrollReportSummary reports={reports} employeeList={employeeList} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -4310,7 +3231,7 @@ function AdminDashboard() {
                     onClick={() =>
                       handleApprovalAction("reject", selectedReport)
                     }
-                    // variant="destructive"
+                  // variant="destructive"
                   >
                     <Ban className="h-4 w-4 mr-2" />
                     ไม่อนุมัติ

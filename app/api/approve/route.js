@@ -1,14 +1,15 @@
 //api/approve/route.js - ปรับปรุงเพื่อประสิทธิภาพดีขึ้น
-import { batchUpdateSheet, getSheetData ,appendToSheet} from '../config'; // ✅ ใช้ batchUpdateSheet
+import { batchUpdateSheet, getSheetData, appendToSheet } from '../config'; // ✅ ใช้ batchUpdateSheet
 import { NextResponse } from 'next/server';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(request) {
   try {
-    console.log('📥 Receiving approval request...');
-    
+    apiLogger.info('📥 Receiving approval request...');
+
     const data = await request.json();
-    
-    console.log('✅ Approval data received:', {
+
+    apiLogger.info('✅ Approval data received:', {
       recordId: data.recordId,
       status: data.status,
       hasAdminNote: !!data.adminNote,
@@ -32,9 +33,9 @@ export async function POST(request) {
     }
 
     // ดึงข้อมูลทั้งหมดจาก sheet เพื่อหา row ที่ต้องการอัพเดต
-    console.log('🔍 Finding record in sheet...');
+    apiLogger.info('🔍 Finding record in sheet...');
     const sheetData = await getSheetData('record!A:V'); // ครอบคลุม columns ทั้งหมด
-    
+
     if (!sheetData || !sheetData.length) {
       return NextResponse.json(
         { message: 'No data found in sheet' },
@@ -58,11 +59,11 @@ export async function POST(request) {
     // คำนวณ row number ใน Google Sheet (เริ่มจาก 1, บวก 1 เพราะมี header)
     const googleSheetRowNumber = rowIndex + 1;
 
-    console.log(`📝 Updating row ${googleSheetRowNumber} with status: ${data.status}`);
+    apiLogger.info(`📝 Updating row ${googleSheetRowNumber} with status: ${data.status}`);
 
     // เตรียมข้อมูลที่จะอัพเดต
     const currentDateTime = new Date().toISOString();
-    
+
     // ✅ ใช้ batch update เพื่อประสิทธิภาพดีขึ้น
     const updates = [
       {
@@ -84,7 +85,7 @@ export async function POST(request) {
     ];
 
     const employeeId = sheetData[rowIndex][2]; // Column C: Employee ID
-    const rowNotificationLogEmployee = [null ,data.status, data.approvedBy, employeeId, ""];
+    const rowNotificationLogEmployee = [null, data.status, data.approvedBy, employeeId, ""];
 
     // ✅ อัพเดตทุก field พร้อมกันด้วย batch update
     await batchUpdateSheet(updates);
@@ -100,15 +101,15 @@ export async function POST(request) {
     };
 
 
-    console.log('✅ Approval successful:', responseData);
+    apiLogger.info('✅ Approval successful:', responseData);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: `Record ${data.status} successfully`,
       data: responseData
     }, { status: 200 });
 
   } catch (error) {
-    console.error('❌ Approval API Error:', error);
+    apiLogger.error('❌ Approval API Error:', error);
     return NextResponse.json(
       { message: 'Error updating record status', error: error.message },
       { status: 500 }
@@ -129,11 +130,11 @@ export async function GET(request) {
       );
     }
 
-    console.log(`🔍 Getting status for record: ${recordId}`);
+    apiLogger.info(`🔍 Getting status for record: ${recordId}`);
 
     // ดึงข้อมูลจาก sheet
     const sheetData = await getSheetData('record!A:V');
-    
+
     if (!sheetData || !sheetData.length) {
       return NextResponse.json(
         { message: 'No data found in sheet' },
@@ -165,13 +166,13 @@ export async function GET(request) {
       submittedDate: record[1]          // Column B (index 1)
     };
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Record found',
       data: recordData
     }, { status: 200 });
 
   } catch (error) {
-    console.error('❌ Get Record API Error:', error);
+    apiLogger.error('❌ Get Record API Error:', error);
     return NextResponse.json(
       { message: 'Error getting record status', error: error.message },
       { status: 500 }

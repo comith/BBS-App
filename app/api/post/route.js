@@ -1,11 +1,12 @@
 //api/post/route.js
 import { appendToSheet } from "../config";
 import { NextResponse } from "next/server";
+import { apiLogger } from "@/lib/logger";
 
 export async function POST(request) {
   try {
     // รับข้อมูลจาก JSON เท่านั้น
-    console.log("📥 Receiving request...");
+    apiLogger.info("📥 Receiving request...");
 
     const data = await request.json();
 
@@ -25,7 +26,7 @@ export async function POST(request) {
       );
     }
 
-    console.log("✅ Data received:", {
+    apiLogger.info("✅ Data received:", {
       employeeId: data.employeeId,
       username: data.username,
       hasUploadedFiles: !!data.uploadedFiles,
@@ -102,9 +103,9 @@ export async function POST(request) {
       data.levelOfSafety || "", // T: levelOfSafety
     ];
 
-    const rowNotificationLogEmployee = [null ,"create", data.employeeId, "SHE", ""];
+    const rowNotificationLogEmployee = [new Date().toISOString(), "create", data.employeeId, "SHE", ""];
 
-    console.log("💾 Saving to Google Sheet...");
+    apiLogger.info("💾 Saving to Google Sheet...");
 
     // บันทึกลง Google Sheet
 
@@ -125,7 +126,7 @@ export async function POST(request) {
       successCount: data.uploadedFiles?.length || 0,
     };
 
-    console.log("✅ Save successful:", responseData);
+    apiLogger.info("✅ Save successful:", responseData);
 
     return NextResponse.json(
       {
@@ -135,7 +136,7 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("❌ API Error:", error);
+    apiLogger.error("❌ API Error:", error);
     return NextResponse.json(
       { message: "Error adding data to sheet", error: error.message },
       { status: 500 }

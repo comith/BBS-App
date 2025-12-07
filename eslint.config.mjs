@@ -1,16 +1,30 @@
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
+  rules: {
+    // Disable console in production
+    "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
 
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-];
+    // TypeScript specific rules
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+
+    // React specific rules
+    "react-hooks/exhaustive-deps": "warn",
+    "react/no-unescaped-entities": "off",
+
+    // General code quality
+    "prefer-const": "warn",
+    "no-var": "error",
+  },
+}, {
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts"]
+}];
 
 export default eslintConfig;

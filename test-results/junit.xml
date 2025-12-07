@@ -1,7 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="1" failures="0" errors="0" time="1.769">
-  <testsuite name="useNotification" errors="0" failures="0" skipped="0" timestamp="2025-08-22T02:10:58" time="1.011" tests="1">
-    <testcase classname="useNotification should initialize with default permission, no subscription, and isMobile state" name="useNotification should initialize with default permission, no subscription, and isMobile state" time="0.021">
+<testsuites name="jest tests" tests="14" failures="0" errors="0" time="1.95">
+  <testsuite name="useNotification" errors="0" failures="0" skipped="0" timestamp="2025-12-07T07:38:44" time="1.185" tests="14">
+    <testcase classname="useNotification should initialize with default values" name="useNotification should initialize with default values" time="0.025">
+    </testcase>
+    <testcase classname="useNotification should request permission and subscribe successfully" name="useNotification should request permission and subscribe successfully" time="0.045">
+    </testcase>
+    <testcase classname="useNotification should handle permission denied" name="useNotification should handle permission denied" time="0.025">
+    </testcase>
+    <testcase classname="useNotification should restore existing subscription on mount" name="useNotification should restore existing subscription on mount" time="0.086">
+    </testcase>
+    <testcase classname="useNotification should unsubscribe successfully" name="useNotification should unsubscribe successfully" time="0.087">
+    </testcase>
+    <testcase classname="useNotification should fail to unsubscribe if error occurs" name="useNotification should fail to unsubscribe if error occurs" time="0.093">
+    </testcase>
+    <testcase classname="useNotification should return false when unsubscribing if not subscribed" name="useNotification should return false when unsubscribing if not subscribed" time="0.002">
+    </testcase>
+    <testcase classname="useNotification should send local notification via ServiceWorker" name="useNotification should send local notification via ServiceWorker" time="0.003">
+    </testcase>
+    <testcase classname="useNotification should send local notification via new Notification if SW missing" name="useNotification should send local notification via new Notification if SW missing" time="0.003">
+    </testcase>
+    <testcase classname="useNotification should not send local notification if permission denied" name="useNotification should not send local notification if permission denied" time="0.007">
+    </testcase>
+    <testcase classname="useNotification should send push notification via API" name="useNotification should send push notification via API" time="0.004">
+    </testcase>
+    <testcase classname="useNotification should handle API failure when sending push notification" name="useNotification should handle API failure when sending push notification" time="0.008">
+    </testcase>
+    <testcase classname="useNotification should send test push" name="useNotification should send test push" time="0.005">
+    </testcase>
+    <testcase classname="useNotification should return false for canUseNotification if requirements missing" name="useNotification should return false for canUseNotification if requirements missing" time="0.002">
     </testcase>
   </testsuite>
 </testsuites>

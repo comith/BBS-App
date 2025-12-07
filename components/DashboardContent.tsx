@@ -943,7 +943,7 @@ const group = employeeData?.group || "";
         const lastDay = new Date(year, month + 1, 0);
 
         const weeks = [];
-        let current = new Date(firstDay);
+        const current = new Date(firstDay);
 
         // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
         while (current.getDay() !== 1) {
@@ -1332,7 +1332,7 @@ const group = employeeData?.group || "";
         const lastDay = new Date(year, month + 1, 0);
 
         const weeks = [];
-        let current = new Date(firstDay);
+        const current = new Date(firstDay);
 
         // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
         while (current.getDay() !== 1) {
@@ -1926,7 +1926,7 @@ const group = employeeData?.group || "";
         const lastDay = new Date(year, month + 1, 0);
 
         const weeks = [];
-        let current = new Date(firstDay);
+        const current = new Date(firstDay);
 
         // ย้อนกลับไปวันจันทร์ของสัปดาห์แรก
         while (current.getDay() !== 1) {

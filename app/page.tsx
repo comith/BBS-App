@@ -1,7 +1,11 @@
+// app/page.tsx
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { SquareUser, RefreshCw } from "lucide-react";
+import { SquareUser, RefreshCw, Shield, Users, BarChart3 } from "lucide-react";
+
+
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import NotificationToggleButton from "@/components/NotificationToggleButton";
 import {
   useEmployeeData,
@@ -25,6 +29,7 @@ const saveToLocalStorage = (data: FormData) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error saving to localStorage:", error);
     }
   }
@@ -36,6 +41,7 @@ const loadFromLocalStorage = (): FormData | null => {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error loading from localStorage:", error);
       return null;
     }
@@ -48,6 +54,7 @@ const clearLocalStorage = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error clearing localStorage:", error);
     }
   }
@@ -122,17 +129,17 @@ const BackgroundSVG = React.memo(() => (
       d="M0,450 Q150,350 300,400 Q450,450 600,400 Q700,370 800,390 L800,600 L0,600 Z"
       fill="url(#waveGrad1)"
     />
-    <circle cx="150" cy="120" r="60" fill="rgba(255,255,255,0.1)" />
-    <circle cx="650" cy="80" r="40" fill="rgba(255,255,255,0.08)" />
+    <circle cx="150" cy="120" r="60" fill="rgba(255,255,255,0.1)" className="animate-pulse" style={{ animationDuration: '4s' }} />
+    <circle cx="650" cy="80" r="40" fill="rgba(255,255,255,0.08)" className="animate-pulse" style={{ animationDuration: '6s' }} />
     <circle cx="100" cy="450" r="25" fill="rgba(255,255,255,0.12)" />
-    <circle cx="700" cy="500" r="35" fill="rgba(255,255,255,0.1)" />
+    <circle cx="700" cy="500" r="35" fill="rgba(255,255,255,0.1)" className="animate-pulse" style={{ animationDuration: '5s' }} />
     <circle cx="400" cy="350" r="15" fill="rgba(255,255,255,0.15)" />
     <circle cx="200" cy="300" r="20" fill="rgba(255,255,255,0.1)" />
-    <circle cx="300" cy="150" r="5" fill="rgba(255,255,255,0.2)" />
+    <circle cx="300" cy="150" r="5" fill="rgba(255,255,255,0.2)" className="animate-bounce" style={{ animationDuration: '3s' }} />
     <circle cx="500" cy="200" r="3" fill="rgba(255,255,255,0.25)" />
-    <circle cx="600" cy="300" r="4" fill="rgba(255,255,255,0.2)" />
+    <circle cx="600" cy="300" r="4" fill="rgba(255,255,255,0.2)" className="animate-ping" style={{ animationDuration: '3s' }} />
     <circle cx="150" cy="350" r="6" fill="rgba(255,255,255,0.18)" />
-    <circle cx="750" cy="200" r="4" fill="rgba(255,255,255,0.22)" />
+    <circle cx="750" cy="200" r="4" fill="rgba(255,255,255,0.22)" className="animate-pulse" style={{ animationDuration: '2s' }} />
   </svg>
 ));
 
@@ -162,50 +169,34 @@ const MenuButtons = React.memo(
       router.push("/dashboard");
     }, [router, formData]);
 
+    const buttonClass = "bg-white/80 backdrop-blur-md flex flex-col justify-center rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-6 w-full hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] hover:border-blue-200/50 hover:bg-white transition-all duration-500 cursor-pointer group relative overflow-hidden";
+    const imageWrapperClass = "relative w-24 h-24 mx-auto mb-5 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 drop-shadow-xl";
+
     if (formData.position === "SHE") {
       return (
-        <div className="grid grid-cols-2 gap-4 w-full max-w-xl pb-4 md:grid-cols-3">
-          <button
-            type="button"
-            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleFormClick}
-          >
-            <img
-              src="/img/formicon.png"
-              alt="Form Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              บันทึกรายงานพฤติกรรม
+        <div className="grid grid-cols-2 gap-6 w-full max-w-xl pb-4 md:grid-cols-3">
+          <button type="button" className={buttonClass} onClick={handleFormClick}>
+            <div className={imageWrapperClass}>
+              <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              บันทึกรายงาน
             </h2>
           </button>
-          <button
-            type="button"
-            className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleDashboardClick}
-          >
-            <img
-              src="/img/report_icon.png"
-              alt="Report Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              สรุปผลรายงานพฤติกรรม (All)
+          <button type="button" className={buttonClass} onClick={handleDashboardClick}>
+            <div className={imageWrapperClass}>
+              <Image src="/img/report_icon.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              สรุปภาพรวม (All)
             </h2>
           </button>
-
-          <button
-            type="button"
-            className="bg-white rounded-2xl shadow-xl p-4 full hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleReportClick}
-          >
-            <img
-              src="/img/people_report.png"
-              alt="Report Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              สรุปผลรายงานพฤติกรรม (คุณ)
+          <button type="button" className={buttonClass} onClick={handleReportClick}>
+            <div className={imageWrapperClass}>
+              <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              รายงานของคุณ
             </h2>
           </button>
         </div>
@@ -214,33 +205,21 @@ const MenuButtons = React.memo(
 
     if (formData.position === "AC" || formData.position === "Manager") {
       return (
-        <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-          <button
-            type="button"
-            className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleFormClick}
-          >
-            <img
-              src="/img/formicon.png"
-              alt="Form Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              บันทึกรายงานพฤติกรรม
+        <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
+          <button type="button" className={`${buttonClass} w-1/2`} onClick={handleFormClick}>
+            <div className={imageWrapperClass}>
+              <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              บันทึกรายงาน
             </h2>
           </button>
-          <button
-            type="button"
-            className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-            onClick={handleDashboardClick}
-          >
-            <img
-              src="/img/people_report.png"
-              alt="Report Icon"
-              className="w-auto h-32 m-auto"
-            />
-            <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-              สรุปผลรายงานพฤติกรรม
+          <button type="button" className={`${buttonClass} w-1/2`} onClick={handleDashboardClick}>
+            <div className={imageWrapperClass}>
+              <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              สรุปผลรายงาน
             </h2>
           </button>
         </div>
@@ -248,33 +227,21 @@ const MenuButtons = React.memo(
     }
 
     return (
-      <div className="flex flex-row gap-4 w-full max-w-md pb-4">
-        <button
-          type="button"
-          className="bg-white flex flex-col justify-center rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-          onClick={handleFormClick}
-        >
-          <img
-            src="/img/formicon.png"
-            alt="Form Icon"
-            className="w-auto h-32 m-auto"
-          />
-          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-            บันทึกรายงานพฤติกรรม
+      <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
+        <button type="button" className={`${buttonClass} w-1/2`} onClick={handleFormClick}>
+          <div className={imageWrapperClass}>
+            <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+          </div>
+          <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+            บันทึกรายงาน
           </h2>
         </button>
-        <button
-          type="button"
-          className="bg-white rounded-2xl shadow-xl p-4 w-1/2 hover:scale-105 transition-transform duration-200 hover:cursor-pointer"
-          onClick={handleReportClick}
-        >
-          <img
-            src="/img/people_report.png"
-            alt="Report Icon"
-            className="w-auto h-32 m-auto"
-          />
-          <h2 className="text-lg text-center font-bold text-gray-900 mb-2">
-            สรุปผลรายงานพฤติกรรม
+        <button type="button" className={`${buttonClass} w-1/2`} onClick={handleReportClick}>
+          <div className={imageWrapperClass}>
+            <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+          </div>
+          <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+            สรุปผลรายงาน
           </h2>
         </button>
       </div>
@@ -458,127 +425,201 @@ function ModernBBSLogin() {
       </div>
 
       {/* Left side - Abstract Design */}
-      <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block">
-        <div
-          className="absolute inset-0"
-        />
-        <img
+      <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block group">
+        <div className="absolute inset-0 bg-gray-900" />
+        <Image
           src="/img/bg_login.png"
           alt="Background"
-          className="absolute inset-0 object-cover w-full h-full"
+          fill
+          priority
+          className="object-cover w-full h-full opacity-60 group-hover:scale-105 transition-transform duration-[20s]"
         />
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-transparent to-orange-900/30" />
+
         <div className="absolute inset-0">
           <BackgroundSVG />
         </div>
-        <div className="relative z-10 flex flex-col justify-between h-[100vh] p-8">
-          <div className="flex flex-row gap-3">
-            <img
-              src="/img/ith.png"
-              alt="Logo"
-              className="w-32 h-32 translate-y-[-5px]"
-            />
-            <div className="flex flex-col">
-              <div className="flex flex-row gap-3">
-                <span className="text-orange-400 text-[40px] text-shadow-2xs font-medium tracking-wider">
+
+        <div className="relative z-10 flex flex-col justify-between h-[100vh] p-12">
+          <div className="flex flex-col gap-8">
+            {/* Logo Section with Glass Effect */}
+            <div className="inline-flex items-center gap-6 p-6 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl hover:bg-white/15 transition-all duration-300 w-fit animate-in fade-in slide-in-from-top-4 duration-700">
+              <div className="relative w-24 h-24 drop-shadow-lg">
+                <Image
+                  src="/img/ith.png"
+                  alt="Logo"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="h-16 w-px bg-white/20" /> {/* Divider */}
+              <div className="flex flex-col justify-center">
+                <h1 className="text-3xl font-black text-white tracking-wide uppercase drop-shadow-md">
+                  ITH Group
+                </h1>
+                <p className="text-blue-200 font-medium tracking-wider text-sm">
+                  Safety Management
+                </p>
+              </div>
+            </div>
+
+            {/* Main Typography */}
+            <div className="mt-12 space-y-4">
+              <div className="flex flex-col animate-in fade-in slide-in-from-left-4 duration-1000 delay-300">
+                <span className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-yellow-200 filter drop-shadow-sm tracking-tighter">
                   Behavior
                 </span>
-                <span className="text-blue-600 text-[40px] text-shadow-2xs font-medium tracking-wider">
-                  Base
-                </span>
-                <span className="text-blue-600 text-[40px] text-shadow-2xs font-medium tracking-wider">
-                  Safety
+                <span className="text-7xl font-black text-white tracking-tighter drop-shadow-lg">
+                  Based Safety
                 </span>
               </div>
-              <span className="text-slate-400 text-[26px] text-shadow-2xs font-medium tracking-wider">
-                ความปลอดภัย เริ่มต้นที่พฤติกรรม
-              </span>
+
+              <div className="h-2 w-32 bg-orange-500 rounded-full animate-in fade-in width-[0] hover:w-48 transition-all duration-500 delay-500" />
+
+              <p className="text-2xl text-slate-200 font-light tracking-wide max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
+                ความปลอดภัย... เริ่มต้นที่<span className="font-semibold text-orange-400">พฤติกรรมของคุณ</span>
+              </p>
             </div>
+          </div>
+
+          {/* Footer / Quote */}
+          <div className="bg-black/30 backdrop-blur-sm p-6 rounded-2xl border-l-4 border-orange-500 max-w-md animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-1000">
+            <p className="text-white/90 italic font-light text-lg">
+              "Safety is not just a rule, it's a value we live by every day."
+            </p>
           </div>
         </div>
       </div>
 
       {/* Right side */}
-      <div className="w-full xl:w-1/2 flex items-center justify-center bg-gray-50 py-4 overflow-auto">
-        <div className="w-full mx-4 flex gap-4 flex-col">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Behavior Base Safety (BBS)
-              </h2>
-              คือการจัดการพฤติกรรมเสี่ยง{" "}
-              <b className="text-orange-500">เพื่อสร้างพฤติกรรมที่ปลอดภัย </b>
-              โดยไม่ต้องการให้พนักงานได้รับบาดเจ็บเพื่อปรับเปลี่ยนพฤติกรรมเสี่ยงให้เป็นพฤติกรรมที่ปลอดภัย
-              ซึ่งอาศัยความร่วมมือของพนักงานทุกคน จนเกิดเป็น{" "}
-              <b className="text-orange-500">วัฒนธรรมความปลอดภัยในองค์กร</b>
-              <br />
-              <br />
-              <b className="text-orange-500 text-[18px] md:text-[17px]">
-                BBS ทำอะไร?
-              </b>
-              <div className="pl-4 gap-2 flex flex-col mt-2">
-                <li>
-                  <b className="text-orange-500 text-[18px]">
-                    เน้นพฤติกรรม BBS
-                  </b>{" "}
-                  ไม่ได้รอให้เกิดอุบัติเหตุแล้วค่อยมาแก้ไข
-                  แต่จะเข้าไปสังเกตและปรับเปลี่ยนพฤติกรรมที่เสี่ยงต่อการเกิดอุบัติเหตุตั้งแต่เนิ่นๆ
-                </li>
-                <li>
-                  <b className="text-orange-500 text-[18px] md:text-[17px]">
-                    ทุกคนมีส่วนร่วม
-                  </b>{" "}
-                  ทุกคนในองค์กร ไม่ว่าจะเป็นพนักงาน ผู้จัดการ หรือเจ้าของกิจการ
-                  ต่างมีส่วนร่วมในการสังเกตและปรับปรุงพฤติกรรมของตนเองและผู้อื่น
-                </li>
-                <li>
-                  <b className="text-orange-500 text-[18px] md:text-[17px]">
-                    วัดผลได้
-                  </b>{" "}
-                  BBS มีวิธีการวัดผลที่ชัดเจน
-                  ทำให้เราสามารถเห็นผลลัพธ์และปรับปรุงแนวทางได้อย่างต่อเนื่อง
-                </li>
-              </div>
-            </div>
-          </div>
+      <div className="w-full xl:w-1/2 flex items-center justify-center bg-gray-50/50 py-8 overflow-auto backdrop-blur-sm">
+        <div className="w-full max-w-3xl mx-auto px-6 flex flex-col gap-6">
+          {/* Hero / Info Card */}
+          <div className="bg-white/90 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden relative group hover:shadow-[0_8px_30px_rgb(249,115,22,0.1)] transition-all duration-700">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-400 via-pink-500 to-red-500" />
 
-          {/* Input section */}
-          <div className="bg-white rounded-2xl shadow-xl p-4 w-full mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <SquareUser className="w-6 h-6 text-gray-500 mr-2" />
-                <span className="text-gray-700 font-medium">
-                  กรอกรหัสพนักงานเพื่อเริ่มใช้งาน <RequiredMark />
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <RefreshButton />
-                {/* <ClearDataButton /> */}
-              </div>
-            </div>
-            <input
-              type="text"
-              name="employeerId"
-              value={formData.employeerId}
-              onChange={handleInputChange}
-              placeholder="กรอกรหัสพนักงาน เช่น 5LD01234"
-              className="w-full px-4 py-4 border-l-4 border-blue-500 bg-gray-50 rounded-lg focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
-            />
+            {/* Ambient Background Effects */}
+            <div className="absolute -right-24 -top-24 w-80 h-80 bg-orange-100/50 rounded-full blur-[100px] opacity-40 group-hover:opacity-60 transition-opacity duration-1000 pointer-events-none mix-blend-multiply" />
+            <div className="absolute -left-20 -bottom-24 w-80 h-80 bg-blue-100/50 rounded-full blur-[100px] opacity-40 group-hover:opacity-60 transition-opacity duration-1000 pointer-events-none mix-blend-multiply" />
 
-            {/* Show stored data indicator */}
-            {formData.fullName && (
-              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700">
-                  ✓ ข้อมูลพนักงาน: {formData.fullName} ({formData.department} -{" "}
-                  {formData.group})
+            <div className="p-8 relative z-10">
+              <div className="mb-10 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-100 text-orange-700 text-xs font-bold tracking-wider uppercase shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                  Safety Intelligence
+                </div>
+                <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 mb-6 tracking-tight drop-shadow-sm">
+                  BBS System
+                </h2>
+                <p className="text-xl text-gray-600 leading-relaxed font-light">
+                  ยกระดับมาตรฐานความปลอดภัย
+                  <br className="hidden md:block" />
+                  ด้วย<span className="font-bold relative inline-block mx-1">
+                    <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">พฤติกรรมที่ยั่งยืน</span>
+                    <span className="absolute bottom-1 left-0 w-full h-2 bg-orange-100/50 -z-10 skew-x-12" />
+                  </span>
                 </p>
               </div>
-            )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Modern Card 1 */}
+                <div className="p-6 rounded-2xl bg-white/40 border border-white/80 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-2 transition-all duration-500 group/card relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 to-white/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-orange-50 flex items-center justify-center mb-5 text-orange-500 shadow-[0_4px_20px_rgb(249,115,22,0.15)] group-hover/card:scale-110 group-hover/card:rotate-3 transition-all duration-500 ring-1 ring-orange-100">
+                      <Shield className="w-7 h-7" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Prevention</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">จัดการความเสี่ยงเชิงรุก</p>
+                  </div>
+                </div>
+
+                {/* Modern Card 2 */}
+                <div className="p-6 rounded-2xl bg-white/40 border border-white/80 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-2 transition-all duration-500 group/card relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-white/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-blue-50 flex items-center justify-center mb-5 text-blue-500 shadow-[0_4px_20px_rgb(59,130,246,0.15)] group-hover/card:scale-110 group-hover/card:-rotate-3 transition-all duration-500 ring-1 ring-blue-100">
+                      <Users className="w-7 h-7" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Engagement</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">พลังความร่วมมือทุกคน</p>
+                  </div>
+                </div>
+
+                {/* Modern Card 3 */}
+                <div className="p-6 rounded-2xl bg-white/40 border border-white/80 shadow-sm hover:shadow-xl hover:shadow-green-500/5 hover:-translate-y-2 transition-all duration-500 group/card relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-white/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-green-50 flex items-center justify-center mb-5 text-green-500 shadow-[0_4px_20px_rgb(34,197,94,0.15)] group-hover/card:scale-110 group-hover/card:rotate-3 transition-all duration-500 ring-1 ring-green-100">
+                      <BarChart3 className="w-7 h-7" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Evaluation</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">วัดผลแม่นยำพัฒนาจริง</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Menu buttons - only show when employeerId is valid */}
-          {formData.employeerId.length >= 8 && formData.fullName && (
-            <MenuButtons formData={formData} router={router} />
-          )}
+          {/* Input Section */}
+          <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-8 relative overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500">
+            <div />
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-500">
+                    <SquareUser className="w-6 h-6" />
+                  </div>
+                  <span className="text-gray-700 font-semibold text-lg">
+                    เข้าสู่ระบบ <RequiredMark />
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RefreshButton />
+                </div>
+              </div>
+
+              <div className="relative group">
+                <input
+                  type="text"
+                  name="employeerId"
+                  value={formData.employeerId}
+                  onChange={handleInputChange}
+                  placeholder="กรอกรหัสพนักงาน (เช่น 5LD01234)"
+                  className="w-full px-6 py-5 pl-6 text-lg bg-gray-50 rounded-2xl border-2 border-transparent focus:bg-white focus:border-blue-500 focus:shadow-lg focus:shadow-blue-500/10 outline-none transition-all duration-300 placeholder-gray-400 font-medium text-gray-800 tracking-wide"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none group-focus-within:text-blue-500 transition-colors">
+                  ➔
+                </div>
+              </div>
+
+              {/* Verified User Badge */}
+              {formData.fullName && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-lg shadow-sm">
+                    ✓
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800 text-lg">{formData.fullName}</p>
+                    <p className="text-sm text-gray-500 flex items-center gap-2">
+                      <span className="bg-white px-2 py-0.5 rounded text-xs border border-green-200">{formData.department}</span>
+                      <span>•</span>
+                      <span>{formData.group}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Menu Buttons */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {formData.employeerId.length >= 8 && formData.fullName && (
+              <MenuButtons formData={formData} router={router} />
+            )}
+          </div>
         </div>
       </div>
     </div>

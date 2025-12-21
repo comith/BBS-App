@@ -2,6 +2,7 @@
 import { appendToSheet } from "../config";
 import { NextResponse } from "next/server";
 import { apiLogger } from "@/lib/logger";
+import { sendNotificationToTargets } from "@/lib/notificationService";
 
 export async function POST(request) {
   try {
@@ -103,21 +104,43 @@ export async function POST(request) {
       data.levelOfSafety || "", // T: levelOfSafety
     ];
 
-    const rowNotificationLogEmployee = [new Date().toISOString(), "create", data.employeeId, "SHE", ""];
+
 
     apiLogger.info("💾 Saving to Google Sheet...");
 
     // บันทึกลง Google Sheet
 
+
     if (data.group !== "SHE" || !data.codeemployee) {
       // บันทึกข้อมูลของพนักงานทั่วไปที่ไม่ใช่ SHE
       await appendToSheet("record!A:R", [row]);
-      await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
     } else {
       // บันทึกข้อมูลของพนักงาน SHE
       await appendToSheet("record!A:R", [row]);
       await appendToSheet("record_she!A:T", [rowByshe]);
-      await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
+    }
+
+    // ✅ ส่ง Notification แบบ Realtime แทนการบันทึก log
+    try {
+      const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+      await sendNotificationToTargets(
+        {
+          title: `📝 มีการรายงาน BBS ใหม่ (${now})`,
+          body: `ผู้รายงาน: ${data.username || "พนักงาน"}\nแผนก: ${data.group || "-"}\nเวลา: ${now}`,
+          icon: "/icons/ith.png",
+          url: "/dashboard",
+          data: {
+             recordId: recordId,
+             action: "create",
+             from: data.employeeId
+          }
+        },
+        ["SHE"] // Target Roles
+      );
+      apiLogger.info("🔔 Notification sent to SHE");
+    } catch (notifError) {
+      apiLogger.error("⚠️ Failed to send notification:", notifError);
+      // ไม่ throw error เพื่อให้การบันทึกข้อมูลหลักยังคงสำเร็จ
     }
 
     const responseData = {

@@ -48,7 +48,7 @@ import {
   HardHat,
   Wrench,
   Bike,
-  ReceiptText
+  ReceiptText,
 } from "lucide-react";
 import {
   Select,
@@ -255,7 +255,7 @@ const CustomCalendar = ({
             "h-9 w-9 rounded-md text-sm font-normal transition-colors hover:bg-gray-100",
             isInRange && "bg-orange-100 text-orange-900",
             (isRangeStart || isRangeEnd) &&
-            "bg-orange-500 text-white hover:bg-orange-600",
+              "bg-orange-500 text-white hover:bg-orange-600",
             isToday && !isInRange && "bg-gray-200 font-medium",
             "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           )}
@@ -466,22 +466,22 @@ const transformApiDataToDashboardReport = (
     // แปลง selectedOptions
     const selectedOptionsArray = Array.isArray(item.selectedOptions)
       ? item.selectedOptions.map((opt) =>
-        typeof opt === "string" ? opt : opt.name || "ไม่ระบุ"
-      )
+          typeof opt === "string" ? opt : opt.name || "ไม่ระบุ"
+        )
       : [];
 
     // ส่งค่าไฟล์แนบเป็นอาเรย์ของอ็อบเจกต์
     const attachmentArray = Array.isArray(item.attachment)
       ? item.attachment.map((file) => {
-        if (typeof file === "string") {
-          return { id: "", name: file, webViewLink: "" };
-        }
-        return {
-          id: file.id || "",
-          name: file.name || "ไม่ระบุ",
-          webViewLink: file.webViewLink || "",
-        };
-      })
+          if (typeof file === "string") {
+            return { id: "", name: file, webViewLink: "" };
+          }
+          return {
+            id: file.id || "",
+            name: file.name || "ไม่ระบุ",
+            webViewLink: file.webViewLink || "",
+          };
+        })
       : [];
 
     return {
@@ -518,13 +518,11 @@ const transformApiDataToDashboardReport = (
   });
 };
 
-
-
 function AdminDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
   // Removed duplicate filteredReports state, use useMemo version below
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -543,6 +541,11 @@ function AdminDashboard() {
   const [group, setGroup] = useState<string | null>(null);
   const [employeeList, setEmployeeList] = useState<EmployeeInfo[]>([]);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [allDataLoaded, setAllDataLoaded] = useState(false);
+  const RECORDS_PER_PAGE = 50;
 
   const departmentList = useMemo(
     () => [...new Set(reports.map((r) => r.department))].sort(),
@@ -556,12 +559,33 @@ function AdminDashboard() {
   }>({ from: undefined, to: undefined });
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
-  // Approval modal states
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<
     "approve" | "reject" | null
   >(null);
   const [adminNote, setAdminNote] = useState("");
+
+  // Image Viewer State
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  // Helper to check if file is image
+  const isImageFile = (filename: string) => {
+    return /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename);
+  };
+
+  // Helper to convert Drive URL to preview link for iframe
+  // If webViewLink is "https://drive.google.com/file/d/ID/view?usp=drivesdk"
+  // We want "https://drive.google.com/file/d/ID/preview" for iframe
+  const getPreviewUrl = (url: string) => {
+    try {
+      if (url.includes("drive.google.com") && url.includes("/view")) {
+        return url.replace(/\/view.*/, "/preview");
+      }
+      return url;
+    } catch (e) {
+      return url;
+    }
+  };
 
   // Statistics
   const stats = useMemo(
@@ -580,30 +604,118 @@ function AdminDashboard() {
           startOfDay(r.submittedDate).getTime() ===
           startOfDay(new Date()).getTime()
       ).length,
-      ppe: reports.filter((r) => r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved").length,
+      ppe: reports.filter(
+        (r) =>
+          r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" &&
+          r.status === "approved"
+      ).length,
       // รวมค่า safe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
-      ppe_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
+      ppe_safe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" &&
+          r.status === "approved"
+        ) {
+          return sum + r.safeCount;
+        }
+        return sum;
+      }, 0),
       // รวมค่า unsafe ของ การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE
-      ppe_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
-      tools: reports.filter((r) => r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved").length,
+      ppe_unsafe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE" &&
+          r.status === "approved"
+        ) {
+          return sum + r.unsafeCount;
+        }
+        return sum;
+      }, 0),
+      tools: reports.filter(
+        (r) =>
+          r.safetyCategory ===
+            "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" &&
+          r.status === "approved"
+      ).length,
       // รวมค่า safe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
-      tools_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
+      tools_safe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" &&
+          r.status === "approved"
+        ) {
+          return sum + r.safeCount;
+        }
+        return sum;
+      }, 0),
       // รวมค่า unsafe ของ การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle
-      tools_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
-      unsafe_actions: reports.filter((r) => r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved").length,
+      tools_unsafe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle" &&
+          r.status === "approved"
+        ) {
+          return sum + r.unsafeCount;
+        }
+        return sum;
+      }, 0),
+      unsafe_actions: reports.filter(
+        (r) =>
+          r.safetyCategory ===
+            "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" &&
+          r.status === "approved"
+      ).length,
       // รวมค่า safe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
-      unsafe_actions_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
+      unsafe_actions_safe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" &&
+          r.status === "approved"
+        ) {
+          return sum + r.safeCount;
+        }
+        return sum;
+      }, 0),
       // รวมค่า unsafe ของ การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire
-      unsafe_actions_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
-      unsafe_condition: reports.filter((r) => r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved").length,
+      unsafe_actions_unsafe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire" &&
+          r.status === "approved"
+        ) {
+          return sum + r.unsafeCount;
+        }
+        return sum;
+      }, 0),
+      unsafe_condition: reports.filter(
+        (r) =>
+          r.safetyCategory ===
+            "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" &&
+          r.status === "approved"
+      ).length,
       // รวมค่า safe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
-      unsafe_condition_safe: reports.reduce((sum, r) => { if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") { return sum + r.safeCount; } return sum; }, 0),
+      unsafe_condition_safe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" &&
+          r.status === "approved"
+        ) {
+          return sum + r.safeCount;
+        }
+        return sum;
+      }, 0),
       // รวมค่า unsafe ของ สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)
-      unsafe_condition_unsafe: reports.reduce((sum, r) => { if (r.safetyCategory === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" && r.status === "approved") { return sum + r.unsafeCount; } return sum; }, 0),
+      unsafe_condition_unsafe: reports.reduce((sum, r) => {
+        if (
+          r.safetyCategory ===
+            "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)" &&
+          r.status === "approved"
+        ) {
+          return sum + r.unsafeCount;
+        }
+        return sum;
+      }, 0),
     }),
     [reports]
   );
-
 
   // Toggle accordion
   const toggleAccordion = useCallback(
@@ -796,26 +908,6 @@ function AdminDashboard() {
       const actionText =
         approvalAction === "approve" ? "อนุมัติ" : "ไม่อนุมัติ";
       setSuccessMessage(`${actionText}รายงาน #${selectedReport.id} สำเร็จแล้ว`);
-      
-      // ✅ TRIGGER NOTIFICATION TO SUBMITTER
-      if (selectedReport && selectedReport.employeeId) {
-        try {
-            await fetch("/api/send-notification", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: `รายงานของคุณได้รับการ${actionText}แล้ว`,
-                    body: `รายงานวันที่ ${format(new Date(selectedReport.submittedDate), "dd/MM/yyyy")} สถานะ: ${actionText} โดย ${sheid || "เจ้าหน้าที่ SHE"}`,
-                    icon: approvalAction === "approve" ? "/icons/approved.png" : "/icons/rejected.png",
-                    url: "/employeer", // Redirect users to their report view
-                    targetUserIds: [selectedReport.employeeId]
-                })
-            });
-            console.log("Notification sent to submitter:", selectedReport.employeeId);
-        } catch (notifError) {
-            console.error("Failed to send notification to submitter:", notifError);
-        }
-      }
 
       // ซ่อน success message หลัง 3 วินาที
       setTimeout(() => {
@@ -830,59 +922,6 @@ function AdminDashboard() {
       );
     } finally {
       setIsSubmittingApproval(false);
-    }
-  };
-
-  // Mock function to fetch reports
-  const fetchReports = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [
-        recordResponse,
-        categoryResponse,
-        subCategoryResponse,
-        employeeListResponse,
-      ] = await Promise.all([
-        fetch("/api/get?type=record"),
-        fetch("/api/get?type=category"),
-        fetch("/api/get?type=subcategory"),
-        fetch("/api/get?type=employee"),
-      ]);
-
-      if (!recordResponse.ok) {
-        throw new Error(`HTTP error! status: ${recordResponse.status}`);
-      }
-
-      const [apiData, categoryData, subCategoryData, employeeListData] =
-        await Promise.all([
-          recordResponse.json(),
-          categoryResponse.json(),
-          subCategoryResponse.json(),
-          employeeListResponse.json(),
-        ]);
-
-      if (!Array.isArray(apiData)) {
-        throw new Error("ข้อมูลที่ได้รับไม่ใช่ array");
-      }
-      const transformedReports = transformApiDataToDashboardReport(
-        apiData,
-        categoryData,
-        subCategoryData
-      );
-      setEmployeeList(employeeListData);
-      setReports(transformedReports);
-    } catch (error) {
-      console.error("❌ Error fetching reports:", error);
-      setError(
-        error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล"
-      );
-
-      // ✅ ไม่ใช้ mock data แล้ว - ให้เป็น empty array
-      setReports([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -1092,11 +1131,11 @@ function AdminDashboard() {
                 approvalRate:
                   groupReports.length > 0
                     ? Math.round(
-                      (groupReports.filter((r) => r.status === "approved")
-                        .length /
-                        groupReports.length) *
-                      100
-                    )
+                        (groupReports.filter((r) => r.status === "approved")
+                          .length /
+                          groupReports.length) *
+                          100
+                      )
                     : 0,
               };
             })
@@ -1187,8 +1226,6 @@ function AdminDashboard() {
               <div className="text-sm text-red-700">ไม่อนุมัติ</div>
             </div>
           </div>
-
-
         </div>
       );
     }
@@ -1283,11 +1320,11 @@ function AdminDashboard() {
               approvalRate:
                 employeeReports.length > 0
                   ? Math.round(
-                    (employeeReports.filter((r) => r.status === "approved")
-                      .length /
-                      employeeReports.length) *
-                    100
-                  )
+                      (employeeReports.filter((r) => r.status === "approved")
+                        .length /
+                        employeeReports.length) *
+                        100
+                    )
                   : 0,
             };
           })
@@ -1623,8 +1660,8 @@ function AdminDashboard() {
                               individual.approvalRate >= 80
                                 ? "bg-green-100 text-green-800"
                                 : individual.approvalRate >= 60
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
                             }
                           >
                             {individual.approvalRate}%
@@ -1838,6 +1875,107 @@ function AdminDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // Fetch data
+  // Fetch data
+  const fetchReports = async (isLoadMore = false) => {
+    try {
+      if (!isLoadMore) {
+        setIsLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const params = new URLSearchParams();
+      params.append("type", "record");
+
+      const currentPage = isLoadMore ? page + 1 : 1;
+      params.append("page", currentPage.toString());
+      params.append("limit", RECORDS_PER_PAGE.toString());
+
+      const [
+        recordResponse,
+        categoryResponse,
+        subCategoryResponse,
+        employeeResponse,
+      ] = await Promise.all([
+        fetch(`/api/get?${params.toString()}`),
+        fetch("/api/get?type=category"),
+        fetch("/api/get?type=subcategory"),
+        fetch("/api/get?type=employee"),
+      ]);
+
+      if (!recordResponse.ok) throw new Error("Failed to fetch reports");
+
+      const [apiData, categoryData, subCategoryData, employeeListData] =
+        await Promise.all([
+          recordResponse.json(),
+          categoryResponse.json(),
+          subCategoryResponse.json(),
+          employeeResponse.json(),
+        ]);
+
+      setEmployeeList(employeeListData);
+
+      if (!apiData || apiData.length === 0) {
+        setAllDataLoaded(true);
+        if (!isLoadMore) setReports([]);
+      } else {
+        if (apiData.length < RECORDS_PER_PAGE) {
+          setAllDataLoaded(true);
+        }
+
+        const transformedReports = transformApiDataToDashboardReport(
+          apiData,
+          categoryData,
+          subCategoryData
+        );
+
+        if (isLoadMore) {
+          setReports((prev) => [...prev, ...transformedReports]);
+          setPage(currentPage);
+        } else {
+          setReports(transformedReports);
+          setPage(1);
+          setAllDataLoaded(false);
+
+          // Background Fetch
+          fetchAllRemainingReportsInBg(categoryData, subCategoryData);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      if (!isLoadMore)
+        setError(
+          error instanceof Error ? error.message : "Failed to load reports"
+        );
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const fetchAllRemainingReportsInBg = async (
+    categories: any[],
+    subCategories: any[]
+  ) => {
+    try {
+      const response = await fetch(`/api/get?type=record`);
+      if (response.ok) {
+        const allData = await response.json();
+        const transformed = transformApiDataToDashboardReport(
+          allData,
+          categories,
+          subCategories
+        );
+        setReports(transformed);
+        setAllDataLoaded(true);
+      }
+    } catch (e) {
+      console.error("Background fetch failed", e);
+    }
   };
 
   const STORAGE_KEY = "bbs_employee_data";
@@ -1894,11 +2032,11 @@ function AdminDashboard() {
 
           // Transform data to match expected field names
           const transformedData = Array.isArray(data)
-            ? data.map(emp => ({
-              ...emp,
-              employeeId: emp.employeerId || emp.employeeId || '',
-              employeeName: emp.fullName || emp.employeeName || '',
-            }))
+            ? data.map((emp) => ({
+                ...emp,
+                employeeId: emp.employeerId || emp.employeeId || "",
+                employeeName: emp.fullName || emp.employeeName || "",
+              }))
             : [];
 
           setEmployeeList(transformedData);
@@ -1941,7 +2079,7 @@ function AdminDashboard() {
             </div>
             <div className="flex flex-col md:flex-row gap-3 justify-center items-center space-x-2">
               <Button
-                onClick={fetchReports}
+                onClick={() => fetchReports()}
                 disabled={isLoading}
                 className="bg-orange-500 hover:bg-orange-600"
               >
@@ -1984,7 +2122,7 @@ function AdminDashboard() {
               <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
               <p className="text-red-600 mb-2">{error}</p>
               <Button
-                onClick={fetchReports}
+                onClick={() => fetchReports()}
                 size="sm"
                 className="bg-red-500 hover:bg-red-600"
               >
@@ -2114,15 +2252,22 @@ function AdminDashboard() {
 
                 {/* เพิ่มสรุปสำหรับหัวข้อรายงานหลัก 4 หัวข้อ */}
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">PPE</p>
-                        <div className="flex flex-row items-center space-x-4">
+                      <div className="w-full md:w-3/4">
+                        <div className="flex items-center gap-2 justify-between w-full">
+                          <p className="text-sm font-medium text-gray-600">
+                            PPE
+                          </p>
+                          <div className="h-12 w-12  md:hidden  bg-orange-100 rounded-full flex items-center justify-center">
+                            <HardHat className="h-6 w-6 text-orange-600" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col mt-4 md:mt-0">
                           <p className="text-2xl font-bold text-gray-900">
                             {stats.ppe}
                           </p>
-                          <div>
+                          <div className="flex flex-col mt-4 md:mt-0">
                             <p className="text-sm text-green-600">
                               Safe Act. : {stats.ppe_safe}
                             </p>
@@ -2132,7 +2277,7 @@ function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                      <div className="h-12 w-12 hidden md:flex bg-orange-100 rounded-full flex items-center justify-center">
                         <HardHat className="h-6 w-6 text-orange-600" />
                       </div>
                     </div>
@@ -2140,15 +2285,22 @@ function AdminDashboard() {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Tools</p>
-                        <div className="flex flex-row items-center space-x-4">
+                      <div className="w-full md:w-3/4">
+                        <div className="flex items-center gap-2 justify-between w-full">
+                          <p className="text-sm font-medium text-gray-600">
+                            Tools
+                          </p>
+                          <div className="h-12 w-12 md:hidden bg-gray-100 rounded-full flex items-center justify-center">
+                            <Wrench className="h-6 w-6 text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col mt-4 md:mt-0">
                           <p className="text-2xl font-bold text-gray-900">
                             {stats.tools}
                           </p>
-                          <div>
+                          <div className="flex flex-col mt-4 md:mt-0">
                             <p className="text-sm text-green-600">
                               Safe Act. : {stats.tools_safe}
                             </p>
@@ -2158,7 +2310,7 @@ function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
+                      <div className="h-12 w-12 hidden md:flex bg-gray-100 rounded-full flex items-center justify-center">
                         <Wrench className="h-6 w-6 text-gray-600" />
                       </div>
                     </div>
@@ -2166,15 +2318,22 @@ function AdminDashboard() {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Unsafe Action</p>
-                        <div className="flex flex-row items-center space-x-4">
+                      <div className="w-full md:w-3/4">
+                        <div className="flex items-center gap-2 justify-between w-full">
+                          <p className="text-sm font-medium text-gray-600">
+                            Unsafe Action
+                          </p>
+                          <div className="h-12 w-12 md:hidden bg-green-100 rounded-full flex items-center justify-center">
+                            <Bike className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col mt-4 md:mt-0">
                           <p className="text-2xl font-bold text-gray-900">
                             {stats.unsafe_actions}
                           </p>
-                          <div>
+                          <div className="flex flex-col mt-4 md:mt-0">
                             <p className="text-sm text-green-600">
                               Safe Act. : {stats.unsafe_actions_safe}
                             </p>
@@ -2184,7 +2343,7 @@ function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <div className="h-12 w-12 hidden md:flex bg-green-100 rounded-full flex items-center justify-center">
                         <Bike className="h-6 w-6 text-green-600" />
                       </div>
                     </div>
@@ -2192,15 +2351,22 @@ function AdminDashboard() {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Unsafe Condition</p>
-                        <div className="flex flex-row items-center space-x-4">
+                      <div className="w-full md:w-3/4">
+                        <div className="flex items-center gap-2 justify-between w-full">
+                          <p className="text-sm font-medium text-gray-600">
+                            Unsafe Condition
+                          </p>
+                          <div className="h-12 w-12 md:hidden bg-blue-100 rounded-full flex items-center justify-center">
+                            <ReceiptText className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col mt-4 md:mt-0">
                           <p className="text-2xl font-bold text-gray-900">
                             {stats.unsafe_condition}
                           </p>
-                          <div>
+                          <div className="flex flex-col mt-4 md:mt-0">
                             <p className="text-sm text-green-600">
                               Safe Act. : {stats.unsafe_condition_safe}
                             </p>
@@ -2210,7 +2376,7 @@ function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="h-12 w-12 hidden md:flex bg-blue-100 rounded-full flex items-center justify-center">
                         <ReceiptText className="h-6 w-6 text-blue-600" />
                       </div>
                     </div>
@@ -2223,71 +2389,75 @@ function AdminDashboard() {
             <Card>
               <Collapsible>
                 <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      ตัวกรองและการค้นหา
-                   </CardTitle>
-                   <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-9 p-0">
-                        <ChevronDown className="h-4 w-4" />
-                        <span className="sr-only">Toggle filters</span>
-                      </Button>
-                   </CollapsibleTrigger>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    ตัวกรองและการค้นหา
+                  </CardTitle>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-9 p-0">
+                      <ChevronDown className="h-4 w-4" />
+                      <span className="sr-only">Toggle filters</span>
+                    </Button>
+                  </CollapsibleTrigger>
                 </CardHeader>
                 <CollapsibleContent className="px-4 pb-4">
-                 <div className="flex flex-col gap-4">
-                  {/* First row: Search and basic filters */}
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder="ค้นหาพนักงาน, รหัส, หรือรายงาน..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
+                  <div className="flex flex-col gap-4">
+                    {/* First row: Search and basic filters */}
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="ค้นหาพนักงาน, รหัส, หรือรายงาน..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="w-full lg:w-48">
-                      <Select
-                        value={statusFilter}
-                        onValueChange={setStatusFilter}
-                      >
-                        <SelectTrigger>
-                          <Filter className="h-4 w-4 mr-2" />
-                          <SelectValue placeholder="กรองตามสถานะ" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">ทั้งหมด</SelectItem>
-                          <SelectItem value="pending">รอการอนุมัติ</SelectItem>
-                          <SelectItem value="approved">อนุมัติแล้ว</SelectItem>
-                          <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-full lg:w-48">
-                      <Select
-                        value={departmentFilter}
-                        onValueChange={setDepartmentFilter}
-                      >
-                        <SelectTrigger>
-                          <Building2 className="h-4 w-4 mr-2" />
-                          <SelectValue placeholder="แผนก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">ทุกแผนก</SelectItem>
-                          {/* ✅ แก้ไขให้ถูกต้อง */}
-                          {departmentList.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
+                      <div className="w-full lg:w-48">
+                        <Select
+                          value={statusFilter}
+                          onValueChange={setStatusFilter}
+                        >
+                          <SelectTrigger>
+                            <Filter className="h-4 w-4 mr-2" />
+                            <SelectValue placeholder="กรองตามสถานะ" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">ทั้งหมด</SelectItem>
+                            <SelectItem value="pending">
+                              รอการอนุมัติ
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-full lg:w-48">
-                      {/* <Select
+                            <SelectItem value="approved">
+                              อนุมัติแล้ว
+                            </SelectItem>
+                            <SelectItem value="rejected">ไม่อนุมัติ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-full lg:w-48">
+                        <Select
+                          value={departmentFilter}
+                          onValueChange={setDepartmentFilter}
+                        >
+                          <SelectTrigger>
+                            <Building2 className="h-4 w-4 mr-2" />
+                            <SelectValue placeholder="แผนก" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">ทุกแผนก</SelectItem>
+                            {/* ✅ แก้ไขให้ถูกต้อง */}
+                            {departmentList.map((dept) => (
+                              <SelectItem key={dept} value={dept}>
+                                {dept}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-full lg:w-48">
+                        {/* <Select
                         value={priorityFilter}
                         onValueChange={setPriorityFilter}
                       >
@@ -2302,143 +2472,149 @@ function AdminDashboard() {
                           <SelectItem value="low">ต่ำ</SelectItem>
                         </SelectContent>
                       </Select> */}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Second row: Date range picker */}
-                  <div className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex-1">
-                      <Popover
-                        open={isDatePickerOpen}
-                        onOpenChange={setIsDatePickerOpen}
-                      >
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dateRange.from && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange.from ? (
-                              dateRange.to ? (
-                                <>
-                                  {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                                  {format(dateRange.to, "dd/MM/yyyy")}
-                                </>
+                    {/* Second row: Date range picker */}
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                      <div className="flex-1">
+                        <Popover
+                          open={isDatePickerOpen}
+                          onOpenChange={setIsDatePickerOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dateRange.from && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateRange.from ? (
+                                dateRange.to ? (
+                                  <>
+                                    {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                                    {format(dateRange.to, "dd/MM/yyyy")}
+                                  </>
+                                ) : (
+                                  format(dateRange.from, "dd/MM/yyyy")
+                                )
                               ) : (
-                                format(dateRange.from, "dd/MM/yyyy")
-                              )
-                            ) : (
-                              "เลือกช่วงวันที่"
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-3 border-b bg-gray-50">
-                            <p className="text-sm font-medium text-gray-700 mb-2">
-                              เลือกช่วงเวลา
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setQuickDateRange(7);
-                                  setIsDatePickerOpen(false);
-                                }}
-                                className="text-xs"
-                              >
-                                7 วันที่แล้ว
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setQuickDateRange(30);
-                                  setIsDatePickerOpen(false);
-                                }}
-                                className="text-xs"
-                              >
-                                30 วันที่แล้ว
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setQuickDateRange(90);
-                                  setIsDatePickerOpen(false);
-                                }}
-                                className="text-xs"
-                              >
-                                3 เดือนที่แล้ว
-                              </Button>
+                                "เลือกช่วงวันที่"
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <div className="p-3 border-b bg-gray-50">
+                              <p className="text-sm font-medium text-gray-700 mb-2">
+                                เลือกช่วงเวลา
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setQuickDateRange(7);
+                                    setIsDatePickerOpen(false);
+                                  }}
+                                  className="text-xs"
+                                >
+                                  7 วันที่แล้ว
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setQuickDateRange(30);
+                                    setIsDatePickerOpen(false);
+                                  }}
+                                  className="text-xs"
+                                >
+                                  30 วันที่แล้ว
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setQuickDateRange(90);
+                                    setIsDatePickerOpen(false);
+                                  }}
+                                  className="text-xs"
+                                >
+                                  3 เดือนที่แล้ว
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                          <div className="p-3">
-                            <CustomCalendar
-                              mode="range"
-                              selected={dateRange}
-                              onSelect={(newDateRange) => {
-                                setDateRange(newDateRange);
-                                // ปิด popover เมื่อเลือกวันที่ครบแล้ว (มีทั้ง from และ to)
-                                if (newDateRange?.from && newDateRange?.to) {
-                                  setIsDatePickerOpen(false);
-                                }
-                              }}
-                              numberOfMonths={1}
-                              className="rounded-md"
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                            <div className="p-3">
+                              <CustomCalendar
+                                mode="range"
+                                selected={dateRange}
+                                onSelect={(newDateRange) => {
+                                  setDateRange(newDateRange);
+                                  // ปิด popover เมื่อเลือกวันที่ครบแล้ว (มีทั้ง from และ to)
+                                  if (newDateRange?.from && newDateRange?.to) {
+                                    setIsDatePickerOpen(false);
+                                  }
+                                }}
+                                numberOfMonths={1}
+                                className="rounded-md"
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
 
-                    {/* Clear date range button */}
-                    {(dateRange.from || dateRange.to) && (
+                      {/* Clear date range button */}
+                      {(dateRange.from || dateRange.to) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearDateRange}
+                          className="flex items-center gap-2"
+                        >
+                          <X className="h-4 w-4" />
+                          ล้างวันที่
+                        </Button>
+                      )}
+
                       <Button
-                        variant="outline"
+                        onClick={exportToCSV}
+                        disabled={filteredReports.length === 0}
                         size="sm"
-                        onClick={clearDateRange}
-                        className="flex items-center gap-2"
+                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                       >
-                        <X className="h-4 w-4" />
-                        ล้างวันที่
+                        <FileText className="h-4 w-4" />
+                        Export ({filteredReports.length})
                       </Button>
-                    )}
 
-                    <Button
-                      onClick={exportToCSV}
-                      disabled={filteredReports.length === 0}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                    >
-                      <FileText className="h-4 w-4" />
-                      Export ({filteredReports.length})
-                    </Button>
-
-                    {/* Show filtered results count */}
-                    <div className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
-                       <span>แสดง {filteredReports.length} จาก {reports.length} รายการ</span>
-                       {(statusFilter !== "all" || departmentFilter !== "all" || searchTerm || dateRange.from) && (
-                         <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           onClick={() => {
-                             setStatusFilter("all");
-                             setDepartmentFilter("all");
-                             setSearchTerm("");
-                             setDateRange({ from: undefined, to: undefined });
-                           }}
-                           className="h-auto p-0 text-red-500 hover:text-red-600 hover:bg-transparent"
-                         >
-                           ล้างตัวกรอง
-                         </Button>
-                       )}
+                      {/* Show filtered results count */}
+                      <div className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
+                        <span>
+                          แสดง {filteredReports.length} จาก {reports.length}{" "}
+                          รายการ
+                        </span>
+                        {(statusFilter !== "all" ||
+                          departmentFilter !== "all" ||
+                          searchTerm ||
+                          dateRange.from) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setStatusFilter("all");
+                              setDepartmentFilter("all");
+                              setSearchTerm("");
+                              setDateRange({ from: undefined, to: undefined });
+                            }}
+                            className="h-auto p-0 text-red-500 hover:text-red-600 hover:bg-transparent"
+                          >
+                            ล้างตัวกรอง
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 </CollapsibleContent>
               </Collapsible>
             </Card>
@@ -2460,258 +2636,324 @@ function AdminDashboard() {
                   </CardContent>
                 </Card>
               ) : (
-                filteredReports.map((report) => {
-                  const statusInfo = getStatusInfo(report.status);
-                  const priorityInfo = getPriorityInfo(report.priority);
-                  const StatusIcon = statusInfo.icon;
-                  const isOpen = openAccordions.has(report.id);
+                <>
+                  {filteredReports.map((report) => {
+                    const statusInfo = getStatusInfo(report.status);
+                    // ... rest of map code ...
+                    const priorityInfo = getPriorityInfo(report.priority);
+                    const StatusIcon = statusInfo.icon;
+                    const isOpen = openAccordions.has(report.id);
 
-                  return (
-                    <Card
-                      key={report.id}
-                      className="hover:shadow-md transition-shadow border-l-4 border-l-transparent data-[status=pending]:border-l-yellow-400 data-[status=approved]:border-l-green-500 data-[status=rejected]:border-l-red-500"
-                      data-status={report.status}
-                    >
-                      <Collapsible
-                        open={isOpen}
-                        onOpenChange={() => toggleAccordion(report.id)}
+                    return (
+                      <Card
+                        key={report.id}
+                        className="hover:shadow-md transition-shadow border-l-4 border-l-transparent data-[status=pending]:border-l-yellow-400 data-[status=approved]:border-l-green-500 data-[status=rejected]:border-l-red-500"
+                        data-status={report.status}
                       >
-                        <CollapsibleTrigger asChild>
-                          <CardContent className="p-3 md:p-4 cursor-pointer hover:bg-gray-50">
-                            <div className="flex flex-col gap-2">
-                              {/* Header: ID, Status, Date */}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-900">
-                                    #{report.id}
-                                  </span>
-                                  <Badge className={cn("hidden md:flex", statusInfo.color)}>
-                                    <StatusIcon className="h-3 w-3 mr-1" />
-                                    {statusInfo.label}
-                                  </Badge>
-                                  <Badge className={cn("md:hidden text-[10px] px-1.5 h-5", statusInfo.color)}>
-                                    {statusInfo.label}
-                                  </Badge>
-                                  {report.priority === 'high' && (
-                                     <Badge variant="outline" className="text-red-600 border-red-200 text-[10px] h-5 px-1.5">
-                                        สำคัญ
-                                     </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xs text-gray-500">
-                                    {format(report.submittedDate, "dd/MM/yy HH:mm")}
-                                  </span>
-                                  {isOpen ? (
-                                    <ChevronUp className="h-4 w-4 text-gray-400" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Content Grid */}
-                              <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center">
-                                {/* Employee Info */}
-                                <div className="md:col-span-4">
+                        <Collapsible
+                          open={isOpen}
+                          onOpenChange={() => toggleAccordion(report.id)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <CardContent className="p-3 md:p-4 cursor-pointer hover:bg-gray-50">
+                              <div className="flex flex-col gap-2">
+                                {/* Header: ID, Status, Date */}
+                                <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
-                                     <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 uppercase">
+                                    <span className="font-semibold text-gray-900">
+                                      #{report.id}
+                                    </span>
+                                    <Badge
+                                      className={cn(
+                                        "hidden md:flex",
+                                        statusInfo.color
+                                      )}
+                                    >
+                                      <StatusIcon className="h-3 w-3 mr-1" />
+                                      {statusInfo.label}
+                                    </Badge>
+                                    <Badge
+                                      className={cn(
+                                        "md:hidden text-[10px] px-1.5 h-5",
+                                        statusInfo.color
+                                      )}
+                                    >
+                                      {statusInfo.label}
+                                    </Badge>
+                                    {report.priority === "high" && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-red-600 border-red-200 text-[10px] h-5 px-1.5"
+                                      >
+                                        สำคัญ
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-500">
+                                      {format(
+                                        report.submittedDate,
+                                        "dd/MM/yy HH:mm"
+                                      )}
+                                    </span>
+                                    {isOpen ? (
+                                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Content Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center">
+                                  {/* Employee Info */}
+                                  <div className="md:col-span-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 uppercase">
                                         {report.employeeName.substring(0, 2)}
-                                     </div>
-                                     <div>
-                                        <p className="text-sm font-medium text-gray-900 line-clamp-1">{report.employeeName}</p>
-                                        <p className="text-xs text-gray-500 line-clamp-1">{report.department}</p>
-                                     </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                                          {report.employeeName}
+                                        </p>
+                                        <p className="text-xs text-gray-500 line-clamp-1">
+                                          {report.department}
+                                        </p>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
 
-                                {/* Category (Desktop) */}
-                                <div className="hidden md:block md:col-span-4">
-                                   <p className="text-sm text-gray-600 line-clamp-1" title={report.safetyCategory}>
+                                  {/* Category (Desktop) */}
+                                  <div className="hidden md:block md:col-span-4">
+                                    <p
+                                      className="text-sm text-gray-600 line-clamp-1"
+                                      title={report.safetyCategory}
+                                    >
                                       {report.safetyCategory}
-                                   </p>
-                                </div>
-
-                                {/* Counts */}
-                                <div className="md:col-span-2 flex items-center gap-3 text-sm">
-                                  <div className="flex items-center gap-1.5" title="Safe Actions">
-                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                    <span className="font-medium text-gray-700">{report.safeCount}</span>
+                                    </p>
                                   </div>
-                                  <div className="flex items-center gap-1.5" title="Unsafe Actions">
-                                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                                    <span className="font-medium text-gray-700">{report.unsafeCount}</span>
-                                  </div>
-                                </div>
 
-                                {/* Actions */}
-                                <div className="md:col-span-2 flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                  {report.status === "pending" && (
-                                    <>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleApprovalAction("approve", report);
-                                        }}
-                                        title="อนุมัติ"
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleApprovalAction("reject", report);
-                                        }}
-                                        title="ไม่อนุมัติ"
-                                      >
-                                        <Ban className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-gray-500 hover:text-gray-700"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedReport(report);
-                                    }}
-                                    title="ดูรายละเอียด"
+                                  {/* Counts */}
+                                  <div className="md:col-span-2 flex items-center gap-3 text-sm">
+                                    <div
+                                      className="flex items-center gap-1.5"
+                                      title="Safe Actions"
+                                    >
+                                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                      <span className="font-medium text-gray-700">
+                                        {report.safeCount}
+                                      </span>
+                                    </div>
+                                    <div
+                                      className="flex items-center gap-1.5"
+                                      title="Unsafe Actions"
+                                    >
+                                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                      <span className="font-medium text-gray-700">
+                                        {report.unsafeCount}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div
+                                    className="md:col-span-2 flex items-center justify-end gap-1"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
+                                    {report.status === "pending" && (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleApprovalAction(
+                                              "approve",
+                                              report
+                                            );
+                                          }}
+                                          title="อนุมัติ"
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleApprovalAction(
+                                              "reject",
+                                              report
+                                            );
+                                          }}
+                                          title="ไม่อนุมัติ"
+                                        >
+                                          <Ban className="h-4 w-4" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-gray-500 hover:text-gray-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedReport(report);
+                                      }}
+                                      title="ดูรายละเอียด"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Mobile Category */}
+                                <div className="md:hidden text-xs text-gray-500 line-clamp-1 mt-1">
+                                  {report.safetyCategory}
                                 </div>
                               </div>
+                            </CardContent>
+                          </CollapsibleTrigger>
 
-                              {/* Mobile Category */}
-                              <div className="md:hidden text-xs text-gray-500 line-clamp-1 mt-1">
-                                {report.safetyCategory}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </CollapsibleTrigger>
-
-                        <CollapsibleContent>
-                          <CardContent className="pt-4 pb-4 px-4 bg-gray-50/50 border-t">
-                            <div className="pt-2">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    หมวดหมู่ความปลอดภัย
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {report.safetyCategory}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    งานที่สังเกต
-                                  </p>
-                                  <p className="font-medium">
-                                    {report.observedWork}
-                                  </p>
-                                </div>
-                                {report.subCategory && (
-                                  <div className="md:col-span-2">
+                          <CollapsibleContent>
+                            <CardContent className="pt-4 pb-4 px-4 bg-gray-50/50 border-t">
+                              <div className="pt-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  <div>
                                     <p className="text-sm text-gray-600">
-                                      หมวดหมู่ย่อย
+                                      หมวดหมู่ความปลอดภัย
                                     </p>
                                     <p className="font-medium text-sm">
-                                      {report.subCategory}
+                                      {report.safetyCategory}
                                     </p>
                                   </div>
-                                )}
-                                <div className="md:col-span-2">
-                                  <p className="text-sm text-gray-600">
-                                    รายการที่เลือก
-                                  </p>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {report.selectedOptions.map(
-                                      (option, index) => (
-                                        <Badge
-                                          key={index}
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          {option}
-                                        </Badge>
-                                      )
-                                    )}
+                                  <div>
+                                    <p className="text-sm text-gray-600">
+                                      งานที่สังเกต
+                                    </p>
+                                    <p className="font-medium">
+                                      {report.observedWork}
+                                    </p>
                                   </div>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    ไฟล์แนบ
-                                  </p>
-                                  <p className="font-medium text-blue-600">
-                                    {report.attachment.length} ไฟล์
-                                  </p>
-                                </div>
-                              </div>
-
-                              {report.status === "approved" &&
-                                report.approvedDate && (
-                                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                                    <p className="text-sm text-green-800">
-                                      <strong>อนุมัติเมื่อ:</strong>{" "}
-                                      {format(
-                                        report.approvedDate,
-                                        "dd MMMM yyyy HH:mm",
-                                        { locale: th }
+                                  {report.subCategory && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-sm text-gray-600">
+                                        หมวดหมู่ย่อย
+                                      </p>
+                                      <p className="font-medium text-sm">
+                                        {report.subCategory}
+                                      </p>
+                                    </div>
+                                  )}
+                                  <div className="md:col-span-2">
+                                    <p className="text-sm text-gray-600">
+                                      รายการที่เลือก
+                                    </p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {report.selectedOptions.map(
+                                        (option, index) => (
+                                          <Badge
+                                            key={index}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {option}
+                                          </Badge>
+                                        )
                                       )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-gray-600">
+                                      ไฟล์แนบ
                                     </p>
-                                    <p className="text-sm text-green-800">
-                                      <strong>อนุมัติโดย:</strong>{" "}
-                                      {report.approvedBy}
+                                    <p className="font-medium text-blue-600">
+                                      {report.attachment.length} ไฟล์
                                     </p>
-                                    {report.adminNote && (
-                                      <p className="text-sm text-green-800 mt-1">
-                                        <strong>หมายเหตุ:</strong>{" "}
+                                  </div>
+                                </div>
+
+                                {report.status === "approved" &&
+                                  report.approvedDate && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                                      <p className="text-sm text-green-800">
+                                        <strong>อนุมัติเมื่อ:</strong>{" "}
+                                        {format(
+                                          report.approvedDate,
+                                          "dd MMMM yyyy HH:mm",
+                                          { locale: th }
+                                        )}
+                                      </p>
+                                      <p className="text-sm text-green-800">
+                                        <strong>อนุมัติโดย:</strong>{" "}
+                                        {report.approvedBy}
+                                      </p>
+                                      {report.adminNote && (
+                                        <p className="text-sm text-green-800 mt-1">
+                                          <strong>หมายเหตุ:</strong>{" "}
+                                          {report.adminNote}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                {report.status === "rejected" &&
+                                  report.adminNote && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
+                                      <p className="text-sm text-red-800">
+                                        <strong>เหตุผลที่ไม่อนุมัติ:</strong>{" "}
                                         {report.adminNote}
                                       </p>
-                                    )}
-                                  </div>
-                                )}
+                                      <p className="text-sm text-red-800">
+                                        <strong>โดย:</strong>{" "}
+                                        {report.approvedBy} เมื่อ{" "}
+                                        {report.approvedDate &&
+                                          format(
+                                            report.approvedDate,
+                                            "dd/MM/yyyy HH:mm"
+                                          )}
+                                      </p>
+                                    </div>
+                                  )}
 
-                              {report.status === "rejected" &&
-                                report.adminNote && (
-                                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
-                                    <p className="text-sm text-red-800">
-                                      <strong>เหตุผลที่ไม่อนุมัติ:</strong>{" "}
-                                      {report.adminNote}
-                                    </p>
-                                    <p className="text-sm text-red-800">
-                                      <strong>โดย:</strong> {report.approvedBy}{" "}
-                                      เมื่อ{" "}
-                                      {report.approvedDate &&
-                                        format(
-                                          report.approvedDate,
-                                          "dd/MM/yyyy HH:mm"
-                                        )}
+                                {report.status === "pending" && (
+                                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
+                                    <p className="text-sm text-yellow-800">
+                                      🕐 รายงานนี้รอการพิจารณาอนุมัติ
                                     </p>
                                   </div>
                                 )}
+                              </div>
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </Card>
+                    );
+                  })}
 
-                              {report.status === "pending" && (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
-                                  <p className="text-sm text-yellow-800">
-                                    🕐 รายงานนี้รอการพิจารณาอนุมัติ
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </Card>
-                  );
-                })
+                  {/* Load More Button */}
+                  {!allDataLoaded && !isLoading && (
+                    <div className="flex justify-center pt-4 pb-8">
+                      <Button
+                        variant="outline"
+                        onClick={() => fetchReports(true)}
+                        disabled={isLoadingMore}
+                        className="w-full md:w-auto min-w-[200px]"
+                      >
+                        {isLoadingMore ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500 mr-2"></div>
+                            กำลังโหลดเพิ่มเติม...
+                          </>
+                        ) : (
+                          "โหลดข้อมูลเพิ่ม"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
@@ -2730,7 +2972,6 @@ function AdminDashboard() {
               </CardContent>
             </Card>
 
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="py-6">
                 <CardHeader>
@@ -2743,7 +2984,7 @@ function AdminDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">อนุมัติแล้ว</span>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 w-[130px]">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-green-500 h-2 rounded-full"
@@ -2764,7 +3005,7 @@ function AdminDashboard() {
                       <span className="text-sm text-gray-600">
                         รอการอนุมัติ
                       </span>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 w-[130px]">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-yellow-500 h-2 rounded-full"
@@ -2783,7 +3024,7 @@ function AdminDashboard() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">ไม่อนุมัติ</span>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 w-[130px]">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-red-500 h-2 rounded-full"
@@ -2906,7 +3147,10 @@ function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="py-4 px-2 md:p-6">
-                <PayrollReportSummary reports={reports} employeeList={employeeList} />
+                <PayrollReportSummary
+                  reports={reports}
+                  employeeList={employeeList}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -3017,6 +3261,32 @@ function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Image Viewer Modal */}
+      <Dialog
+        open={!!viewingImage}
+        onOpenChange={(open) => !open && setViewingImage(null)}
+      >
+        <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="flex justify-between items-center">
+              <span>รูปภาพแนบ</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto bg-black/5 flex items-center justify-center p-4">
+            {viewingImage && (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <iframe
+                  src={getPreviewUrl(viewingImage)}
+                  className="w-full h-full rounded shadow-sm border-0"
+                  allow="autoplay"
+                  title="File Preview"
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Report Detail Modal */}
       {selectedReport && !isApprovalModalOpen && (
         <div className="fixed inset-0 bg-[#00000094] flex items-center justify-center p-4 z-50">
@@ -3026,12 +3296,8 @@ function AdminDashboard() {
                 <h2 className="text-xl font-bold">
                   รายละเอียดรายงาน #{selectedReport.id}
                 </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedReport(null)}
-                >
-                  ✕
+                <Button variant="ghost" onClick={() => setSelectedReport(null)}>
+                  <p className="text-xl">✕</p>
                 </Button>
               </div>
 
@@ -3153,18 +3419,46 @@ function AdminDashboard() {
                   <p className="text-sm text-gray-600">
                     มีไฟล์แนบทั้งหมด {selectedReport.attachment.length} ไฟล์
                   </p>
-                  <div className="mt-2 space-y-1">
-                    {selectedReport.attachment.map((file, index) => (
-                      <a
-                        key={index}
-                        href={file.webViewLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline cursor-pointer"
-                      >
-                        📎 {file.name}
-                      </a>
-                    ))}
+                  <div className="mt-2 space-y-2">
+                    {selectedReport.attachment.map((file, index) => {
+                      const isImg = isImageFile(file.name);
+                      return (
+                        <div key={index} className="flex items-center gap-2">
+                          {isImg ? (
+                            <button
+                              onClick={() => setViewingImage(file.webViewLink)}
+                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-left"
+                            >
+                              <div className="w-4 h-4 overflow-hidden relative mr-1">
+                                <Image
+                                  className="object-cover"
+                                  src="/icons/image.png"
+                                  alt="img"
+                                  width={16}
+                                  height={16}
+                                  onError={(e) => {
+                                    // Fallback icon if image.png missing, using lucid-react Image icon
+                                    // But we are in a map, keeping it simple
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                                {/* Fallback svg if image fails to load or just use standard icon */}
+                              </div>
+                              📎 {file.name} (คลิกเพื่อดูรูป)
+                            </button>
+                          ) : (
+                            <a
+                              href={file.webViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline cursor-pointer flex items-center"
+                            >
+                              📎 {file.name}
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -3231,7 +3525,7 @@ function AdminDashboard() {
                     onClick={() =>
                       handleApprovalAction("reject", selectedReport)
                     }
-                  // variant="destructive"
+                    // variant="destructive"
                   >
                     <Ban className="h-4 w-4 mr-2" />
                     ไม่อนุมัติ

@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { SquareUser, RefreshCw, Shield, Users, BarChart3 } from "lucide-react";
 
-
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import NotificationToggleButton from "@/components/NotificationToggleButton";
@@ -11,7 +10,6 @@ import {
   useEmployeeData,
   useRefreshEmployeeData,
 } from "@/hooks/useEmployeeData";
-
 
 interface FormData {
   employeerId: string;
@@ -129,17 +127,59 @@ const BackgroundSVG = React.memo(() => (
       d="M0,450 Q150,350 300,400 Q450,450 600,400 Q700,370 800,390 L800,600 L0,600 Z"
       fill="url(#waveGrad1)"
     />
-    <circle cx="150" cy="120" r="60" fill="rgba(255,255,255,0.1)" className="animate-pulse" style={{ animationDuration: '4s' }} />
-    <circle cx="650" cy="80" r="40" fill="rgba(255,255,255,0.08)" className="animate-pulse" style={{ animationDuration: '6s' }} />
+    <circle
+      cx="150"
+      cy="120"
+      r="60"
+      fill="rgba(255,255,255,0.1)"
+      className="animate-pulse"
+      style={{ animationDuration: "4s" }}
+    />
+    <circle
+      cx="650"
+      cy="80"
+      r="40"
+      fill="rgba(255,255,255,0.08)"
+      className="animate-pulse"
+      style={{ animationDuration: "6s" }}
+    />
     <circle cx="100" cy="450" r="25" fill="rgba(255,255,255,0.12)" />
-    <circle cx="700" cy="500" r="35" fill="rgba(255,255,255,0.1)" className="animate-pulse" style={{ animationDuration: '5s' }} />
+    <circle
+      cx="700"
+      cy="500"
+      r="35"
+      fill="rgba(255,255,255,0.1)"
+      className="animate-pulse"
+      style={{ animationDuration: "5s" }}
+    />
     <circle cx="400" cy="350" r="15" fill="rgba(255,255,255,0.15)" />
     <circle cx="200" cy="300" r="20" fill="rgba(255,255,255,0.1)" />
-    <circle cx="300" cy="150" r="5" fill="rgba(255,255,255,0.2)" className="animate-bounce" style={{ animationDuration: '3s' }} />
+    <circle
+      cx="300"
+      cy="150"
+      r="5"
+      fill="rgba(255,255,255,0.2)"
+      className="animate-bounce"
+      style={{ animationDuration: "3s" }}
+    />
     <circle cx="500" cy="200" r="3" fill="rgba(255,255,255,0.25)" />
-    <circle cx="600" cy="300" r="4" fill="rgba(255,255,255,0.2)" className="animate-ping" style={{ animationDuration: '3s' }} />
+    <circle
+      cx="600"
+      cy="300"
+      r="4"
+      fill="rgba(255,255,255,0.2)"
+      className="animate-ping"
+      style={{ animationDuration: "3s" }}
+    />
     <circle cx="150" cy="350" r="6" fill="rgba(255,255,255,0.18)" />
-    <circle cx="750" cy="200" r="4" fill="rgba(255,255,255,0.22)" className="animate-pulse" style={{ animationDuration: '2s' }} />
+    <circle
+      cx="750"
+      cy="200"
+      r="4"
+      fill="rgba(255,255,255,0.22)"
+      className="animate-pulse"
+      style={{ animationDuration: "2s" }}
+    />
   </svg>
 ));
 
@@ -169,31 +209,63 @@ const MenuButtons = React.memo(
       router.push("/dashboard");
     }, [router, formData]);
 
-    const buttonClass = "bg-white/80 backdrop-blur-md flex flex-col justify-center rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-6 w-full hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] hover:border-blue-200/50 hover:bg-white transition-all duration-500 cursor-pointer group relative overflow-hidden";
-    const imageWrapperClass = "relative w-24 h-24 mx-auto mb-5 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 drop-shadow-xl";
+    const buttonClass =
+      "bg-white/80 backdrop-blur-md flex flex-col justify-center rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-6 w-full hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] hover:border-blue-200/50 hover:bg-white transition-all duration-500 cursor-pointer group relative overflow-hidden";
+    const imageWrapperClass =
+      "relative w-24 h-24 mx-auto mb-5 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 drop-shadow-xl";
 
     if (formData.position === "SHE") {
       return (
         <div className="grid grid-cols-2 gap-6 w-full max-w-xl pb-4 md:grid-cols-3">
-          <button type="button" className={buttonClass} onClick={handleFormClick}>
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleFormClick}
+          >
             <div className={imageWrapperClass}>
-              <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+              <Image
+                src="/img/formicon.png"
+                alt="Form Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
             </div>
             <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               บันทึกรายงาน
             </h2>
           </button>
-          <button type="button" className={buttonClass} onClick={handleDashboardClick}>
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleDashboardClick}
+          >
             <div className={imageWrapperClass}>
-              <Image src="/img/report_icon.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+              <Image
+                src="/img/report_icon.png"
+                alt="Report Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
             </div>
             <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               สรุปภาพรวม (All)
             </h2>
           </button>
-          <button type="button" className={buttonClass} onClick={handleReportClick}>
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleReportClick}
+          >
             <div className={imageWrapperClass}>
-              <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+              <Image
+                src="/img/people_report.png"
+                alt="Report Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
             </div>
             <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               รายงานของคุณ
@@ -206,17 +278,37 @@ const MenuButtons = React.memo(
     if (formData.position === "AC" || formData.position === "Manager") {
       return (
         <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
-          <button type="button" className={`${buttonClass} w-1/2`} onClick={handleFormClick}>
+          <button
+            type="button"
+            className={`${buttonClass} w-1/2`}
+            onClick={handleFormClick}
+          >
             <div className={imageWrapperClass}>
-              <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+              <Image
+                src="/img/formicon.png"
+                alt="Form Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
             </div>
             <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               บันทึกรายงาน
             </h2>
           </button>
-          <button type="button" className={`${buttonClass} w-1/2`} onClick={handleDashboardClick}>
+          <button
+            type="button"
+            className={`${buttonClass} w-1/2`}
+            onClick={handleDashboardClick}
+          >
             <div className={imageWrapperClass}>
-              <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+              <Image
+                src="/img/people_report.png"
+                alt="Report Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
             </div>
             <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               สรุปผลรายงาน
@@ -228,17 +320,37 @@ const MenuButtons = React.memo(
 
     return (
       <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
-        <button type="button" className={`${buttonClass} w-1/2`} onClick={handleFormClick}>
+        <button
+          type="button"
+          className={`${buttonClass} w-1/2`}
+          onClick={handleFormClick}
+        >
           <div className={imageWrapperClass}>
-            <Image src="/img/formicon.png" alt="Form Icon" fill className="object-contain" sizes="96px" />
+            <Image
+              src="/img/formicon.png"
+              alt="Form Icon"
+              fill
+              className="object-contain"
+              sizes="96px"
+            />
           </div>
           <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
             บันทึกรายงาน
           </h2>
         </button>
-        <button type="button" className={`${buttonClass} w-1/2`} onClick={handleReportClick}>
+        <button
+          type="button"
+          className={`${buttonClass} w-1/2`}
+          onClick={handleReportClick}
+        >
           <div className={imageWrapperClass}>
-            <Image src="/img/people_report.png" alt="Report Icon" fill className="object-contain" sizes="96px" />
+            <Image
+              src="/img/people_report.png"
+              alt="Report Icon"
+              fill
+              className="object-contain"
+              sizes="96px"
+            />
           </div>
           <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
             สรุปผลรายงาน
@@ -406,7 +518,6 @@ function ModernBBSLogin() {
     }
   }, [employees, findEmployeeData]);
 
-
   // ✅ แสดง Loading Screen จาก React Query
   if (isLoading) {
     return <LoadingScreen />;
@@ -478,7 +589,10 @@ function ModernBBSLogin() {
               <div className="h-2 w-32 bg-orange-500 rounded-full animate-in fade-in width-[0] hover:w-48 transition-all duration-500 delay-500" />
 
               <p className="text-2xl text-slate-200 font-light tracking-wide max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
-                ความปลอดภัย... เริ่มต้นที่<span className="font-semibold text-orange-400">พฤติกรรมของคุณ</span>
+                ความปลอดภัย... เริ่มต้นที่
+                <span className="font-semibold text-orange-400">
+                  พฤติกรรมของคุณ
+                </span>
               </p>
             </div>
           </div>
@@ -493,7 +607,7 @@ function ModernBBSLogin() {
       </div>
 
       {/* Right side */}
-      <div className="w-full xl:w-1/2 flex items-center justify-center bg-gray-50/50 py-8 overflow-auto backdrop-blur-sm">
+      <div className="w-full xl:w-1/2 flex items-center justify-center bg-gray-50/50 py-4 overflow-auto backdrop-blur-sm">
         <div className="w-full max-w-3xl mx-auto px-6 flex flex-col gap-6">
           {/* Hero / Info Card */}
           <div className="bg-white/90 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden relative group hover:shadow-[0_8px_30px_rgb(249,115,22,0.1)] transition-all duration-700">
@@ -515,8 +629,11 @@ function ModernBBSLogin() {
                 <p className="text-xl text-gray-600 leading-relaxed font-light">
                   ยกระดับมาตรฐานความปลอดภัย
                   <br className="hidden md:block" />
-                  ด้วย<span className="font-bold relative inline-block mx-1">
-                    <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">พฤติกรรมที่ยั่งยืน</span>
+                  ด้วย
+                  <span className="font-bold relative inline-block mx-1">
+                    <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">
+                      พฤติกรรมที่ยั่งยืน
+                    </span>
                     <span className="absolute bottom-1 left-0 w-full h-2 bg-orange-100/50 -z-10 skew-x-12" />
                   </span>
                 </p>
@@ -530,8 +647,12 @@ function ModernBBSLogin() {
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-orange-50 flex items-center justify-center mb-5 text-orange-500 shadow-[0_4px_20px_rgb(249,115,22,0.15)] group-hover/card:scale-110 group-hover/card:rotate-3 transition-all duration-500 ring-1 ring-orange-100">
                       <Shield className="w-7 h-7" />
                     </div>
-                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Prevention</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">จัดการความเสี่ยงเชิงรุก</p>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">
+                      Prevention
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">
+                      จัดการความเสี่ยงเชิงรุก
+                    </p>
                   </div>
                 </div>
 
@@ -542,8 +663,12 @@ function ModernBBSLogin() {
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-blue-50 flex items-center justify-center mb-5 text-blue-500 shadow-[0_4px_20px_rgb(59,130,246,0.15)] group-hover/card:scale-110 group-hover/card:-rotate-3 transition-all duration-500 ring-1 ring-blue-100">
                       <Users className="w-7 h-7" />
                     </div>
-                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Engagement</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">พลังความร่วมมือทุกคน</p>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">
+                      Engagement
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">
+                      พลังความร่วมมือทุกคน
+                    </p>
                   </div>
                 </div>
 
@@ -554,8 +679,12 @@ function ModernBBSLogin() {
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white to-green-50 flex items-center justify-center mb-5 text-green-500 shadow-[0_4px_20px_rgb(34,197,94,0.15)] group-hover/card:scale-110 group-hover/card:rotate-3 transition-all duration-500 ring-1 ring-green-100">
                       <BarChart3 className="w-7 h-7" />
                     </div>
-                    <h3 className="font-bold text-gray-800 mb-2 text-lg">Evaluation</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">วัดผลแม่นยำพัฒนาจริง</p>
+                    <h3 className="font-bold text-gray-800 mb-2 text-lg">
+                      Evaluation
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed text-center font-medium">
+                      วัดผลแม่นยำพัฒนาจริง
+                    </p>
                   </div>
                 </div>
               </div>
@@ -563,7 +692,7 @@ function ModernBBSLogin() {
           </div>
 
           {/* Input Section */}
-          <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-8 relative overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500">
+          <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-4 relative overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500">
             <div />
 
             <div className="relative z-10">
@@ -602,9 +731,13 @@ function ModernBBSLogin() {
                     ✓
                   </div>
                   <div>
-                    <p className="font-bold text-gray-800 text-lg">{formData.fullName}</p>
-                    <p className="text-sm text-gray-500 flex items-center gap-2">
-                      <span className="bg-white px-2 py-0.5 rounded text-xs border border-green-200">{formData.department}</span>
+                    <p className="font-bold text-gray-800 text-sm">
+                      {formData.fullName}
+                    </p>
+                    <p className="text-xs text-gray-500 flex items-center gap-2">
+                      <span className="bg-white px-2 py-0.5 rounded text-xs border border-green-200">
+                        {formData.department}
+                      </span>
                       <span>•</span>
                       <span>{formData.group}</span>
                     </p>

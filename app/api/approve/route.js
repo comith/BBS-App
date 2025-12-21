@@ -2,6 +2,7 @@
 import { batchUpdateSheet, getSheetData, appendToSheet } from '../config'; // ✅ ใช้ batchUpdateSheet
 import { NextResponse } from 'next/server';
 import { apiLogger } from '@/lib/logger';
+import { sendNotificationToTargets } from '@/lib/notificationService';
 
 export async function POST(request) {
   try {
@@ -85,11 +86,33 @@ export async function POST(request) {
     ];
 
     const employeeId = sheetData[rowIndex][2]; // Column C: Employee ID
-    const rowNotificationLogEmployee = [null, data.status, data.approvedBy, employeeId, ""];
-
     // ✅ อัพเดตทุก field พร้อมกันด้วย batch update
     await batchUpdateSheet(updates);
-    await appendToSheet("notification_log!A:D", [rowNotificationLogEmployee]);
+    
+    // ✅ ส่ง Notification แจ้งเตือนพนักงานโดยตรง
+    try {
+       const statusThai = data.status === 'approved' ? 'อนุมัติ' : (data.status === 'rejected' ? 'ปฏิเสธ' : data.status);
+       const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+       const approverName = data.approvedBy || 'SHE';
+
+       await sendNotificationToTargets(
+        {
+          title: `📢 รายงาน BBS ของคุณได้รับการ${statusThai}`,
+          body: `โดย: ${approverName}\nเวลา: ${now}\nหมายเหตุ: ${data.adminNote || '-'}`,
+          icon: data.status === 'approved' ? "/icons/approved.png" : "/icons/rejected.png",
+          url: "/dashboard",
+          data: {
+             recordId: data.recordId,
+             status: data.status
+          }
+        },
+        [], // No specific roles
+        [employeeId] // Target specifically this employee
+      );
+      apiLogger.info(`🔔 Notification sent to employee ${employeeId}`);
+    } catch (notifError) {
+      apiLogger.error("⚠️ Failed to send notification:", notifError);
+    }
 
     const responseData = {
       recordId: data.recordId,

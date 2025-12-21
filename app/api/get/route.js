@@ -101,7 +101,7 @@ function formatDataByType(data, type) {
   });
 }
 
-async function fetchAndFormatData(sheetRange, type) {
+async function fetchAndFormatData(sheetRange, type, page = null, limit = null) {
   try {
     apiLogger.info(`🔍 Fetching data for type: ${type}, range: ${sheetRange}`);
 
@@ -110,7 +110,42 @@ async function fetchAndFormatData(sheetRange, type) {
       throw new Error('getSheetData function is not available');
     }
 
-    const data = await getSheetData(sheetRange);
+    let data;
+
+    // Handle Pagination for 'record' type
+    if (page && limit && type === 'record') {
+       const pageNum = parseInt(page);
+       const limitNum = parseInt(limit);
+       
+       // Calculate rows (Assuming 1 header row)
+       const startRow = (pageNum - 1) * limitNum + 2; // +2 because 1-indexed and header is row 1
+       const endRow = startRow + limitNum - 1;
+
+       // Always fetch headers first
+       const headers = await getSheetData("record!A1:V1");
+       
+       if (!headers || headers.length === 0) {
+          return { success: false, data: [], message: "No headers found." };
+       }
+
+       // Fetch requested chunk
+       const chunkRange = `record!A${startRow}:V${endRow}`;
+       const chunkData = await getSheetData(chunkRange);
+       
+       if (chunkData && chunkData.length > 0) {
+          // Combine headers and chunk data
+          data = [headers[0], ...chunkData];
+       } else {
+          // No data in this page
+          data = [headers[0]];
+       }
+       
+       apiLogger.info(`📄 Fetched page ${pageNum} (rows ${startRow}-${endRow})`);
+    } else {
+       // Original fetch all logic
+       data = await getSheetData(sheetRange);
+    }
+
     apiLogger.info(`📊 Data received:`, data ? `${data.length} rows` : 'null');
 
     if (!data || data.length === 0) {
@@ -196,8 +231,10 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
+    const page = searchParams.get("page");
+    const limit = searchParams.get("limit");
 
-    apiLogger.info(`📝 Request type: ${type}`);
+    apiLogger.info(`📝 Request type: ${type}, page: ${page}, limit: ${limit}`);
 
     // ตรวจสอบว่ามี type parameter ไหม
     if (!type) {
@@ -212,7 +249,7 @@ export async function GET(request) {
 
     switch (type) {
       case "record":
-        result = await fetchAndFormatData("record!A1:V", "record");
+        result = await fetchAndFormatData("record!A1:V", "record", page, limit);
         break;
       case "employee":
         result = await fetchAndFormatData("employee!A1:F", "employee");

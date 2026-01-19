@@ -13,12 +13,12 @@ export async function POST(request) {
     if (roles) apiLogger.info(`Roles: ${JSON.stringify(roles)}`);
 
     // ล้าง subscription ที่หมดอายุ
-    clearExpiredSubscriptions();
+    await clearExpiredSubscriptions();
 
     // เพิ่ม subscription ใหม่ พร้อมข้อมูล user
-    const totalSubscriptions = addSubscription(subscription, timestamp, userId, roles);
+    const totalSubscriptions = await addSubscription(subscription, timestamp, userId, roles);
 
-    const info = getAllSubscriptionsInfo();
+    const info = await getAllSubscriptionsInfo();
     apiLogger.info('All subscriptions info:', info);
 
     return NextResponse.json({
@@ -38,6 +38,6 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  const info = getAllSubscriptionsInfo();
+  const info = await getAllSubscriptionsInfo();
   return NextResponse.json(info);
 }

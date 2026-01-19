@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const newId = Date.now();
 
     // ส่ง push notification โดยตรง
-    const subscriptions = getSubscriptions();
+    const subscriptions = await getSubscriptions();
 
     if (subscriptions.length > 0) {
       const notificationPayload = JSON.stringify({
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
           // ถ้า subscription หมดอายุ ให้ลบออก
           if (error.statusCode === 410 || error.statusCode === 404) {
-            removeSubscription(subscription.endpoint);
+            await removeSubscription(subscription.endpoint);
           }
 
           return { success: false, error: error.message, index };

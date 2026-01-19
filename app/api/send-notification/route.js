@@ -17,7 +17,7 @@ export async function POST(request) {
     );
 
     if (!result.success && result.count === 0) {
-       const info = getAllSubscriptionsInfo();
+       const info = await getAllSubscriptionsInfo();
        return NextResponse.json({
         success: false,
         error: result.message,
@@ -38,7 +38,7 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  const info = getAllSubscriptionsInfo();
+  const info = await getAllSubscriptionsInfo();
   return NextResponse.json({
     message: 'Send Notification API Status',
     ...info

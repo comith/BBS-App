@@ -87,7 +87,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
     const [dataLiseEmployeeSendReport, setDataLiseEmployeeSendReport] =
       useState<any[]>([]);
     const [dataEmplooyeesInGroup, setDataEmplooyeesInGroup] = useState<any[]>(
-      []
+      [],
     );
 
     // UI State - Search, Filter, Pagination
@@ -105,7 +105,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
 
     // SHE Violation Details State
     const [selectedSheViolations, setSelectedSheViolations] = useState<any[]>(
-      []
+      [],
     );
     const [showSheDetails, setShowSheDetails] = useState(false);
     const [sheDetailsTitle, setSheDetailsTitle] = useState("");
@@ -126,7 +126,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
     const fetchSheViolations = async () => {
       setIsLoadingShe(true);
       try {
-        const response = await fetch("/api/get?type=she");
+        const response = await fetch("/api/get?type=she_violations");
         if (!response.ok) {
           console.warn(`SHE API returned status: ${response.status}`);
           setSheViolations([]);
@@ -187,13 +187,14 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
 
       const individualEmployees = transformedEmployeeList.filter(isIndividual);
       const groupEmployees = transformedEmployeeList.filter(
-        (emp) => !isIndividual(emp) && !isManagerGroup(emp.group)
+        (emp) => !isIndividual(emp) && !isManagerGroup(emp.group),
       );
 
       // Process Individual Results (ITH-OE + Special Groups ending in 0)
       const individualResults = individualEmployees.map((employee) => {
         const employeeMonthlyReports = monthlyReports.filter(
-          (r) => r.employeeId === employee.employeeId && r.status === "approved"
+          (r) =>
+            r.employeeId === employee.employeeId && r.status === "approved",
         );
 
         const bbsCount = employeeMonthlyReports.length;
@@ -213,25 +214,25 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
         const ppeViolations = sheReports.filter(
           (r) =>
             r.level_accident === "PPE" ||
-            r.level_accident?.toLowerCase().includes("ppe")
+            r.level_accident?.toLowerCase().includes("ppe"),
         ).length;
 
         const highRiskViolations = sheReports.filter(
           (r) =>
             r.level_accident === "เสี่ยงสูง" ||
-            r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
+            r.level_accident?.toLowerCase().includes("เสี่ยงสูง"),
         ).length;
 
         const accidentViolations = sheReports.filter(
           (r) =>
             r.level_accident === "อุบัติเหตุ" ||
-            r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
+            r.level_accident?.toLowerCase().includes("อุบัติเหตุ"),
         ).length;
 
         const sheViolationReasons = [];
-        if (ppeViolations >= 3)
+        if (ppeViolations >= 1)
           sheViolationReasons.push(`PPE (${ppeViolations} ครั้ง)`);
-        if (highRiskViolations >= 2)
+        if (highRiskViolations >= 1)
           sheViolationReasons.push(`เสี่ยงสูง (${highRiskViolations} ครั้ง)`);
         if (accidentViolations >= 1)
           sheViolationReasons.push(`อุบัติเหตุ (${accidentViolations} ครั้ง)`);
@@ -340,7 +341,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
               const employeeStats = employeeIds.map((empId) => {
                 // Find employee info from employeeList or create minimal info
                 const empInfo = transformedEmployeeList.find(
-                  (e) => e.employeeId === empId
+                  (e) => e.employeeId === empId,
                 ) || {
                   employeeId: empId,
                   employeeName: empId, // Fallback if not in list
@@ -350,7 +351,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
 
                 // Count reports for this employee
                 const empReports = monthlyReports.filter(
-                  (r) => r.employeeId === empId && r.status === "approved"
+                  (r) => r.employeeId === empId && r.status === "approved",
                 );
                 const bbsCount = empReports.length;
 
@@ -368,22 +369,22 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                 const ppeViolations = empSheReports.filter(
                   (r) =>
                     r.level_accident === "PPE" ||
-                    r.level_accident?.toLowerCase().includes("ppe")
+                    r.level_accident?.toLowerCase().includes("ppe"),
                 ).length;
                 const highRiskViolations = empSheReports.filter(
                   (r) =>
                     r.level_accident === "เสี่ยงสูง" ||
-                    r.level_accident?.toLowerCase().includes("เสี่ยงสูง")
+                    r.level_accident?.toLowerCase().includes("เสี่ยงสูง"),
                 ).length;
                 const accidentViolations = empSheReports.filter(
                   (r) =>
                     r.level_accident === "อุบัติเหตุ" ||
-                    r.level_accident?.toLowerCase().includes("อุบัติเหตุ")
+                    r.level_accident?.toLowerCase().includes("อุบัติเหตุ"),
                 ).length;
 
                 const hasShePenalty =
-                  ppeViolations >= 3 ||
-                  highRiskViolations >= 2 ||
+                  ppeViolations >= 1 ||
+                  highRiskViolations >= 1 ||
                   accidentViolations >= 1;
 
                 return {
@@ -405,22 +406,22 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
               //    - Accident < 4 times/month
               const totalBbsCount = employeeStats.reduce(
                 (sum, emp) => sum + emp.bbsCount,
-                0
+                0,
               );
               const isBbsPassed = totalBbsCount >= 12;
 
               // Sum up all SHE violations across the group
               const totalGroupPpeViolations = employeeStats.reduce(
                 (sum, emp) => sum + emp.ppeViolations,
-                0
+                0,
               );
               const totalGroupHighRiskViolations = employeeStats.reduce(
                 (sum, emp) => sum + emp.highRiskViolations,
-                0
+                0,
               );
               const totalGroupAccidentViolations = employeeStats.reduce(
                 (sum, emp) => sum + emp.accidentViolations,
-                0
+                0,
               );
 
               // Check group-level thresholds
@@ -448,7 +449,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                 totalGroupAccidentViolations,
                 hasGroupShePenalty,
               };
-            }
+            },
           );
 
           // Sort subgroups: Eligible first, then by name
@@ -463,23 +464,23 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
             subGroups: calculatedSubGroups,
             totalSubGroups: calculatedSubGroups.length,
             totalEligibleSubGroups: calculatedSubGroups.filter(
-              (g) => g.isEligible
+              (g) => g.isEligible,
             ).length,
           };
         });
 
       // Sort departments by name
       departmentResults.sort((a, b) =>
-        a.departmentName.localeCompare(b.departmentName)
+        a.departmentName.localeCompare(b.departmentName),
       );
 
       const totalGroupsCount = departmentResults.reduce(
         (acc, dept) => acc + dept.totalSubGroups,
-        0
+        0,
       );
       const totalEligibleGroupsCount = departmentResults.reduce(
         (acc, dept) => acc + dept.totalEligibleSubGroups,
-        0
+        0,
       );
 
       return {
@@ -562,7 +563,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
         // Prepare data for export
         const exportData: any[] = [];
 
-        // Add Individuals (only eligible)
+        // Add Individuals (รายบุคคลได้รับเงิน)
         payrollData.individuals
           .filter((emp) => emp.isEligible)
           .forEach((emp) => {
@@ -574,19 +575,22 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
             });
           });
 
-        // Add Groups (only eligible groups)
+        // Add Groups (รายกลุ่มได้รับเงิน)
+        // Filter out employees with SHE violations from groups
         payrollData.departments.forEach((dept) => {
           dept.subGroups
             .filter((group) => group.isEligible)
             .forEach((group) => {
-              group.employees.forEach((emp: any) => {
-                exportData.push({
-                  กลุ่ม: group.name,
-                  รหัสพนักงาน: emp.employeeId,
-                  "ชื่อ-สกุล": emp.employeeName,
-                  "การรายงาน (ครั้ง)": group.totalBbsCount,
+              group.employees
+                .filter((emp: any) => !emp.hasShePenalty) // Exclude employees with SHE violations
+                .forEach((emp: any) => {
+                  exportData.push({
+                    กลุ่ม: group.name,
+                    รหัสพนักงาน: emp.employeeId,
+                    "ชื่อ-สกุล": emp.employeeName,
+                    "การรายงาน (ครั้ง)": group.totalBbsCount,
+                  });
                 });
-              });
             });
         });
 
@@ -600,7 +604,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                 const value = row[header] || "";
                 return `"${String(value).replace(/"/g, '""')}"`;
               })
-              .join(",")
+              .join(","),
           ),
         ].join("\n");
 
@@ -617,7 +621,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
         link.setAttribute("href", url);
         link.setAttribute(
           "download",
-          `Payroll_Report_${monthName}_${year}.csv`
+          `Payroll_Report_${monthName}_${year}.csv`,
         );
         link.style.visibility = "hidden";
         document.body.appendChild(link);
@@ -645,7 +649,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
     const formatDateRange = (range: { start: Date; end: Date }) => {
       return `${format(range.start, "dd/MM/yyyy")} - ${format(
         range.end,
-        "dd/MM/yyyy"
+        "dd/MM/yyyy",
       )}`;
     };
 
@@ -890,19 +894,19 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                         r.level_accident === "PPE" ||
                                         r.level_accident
                                           ?.toLowerCase()
-                                          .includes("ppe")
+                                          .includes("ppe"),
                                     ) || [],
-                                    `รายละเอียด SHE - PPE: ${employee.employeeName}`
+                                    `รายละเอียด SHE - PPE: ${employee.employeeName}`,
                                   )
                                 }
                                 className={`hover:underline cursor-pointer ${
-                                  employee.ppeViolations >= 3
+                                  employee.ppeViolations >= 1
                                     ? "text-red-600 font-bold"
                                     : "text-gray-600"
                                 }`}
                               >
                                 {employee.ppeViolations}{" "}
-                                {employee.ppeViolations >= 3 && "❌"}
+                                {employee.ppeViolations >= 1 && "❌"}
                               </button>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -918,19 +922,19 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                         r.level_accident === "เสี่ยงสูง" ||
                                         r.level_accident
                                           ?.toLowerCase()
-                                          .includes("เสี่ยงสูง")
+                                          .includes("เสี่ยงสูง"),
                                     ) || [],
-                                    `รายละเอียด SHE - เสี่ยงสูง: ${employee.employeeName}`
+                                    `รายละเอียด SHE - เสี่ยงสูง: ${employee.employeeName}`,
                                   )
                                 }
                                 className={`hover:underline cursor-pointer ${
-                                  employee.highRiskViolations >= 2
+                                  employee.highRiskViolations >= 1
                                     ? "text-red-600 font-bold"
                                     : "text-gray-600"
                                 }`}
                               >
                                 {employee.highRiskViolations}{" "}
-                                {employee.highRiskViolations >= 2 && "❌"}
+                                {employee.highRiskViolations >= 1 && "❌"}
                               </button>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -946,9 +950,9 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                         r.level_accident === "อุบัติเหตุ" ||
                                         r.level_accident
                                           ?.toLowerCase()
-                                          .includes("อุบัติเหตุ")
+                                          .includes("อุบัติเหตุ"),
                                     ) || [],
-                                    `รายละเอียด SHE - อุบัติเหตุ: ${employee.employeeName}`
+                                    `รายละเอียด SHE - อุบัติเหตุ: ${employee.employeeName}`,
                                   )
                                 }
                                 className={`hover:underline cursor-pointer ${
@@ -1002,7 +1006,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                       {(currentPage - 1) * itemsPerPage + 1}-
                       {Math.min(
                         currentPage * itemsPerPage,
-                        filteredIndividuals.length
+                        filteredIndividuals.length,
                       )}{" "}
                       จาก {filteredIndividuals.length})
                     </div>
@@ -1088,7 +1092,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                             (emp.employeeName &&
                               emp.employeeName.toLowerCase().includes(query))
                           );
-                        }
+                        },
                       );
 
                       return hasMatchingEmployee;
@@ -1230,7 +1234,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                     ?.toLowerCase()
                                                     .includes(query)
                                                 );
-                                              }
+                                              },
                                             );
 
                                           if (filteredEmployees.length === 0) {
@@ -1256,7 +1260,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                   <button
                                                     onClick={() =>
                                                       handleViewEmployeeReports(
-                                                        emp
+                                                        emp,
                                                       )
                                                     }
                                                     className="text-left hover:text-blue-600 hover:underline cursor-pointer transition-colors"
@@ -1278,9 +1282,11 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                                 "PPE" ||
                                                               r.level_accident
                                                                 ?.toLowerCase()
-                                                                .includes("ppe")
+                                                                .includes(
+                                                                  "ppe",
+                                                                ),
                                                           ) || [],
-                                                          `รายละเอียด SHE - PPE: ${emp.employeeName}`
+                                                          `รายละเอียด SHE - PPE: ${emp.employeeName}`,
                                                         )
                                                       }
                                                       className={`hover:underline cursor-pointer ${
@@ -1312,10 +1318,10 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                               r.level_accident
                                                                 ?.toLowerCase()
                                                                 .includes(
-                                                                  "เสี่ยงสูง"
-                                                                )
+                                                                  "เสี่ยงสูง",
+                                                                ),
                                                           ) || [],
-                                                          `รายละเอียด SHE - เสี่ยงสูง: ${emp.employeeName}`
+                                                          `รายละเอียด SHE - เสี่ยงสูง: ${emp.employeeName}`,
                                                         )
                                                       }
                                                       className={`hover:underline cursor-pointer ${
@@ -1348,10 +1354,10 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                               r.level_accident
                                                                 ?.toLowerCase()
                                                                 .includes(
-                                                                  "อุบัติเหตุ"
-                                                                )
+                                                                  "อุบัติเหตุ",
+                                                                ),
                                                           ) || [],
-                                                          `รายละเอียด SHE - อุบัติเหตุ: ${emp.employeeName}`
+                                                          `รายละเอียด SHE - อุบัติเหตุ: ${emp.employeeName}`,
                                                         )
                                                       }
                                                       className={`hover:underline cursor-pointer ${
@@ -1372,7 +1378,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                                   )}
                                                 </td>
                                               </tr>
-                                            )
+                                            ),
                                           );
                                         })()}
                                       </tbody>
@@ -1398,7 +1404,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                             (emp.employeeName &&
                               emp.employeeName.toLowerCase().includes(query))
                           );
-                        })
+                        }),
                       );
                       return filteredSubGroups.length === 0;
                     }) && (
@@ -1479,12 +1485,13 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                               r.employeeId === selectedEmployee.employeeId &&
                               new Date(r.submittedDate) >=
                                 currentMonthRange.start &&
-                              new Date(r.submittedDate) <= currentMonthRange.end
+                              new Date(r.submittedDate) <=
+                                currentMonthRange.end,
                           )
                           .sort(
                             (a, b) =>
                               new Date(b.submittedDate).getTime() -
-                              new Date(a.submittedDate).getTime()
+                              new Date(a.submittedDate).getTime(),
                           );
 
                         if (employeeReports.length === 0) {
@@ -1510,7 +1517,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                               <td className="p-3">
                                 {format(
                                   new Date(report.submittedDate),
-                                  "dd/MM/yyyy HH:mm"
+                                  "dd/MM/yyyy HH:mm",
                                 )}
                               </td>
                               <td className="p-3 max-w-md">
@@ -1531,7 +1538,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                             >
                                               {opt}
                                             </span>
-                                          )
+                                          ),
                                         )}
                                       </div>
                                     )}
@@ -1546,15 +1553,15 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                     report.status === "approved"
                                       ? "bg-green-100 text-green-800"
                                       : report.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-gray-100 text-gray-800"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-gray-100 text-gray-800"
                                   }
                                 >
                                   {report.status === "approved"
                                     ? "อนุมัติ"
                                     : report.status === "pending"
-                                    ? "รอดำเนินการ"
-                                    : report.status}
+                                      ? "รอดำเนินการ"
+                                      : report.status}
                                 </Badge>
                               </td>
                             </tr>
@@ -1597,7 +1604,6 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                         <th className="p-3 text-left font-semibold">
                           รายละเอียด
                         </th>
-                        <th className="p-3 text-left font-semibold">สถานที่</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1615,8 +1621,8 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                 violation.level_accident === "อุบัติเหตุ"
                                   ? "bg-red-100 text-red-800"
                                   : violation.level_accident === "เสี่ยงสูง"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-yellow-100 text-yellow-800"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-yellow-100 text-yellow-800"
                               }
                             >
                               {violation.level_accident || "ไม่ระบุ"}
@@ -1624,21 +1630,19 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                           </td>
                           <td className="p-3 max-w-md">
                             <div className="space-y-1">
-                              {violation.description && (
+                              {violation.observed_Work && (
                                 <p className="text-gray-700">
-                                  {violation.description}
+                                  {violation.observed_Work}
                                 </p>
                               )}
                               {violation.detail &&
-                                violation.detail !== violation.description && (
+                                violation.detail !==
+                                  violation.observed_Work && (
                                   <p className="text-gray-600 text-xs">
                                     {violation.detail}
                                   </p>
                                 )}
                             </div>
-                          </td>
-                          <td className="p-3 text-gray-600">
-                            {violation.location || violation.area || "-"}
                           </td>
                         </tr>
                       ))}
@@ -1651,7 +1655,7 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
         </Dialog>
       </div>
     );
-  }
+  },
 );
 
 PayrollReportSummary.displayName = "PayrollReportSummary";

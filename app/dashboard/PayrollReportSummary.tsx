@@ -424,11 +424,11 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                 0,
               );
 
-              // Check group-level thresholds
-              const hasGroupShePenalty =
-                totalGroupPpeViolations >= 12 ||
-                totalGroupHighRiskViolations >= 8 ||
-                totalGroupAccidentViolations >= 4;
+              // Check group-level thresholds - CHANGED to strict rule:
+              // If ANY employee in the group has a SHE violation, the whole group is disqualified.
+              const hasGroupShePenalty = employeeStats.some(
+                (emp) => emp.hasShePenalty,
+              );
 
               const isEligible = isBbsPassed && !hasGroupShePenalty;
 
@@ -1180,16 +1180,9 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
                                             {group.totalBbsCount < 12
                                               ? " | "
                                               : ""}
-                                            SHE รวมกลุ่ม:
-                                            {group.totalGroupPpeViolations >=
-                                              12 &&
-                                              ` PPE ${group.totalGroupPpeViolations}/12`}
-                                            {group.totalGroupHighRiskViolations >=
-                                              8 &&
-                                              ` เสี่ยงสูง ${group.totalGroupHighRiskViolations}/8`}
-                                            {group.totalGroupAccidentViolations >=
-                                              4 &&
-                                              ` อุบัติเหตุ ${group.totalGroupAccidentViolations}/4`}
+                                            {/* Show simple message for new strict rule */}
+                                            พบสมาชิกในกลุ่มมีบันทึก SHE
+                                            (ตัดสิทธิ์ทั้งกลุ่ม)
                                           </span>
                                         )}
                                       </span>

@@ -5,7 +5,7 @@ import { SquareUser, RefreshCw, Shield, Users, BarChart3 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import NotificationToggleButton from "@/components/NotificationToggleButton";
+
 import {
   useEmployeeData,
   useRefreshEmployeeData,
@@ -358,7 +358,7 @@ const MenuButtons = React.memo(
         </button>
       </div>
     );
-  }
+  },
 );
 
 MenuButtons.displayName = "MenuButtons";
@@ -394,7 +394,7 @@ const ErrorScreen = React.memo(
         </button>
       </div>
     </div>
-  )
+  ),
 );
 
 ErrorScreen.displayName = "ErrorScreen";
@@ -473,7 +473,7 @@ function ModernBBSLogin() {
         }));
       }
     },
-    [employeeMap]
+    [employeeMap],
   );
 
   // Handle input change
@@ -500,7 +500,7 @@ function ModernBBSLogin() {
         }
       }
     },
-    [findEmployeeData]
+    [findEmployeeData],
   );
 
   // ✅ Load data from localStorage on component mount
@@ -530,11 +530,6 @@ function ModernBBSLogin() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Notification Settings Button - มุมบนขวา */}
-      <div className="fixed top-4 right-4 z-50">
-        <NotificationToggleButton />
-      </div>
-
       {/* Left side - Abstract Design */}
       <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block group">
         <div className="absolute inset-0 bg-gray-900" />

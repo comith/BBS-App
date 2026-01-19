@@ -1,16 +1,17 @@
 // components/NotificationToggleButton.tsx
-'use client'
-import { useState } from 'react';
-import { Bell, BellOff, Info, X } from 'lucide-react';
-import { useNotification } from '@/hooks/useNotification';
+"use client";
+import { useState } from "react";
+import { Bell, BellOff, Info, X } from "lucide-react";
+import { useNotification } from "@/hooks/useNotification";
 
 export default function NotificationToggleButton() {
-  const { permission, isPushEnabled, requestPermission, unsubscribe } = useNotification();
+  const { permission, isPushEnabled, requestPermission, unsubscribe } =
+    useNotification();
   const [showSettings, setShowSettings] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleToggle = async () => {
-    if (permission === 'denied') {
+    if (permission === "denied") {
       setShowSettings(true);
       return;
     }
@@ -19,34 +20,53 @@ export default function NotificationToggleButton() {
     try {
       if (isPushEnabled) {
         const success = await unsubscribe();
-        console.log('Unsubscribe result:', success);
+        console.log("Unsubscribe result:", success);
       } else {
-        const success = await requestPermission();
-        console.log('Permission request result:', success);
+        // Retrieve user info from localStorage to send with subscription
+        let userInfo = {};
+        if (typeof window !== "undefined") {
+          try {
+            const storedData = localStorage.getItem("bbs_employee_data");
+            if (storedData) {
+              const parsedData = JSON.parse(storedData);
+              // Map position to roles array
+              userInfo = {
+                userId: parsedData.employeerId,
+                roles: parsedData.position ? [parsedData.position] : [], // e.g. ["SHE"]
+              };
+            }
+          } catch (e) {
+            console.error("Error reading details for subscription:", e);
+          }
+        }
+
+        const success = await requestPermission(userInfo);
+        console.log("Permission request result:", success);
       }
     } catch (error) {
-      console.error('Toggle notification error:', error);
+      console.error("Toggle notification error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const getButtonColor = () => {
-    if (permission === 'denied') return 'bg-red-500 hover:bg-red-600';
-    if (isPushEnabled) return 'bg-green-500 hover:bg-green-600';
-    return 'bg-orange-500 hover:bg-orange-600';
+    if (permission === "denied") return "bg-red-500 hover:bg-red-600";
+    if (isPushEnabled) return "bg-green-500 hover:bg-green-600";
+    return "bg-orange-500 hover:bg-orange-600";
   };
 
   const getButtonIcon = () => {
-    if (permission === 'denied') return <BellOff size={20} />;
+    if (permission === "denied") return <BellOff size={20} />;
     if (isPushEnabled) return <Bell size={20} />;
     return <BellOff size={20} />;
   };
 
   const getTooltipText = () => {
-    if (permission === 'denied') return 'การแจ้งเตือนถูกปฏิเสธ - คลิกเพื่อดูวิธีแก้ไข';
-    if (isPushEnabled) return 'ปิดการแจ้งเตือน';
-    return 'เปิดการแจ้งเตือน';
+    if (permission === "denied")
+      return "การแจ้งเตือนถูกปฏิเสธ - คลิกเพื่อดูวิธีแก้ไข";
+    if (isPushEnabled) return "ปิดการแจ้งเตือน";
+    return "เปิดการแจ้งเตือน";
   };
 
   return (
@@ -80,7 +100,9 @@ export default function NotificationToggleButton() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-sm w-full">
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-bold text-gray-900">การตั้งค่าการแจ้งเตือน</h3>
+              <h3 className="font-bold text-gray-900">
+                การตั้งค่าการแจ้งเตือน
+              </h3>
               <button
                 onClick={() => setShowSettings(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -88,46 +110,54 @@ export default function NotificationToggleButton() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="p-4 space-y-3">
               {/* Extracted permission color class */}
               {(() => {
-                let permissionColorClass = '';
-                if (permission === 'granted') {
-                  permissionColorClass = 'text-green-600';
-                } else if (permission === 'denied') {
-                  permissionColorClass = 'text-red-600';
+                let permissionColorClass = "";
+                if (permission === "granted") {
+                  permissionColorClass = "text-green-600";
+                } else if (permission === "denied") {
+                  permissionColorClass = "text-red-600";
                 } else {
-                  permissionColorClass = 'text-orange-600';
+                  permissionColorClass = "text-orange-600";
                 }
-                let permissionText = '';
-                if (permission === 'granted') {
-                  permissionText = 'อนุญาต';
-                } else if (permission === 'denied') {
-                  permissionText = 'ปฏิเสธ';
+                let permissionText = "";
+                if (permission === "granted") {
+                  permissionText = "อนุญาต";
+                } else if (permission === "denied") {
+                  permissionText = "ปฏิเสธ";
                 } else {
-                  permissionText = 'รอการอนุญาต';
+                  permissionText = "รอการอนุญาต";
                 }
                 return (
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">สถานะ Permission:</span>
-                    <span className={`text-sm font-medium ${permissionColorClass}`}>
+                    <span className="text-sm font-medium">
+                      สถานะ Permission:
+                    </span>
+                    <span
+                      className={`text-sm font-medium ${permissionColorClass}`}
+                    >
                       {permissionText}
                     </span>
                   </div>
                 );
               })()}
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Push Notifications:</span>
-                <span className={`text-sm font-medium ${isPushEnabled ? 'text-green-600' : 'text-gray-600'}`}>
-                  {isPushEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
+                <span
+                  className={`text-sm font-medium ${isPushEnabled ? "text-green-600" : "text-gray-600"}`}
+                >
+                  {isPushEnabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}
                 </span>
               </div>
 
-              {permission === 'denied' && (
+              {permission === "denied" && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700 font-medium mb-2">วิธีเปิดการแจ้งเตือน:</p>
+                  <p className="text-sm text-red-700 font-medium mb-2">
+                    วิธีเปิดการแจ้งเตือน:
+                  </p>
                   <ol className="text-xs text-red-600 space-y-1 list-decimal list-inside">
                     <li>คลิกไอคอน 🔒 ที่แถบ URL</li>
                     <li>เลือก "Notifications" → "Allow"</li>
@@ -136,7 +166,7 @@ export default function NotificationToggleButton() {
                 </div>
               )}
 
-              {permission === 'granted' && (
+              {permission === "granted" && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-700">
                     การแจ้งเตือนทำงานปกติ คุณจะได้รับข่าวสารสำคัญจากระบบ BBS

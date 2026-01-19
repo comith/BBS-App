@@ -85,7 +85,7 @@ export async function POST(request) {
       }
     ];
 
-    const employeeId = sheetData[rowIndex][2]; // Column C: Employee ID
+    const employeeId = String(sheetData[rowIndex][2]); // Column C: Employee ID (Ensure string)
     // ✅ อัพเดตทุก field พร้อมกันด้วย batch update
     await batchUpdateSheet(updates);
     

@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import NotificationToggleButton from "@/components/NotificationToggleButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,7 +49,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <div className="fixed top-4 right-4 z-[9999]">
+            <NotificationToggleButton />
+          </div>
+          {children}
+        </Providers>
       </body>
     </html>
   );

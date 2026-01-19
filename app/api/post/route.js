@@ -123,10 +123,16 @@ export async function POST(request) {
     // ✅ ส่ง Notification แบบ Realtime แทนการบันทึก log
     try {
       const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+      
+      // Prepare detailed body
+      const category = data.safetyCategory ? `หมวด: ${data.safetyCategory}` : '';
+      const subCategory = data.sub_safetyCategory ? ` (${data.sub_safetyCategory})` : '';
+      const observation = data.observed_work ? `\nรายละเอียด: ${data.observed_work.substring(0, 50)}${data.observed_work.length > 50 ? '...' : ''}` : '';
+      
       await sendNotificationToTargets(
         {
           title: `📝 มีการรายงาน BBS ใหม่ (${now})`,
-          body: `ผู้รายงาน: ${data.username || "พนักงาน"}\nแผนก: ${data.group || "-"}\nเวลา: ${now}`,
+          body: `ผู้รายงาน: ${data.username || "พนักงาน"}\nแผนก: ${data.group || "-"}\n${category}${subCategory}${observation}`,
           icon: "/icons/ith.png",
           url: "/dashboard",
           data: {

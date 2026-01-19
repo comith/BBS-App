@@ -37,11 +37,9 @@ export async function sendNotificationToTargets(payload: any, targetRoles?: stri
     if (targetRoles) notificationLogger.info(`Target Roles: ${JSON.stringify(targetRoles)}`);
     if (targetUserIds) notificationLogger.info(`Target User IDs: ${JSON.stringify(targetUserIds)}`);
 
-    if (targetUserIds) notificationLogger.info(`Target User IDs: ${JSON.stringify(targetUserIds)}`);
+
 
     const subscriptions = await getFilteredSubscriptions(targetRoles, targetUserIds);
-    
-    if (subscriptions.length === 0) {
     
     if (subscriptions.length === 0) {
         notificationLogger.warn('No matching subscriptions found for targets');
@@ -61,12 +59,10 @@ export async function sendNotificationToTargets(payload: any, targetRoles?: stri
     const sendPromises = subscriptions.map(({ subscription }, index) => {
         return webpush.sendNotification(subscription, notificationPayload)
             .then(() => ({ success: true, index }))
-            .catch((error: any) => {
+            .catch(async (error: any) => {
                 notificationLogger.error(`Error sending to sub ${index}: ${error.message}`);
                 if (error.statusCode === 410 || error.statusCode === 404) {
-                if (error.statusCode === 410 || error.statusCode === 404) {
                     await removeSubscription(subscription.endpoint);
-                }
                 }
                 return { success: false, error: error.message };
             });

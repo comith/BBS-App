@@ -260,7 +260,7 @@ export const clearExpiredSubscriptions = async (): Promise<number> => {
     const rows = await getSheetData(RANGE);
     if (!rows || rows.length === 0) return 0;
 
-    const updates = [];
+    const updates: { range: string; values: any[][] }[] = [];
     let startRow = 1; // Assuming header
 
     for (let i = startRow; i < rows.length; i++) {

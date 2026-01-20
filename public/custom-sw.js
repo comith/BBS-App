@@ -34,7 +34,7 @@ self.addEventListener('push', function(event) {
     badge: notificationData.badge,
     vibrate: [100, 50, 100],
     data: notificationData.data,
-    tag: 'notification-1', // ป้องกัน notification ซ้ำ
+
     requireInteraction: true 
   };
 

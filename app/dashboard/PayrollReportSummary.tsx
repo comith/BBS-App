@@ -297,8 +297,8 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
           .filter((g) => g !== "");
 
         groups.forEach((grp) => {
-          // Skip groups ending with '0'
-          if (grp.endsWith("0")) return;
+          // Skip groups that are individuals (ending with a single 0 like CV0, but not CV10)
+          if (grp.endsWith("0") && !grp.match(/\d{2,}$/)) return;
 
           if (!reportBasedGroups[dept]) reportBasedGroups[dept] = {};
           if (!reportBasedGroups[dept][grp])
@@ -318,8 +318,10 @@ const PayrollReportSummary = React.memo<PayrollReportSummaryProps>(
         // Skip ITH-OE department
         if (dept === "ITH-OE") return;
 
-        // Skip groups ending with '0'
-        if (grp.trim().endsWith("0")) return;
+        // Skip groups that are individuals (ending with a single 0 like CV0, but not CV10)
+        const trimmedGroup = grp.trim();
+        if (trimmedGroup.endsWith("0") && !trimmedGroup.match(/\d{2,}$/))
+          return;
 
         // Add to group if not already present from static list
         if (!reportBasedGroups[dept]) reportBasedGroups[dept] = {};

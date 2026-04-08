@@ -1,182 +1,171 @@
-# BBS-App (Behavior Base Safety)
+# BBS-App (Behavior Based Safety)
 
-> ระบบจัดการพฤติกรรมความปลอดภัยสำหรับองค์กร - Behavior Base Safety Web Application
+> ระบบจัดการพฤติกรรมความปลอดภัยสำหรับองค์กร ITH — Behavior Based Safety Web Application
 
-## 📋 Overview
+## Overview
 
-BBS-App เป็นระบบจัดการพฤติกรรมเสี่ยงเพื่อสร้างพฤติกรรมที่ปลอดภัย โดยไม่ต้องรอให้เกิดอุบัติเหตุก่อน แต่จะเข้าไปสังเกตและปรับเปลี่ยนพฤติกรรมที่เสี่ยงตั้งแต่เนิ่นๆ เพื่อสร้างวัฒนธรรมความปลอดภัยในองค์กร
+BBS-App เป็นระบบบันทึกและติดตามพฤติกรรมความปลอดภัยในองค์กร โดยให้พนักงานสามารถรายงานพฤติกรรมเสี่ยงและพฤติกรรมที่ปลอดภัยได้แบบ Real-time พร้อม Dashboard สรุปผลสำหรับผู้บริหาร
 
-### ✨ Features
+## Features
 
-- 📝 **บันทึกรายงานพฤติกรรม** - ระบบบันทึกพฤติกรรมเสี่ยงและพฤติกรรมที่ปลอดภัย
-- 📊 **Dashboard สรุปผล** - แสดงสถิติและรายงานแบบ real-time
-- 👥 **จัดการผู้ใช้** - ระบบจัดการพนักงานและสิทธิ์การเข้าถึง
-- 🔔 **Push Notifications** - แจ้งเตือนผ่าน Web Push API
-- 📱 **Responsive Design** - รองรับทั้ง Desktop และ Mobile
-- 🔐 **Google Sheets Integration** - เชื่อมต่อกับ Google Sheets สำหรับจัดเก็บข้อมูล
+- **บันทึกรายงานพฤติกรรม** — กรอกแบบฟอร์มรายงานพร้อมแนบภาพ
+- **Dashboard สรุปผล** — สถิติและกราฟแบบ Real-time แยกตามปี/แผนก/กลุ่ม
+- **อนุมัติ/ปฏิเสธรายงาน** — Admin อนุมัติรายงานพร้อม feedback
+- **Push Notifications (PWA)** — แจ้งเตือนผ่าน Web Push เมื่อมีรายงานใหม่
+- **จัดการพนักงาน** — เพิ่ม/แก้ไขข้อมูลพนักงาน แผนก กลุ่ม หมวดหมู่
+- **Maintenance Mode** — Admin ปิดระบบชั่วคราวพร้อม countdown page
+- **Responsive / PWA** — รองรับ Desktop และ Mobile, ติดตั้งเป็น App ได้
 
-## 🚀 Getting Started
+## Tech Stack
+
+| ด้าน | เทคโนโลยี |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| UI Components | Radix UI + shadcn/ui |
+| Database | PostgreSQL (ผ่าน Supabase) |
+| ORM | Prisma 7 |
+| DB Driver | pg (node-postgres) |
+| Auth | Supabase Auth |
+| Charts | Recharts |
+| Forms | React Hook Form + Zod |
+| Notifications | Web Push API (VAPID) |
+| PWA | @ducanh2912/next-pwa |
+| State | TanStack Query v5 |
+
+## Architecture
+
+```
+BBS-App/
+├── app/
+│   ├── api/                  # API Routes
+│   │   ├── approve/          # อนุมัติ/ปฏิเสธรายงาน
+│   │   ├── get/              # ดึงข้อมูล (employee, record, category ฯลฯ)
+│   │   ├── post/             # เพิ่มข้อมูล
+│   │   ├── put/              # แก้ไขข้อมูล
+│   │   ├── delete/           # ลบข้อมูล
+│   │   ├── upload/           # อัปโหลดไฟล์/รูปภาพ
+│   │   ├── subscribe/        # บันทึก push subscription
+│   │   ├── send-notification/# ส่ง push notification
+│   │   ├── notification-logs/# ประวัติการแจ้งเตือน
+│   │   ├── maintenance/      # ตั้งค่าปิดปรับปรุงระบบ (admin only)
+│   │   └── maintenance-status/ # สถานะระบบ (public)
+│   ├── auth/                 # หน้า Login
+│   ├── dashboard/            # Dashboard หลัก (admin)
+│   ├── form/                 # ฟอร์มบันทึกรายงาน
+│   ├── employeer/            # หน้ารายงานของพนักงาน
+│   ├── maintenance/          # หน้าปิดปรับปรุงระบบ (countdown)
+│   ├── manageusers/          # จัดการข้อมูลพนักงาน
+│   ├── managecategory/       # จัดการหมวดหมู่
+│   └── shemanage/            # จัดการข้อมูล SHE
+├── components/ui/            # shadcn/ui components
+├── hooks/                    # Custom hooks (useNotification ฯลฯ)
+├── lib/                      # Utilities (notificationService, utils)
+├── prisma/
+│   └── schema.prisma         # Database schema
+├── middleware.ts             # Maintenance mode redirect
+└── public/                   # Static assets, PWA icons
+```
+
+## Database Models (Prisma)
+
+- `Employee` — ข้อมูลพนักงาน
+- `Record` — รายงานพฤติกรรม
+- `RecordShe` — รายงาน SHE
+- `Category` / `SubCategory` — หมวดหมู่พฤติกรรม
+- `Department` / `Group` — แผนกและกลุ่ม
+- `ListOption` — ตัวเลือก dropdown
+- `Subscription` — Push notification subscriptions
+- `NotificationLog` — ประวัติการแจ้งเตือน
+- `MaintenanceSetting` — ตั้งค่าปิดปรับปรุงระบบ
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or higher
-- npm or yarn
-- Google Cloud Project with Sheets & Drive API enabled
-- Google Service Account credentials
+- Node.js 18+
+- PostgreSQL (หรือ Supabase project)
 
 ### Installation
 
-1. **Clone the repository**
+1. **Clone & install**
    ```bash
    git clone <repository-url>
    cd BBS-App
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm install
    ```
 
-3. **Setup environment variables**
+2. **ตั้งค่า environment variables**
    ```bash
    cp .env.example .env.local
    ```
-   
-   Edit `.env.local` and fill in your credentials:
-   - `GOOGLE_SHEET_ID` - Your Google Sheet ID
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email
-   - `GOOGLE_PRIVATE_KEY` - Service account private key
-   - `GOOGLE_DRIVE_FOLDER_ID` - Google Drive folder for file uploads
-   - VAPID keys for push notifications (generate with `npx web-push generate-vapid-keys`)
+
+   `.env.local` ที่จำเป็น:
+   ```env
+   DATABASE_URL=postgresql://...
+   DIRECT_URL=postgresql://...
+   NEXT_PUBLIC_SUPABASE_URL=https://...
+   SUPABASE_SERVICE_ROLE_KEY=...
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+   VAPID_PRIVATE_KEY=...
+   ```
+
+   สร้าง VAPID keys:
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+3. **Setup database**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
 4. **Run development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   เปิด [http://localhost:3000](http://localhost:3000)
 
-## 🏗️ Architecture
-
-```
-BBS-App/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── dashboard/         # Dashboard pages
-│   ├── form/              # Form pages
-│   ├── employeer/         # Employee reports
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── ui/               # UI components (shadcn/ui)
-│   └── ...               # Feature components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility libraries
-│   ├── logger.ts         # Logging utility
-│   ├── translations.ts   # i18n translations
-│   └── utils.ts          # Helper functions
-├── contexts/             # React contexts
-├── services/             # Service layer
-├── types/                # TypeScript type definitions
-└── public/               # Static assets
-```
-
-## 🛠️ Tech Stack
-
-- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **UI Components**: [Radix UI](https://www.radix-ui.com/)
-- **State Management**: [React Query (TanStack Query)](https://tanstack.com/query)
-- **Forms**: [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
-- **Backend**: Google Sheets API, Google Drive API
-- **Notifications**: Web Push API
-
-## 📝 Available Scripts
+## Scripts
 
 ```bash
-# Development
-npm run dev          # Start development server
-
-# Production
-npm run build        # Build for production
-npm start            # Start production server
-
-# Code Quality
-npm run lint         # Run ESLint
-npm test             # Run tests
-npm run test:watch   # Run tests in watch mode
+npm run dev        # Development server
+npm run build      # Build production
+npm start          # Start production server
+npm run lint       # ESLint
+npm test           # Run tests
 ```
 
-## 🔐 Security
+## Docker Deployment
 
-- **Environment Variables**: Never commit `.env` or `.env.local` files
-- **Service Account**: Use Google Service Account with minimal required permissions
-- **VAPID Keys**: Keep VAPID private key secure
-- **HTTPS**: Always use HTTPS in production for Web Push to work
+สร้างไฟล์ `.env` ข้างๆ `docker-compose.yml`:
 
-## 📦 Deployment
+```env
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+```
 
-### Docker Deployment
-
-1. **Build Docker image**
-   ```bash
-   docker build -t bbs-app .
-   ```
-
-2. **Run container**
-   ```bash
-   docker run -p 3000:3000 --env-file .env.local bbs-app
-   ```
-
-### Vercel Deployment
-
-1. Push your code to GitHub
-2. Import project in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
-
-## 🧪 Testing
-
+รัน:
 ```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Generate coverage report
-npm test -- --coverage
+docker-compose up -d
 ```
 
-## 🤝 Contributing
+> **หมายเหตุ:** `NEXT_PUBLIC_*` ต้องมีค่าตอน `docker build` เพราะ Next.js embed ค่าลง JS bundle ตอน build time
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Security
 
-## 📄 License
+- ห้าม commit ไฟล์ `.env` หรือ `.env.local`
+- `VAPID_PRIVATE_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` เป็น server-side only
+- Maintenance admin ถูก restrict ด้วย employee ID ใน server-side API
+- ใช้ HTTPS ใน production (Web Push บังคับ HTTPS)
 
-This project is proprietary software. All rights reserved.
+## Known Issues
 
-## 👥 Team
-
-- **Development Team**: ITH Development Team
-- **Contact**: [your-email@example.com]
-
-## 🐛 Known Issues
-
-- React Strict Mode may cause double renders in development
-- Some console warnings from third-party libraries
-
-## 📚 Additional Documentation
-
-- [API Documentation](./docs/API.md) - API endpoints and usage
-- [Component Guide](./docs/COMPONENTS.md) - Component documentation
-- [Deployment Guide](./docs/DEPLOYMENT.md) - Detailed deployment instructions
+- กด F5 ในบางครั้งอาจเจอ webpack cache error ในโหมด development — แก้ด้วยการกด Shift+F5 หรือลบ `.next/` แล้ว restart
 
 ---
 
-Made with ❤️ by ITH Team
+ITH Development Team

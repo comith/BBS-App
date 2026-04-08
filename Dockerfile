@@ -8,12 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy lockfile ก่อนเพื่อ cache layer
+# Copy lockfile + prisma schema ก่อน npm ci
+# เพราะ @prisma/client มี postinstall ที่รัน `prisma generate`
+# ถ้า schema.prisma ไม่อยู่ตอน npm ci → generate ล้มเหลว → PrismaClient ไม่มี type
 COPY package*.json ./
+COPY prisma ./prisma
 
 RUN npm ci
 
-# Copy source code
+# Copy source code ที่เหลือ
 COPY . .
 
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -21,8 +24,6 @@ ARG NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
-# Generate Prisma client แล้วค่อย build
-RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Production runner

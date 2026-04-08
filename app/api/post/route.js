@@ -1,174 +1,133 @@
-//api/post/route.js
-import { appendToSheet } from "../config";
-import { NextResponse } from "next/server";
-import { apiLogger } from "@/lib/logger";
-import { sendNotificationToTargets } from "@/lib/notificationService";
+// api/post/route.js - Prisma-based data creation
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+import { apiLogger } from '@/lib/logger'
+import { sendNotificationToTargets } from '@/lib/notificationService'
 
 export async function POST(request) {
   try {
-    // รับข้อมูลจาก JSON เท่านั้น
-    apiLogger.info("📥 Receiving request...");
+    apiLogger.info('📥 Receiving request...')
+    const data = await request.json()
 
-    const data = await request.json();
-
-    if (data.type === "employee") {
-      const row = [
-        null,
-        data.data.employeerId,
-        data.data.fullName,
-        data.data.department,
-        data.data.group,
-        data.data.position,
-      ];
-      await appendToSheet("employee!A:F", [row]);
-      return NextResponse.json(
-        { message: "Employee data added successfully" },
-        { status: 201 }
-      );
+    // Add employee
+    if (data.type === 'employee') {
+      await prisma.employee.create({
+        data: {
+          employeerId: data.data.employeerId || null,
+          fullName: data.data.fullName || null,
+          department: data.data.department || null,
+          group: data.data.group || null,
+          position: data.data.position || null,
+        },
+      })
+      return NextResponse.json({ message: 'Employee data added successfully' }, { status: 201 })
     }
 
-    apiLogger.info("✅ Data received:", {
+    apiLogger.info('✅ Data received:', {
       employeeId: data.employeeId,
       username: data.username,
-      hasUploadedFiles: !!data.uploadedFiles,
       uploadedFilesCount: data.uploadedFiles?.length || 0,
-    });
+    })
 
-    // สร้าง ID สำหรับการบันทึก
-    const recordId = `BBS_${Date.now()}`;
-
-    // จัดเตรียมข้อมูลสำหรับ Google Sheet
+    const recordId = `BBS_${Date.now()}`
     const selectedOptionsText =
-      data.selectedOptions?.map((option) => option.name).join(", ") || "";
-    const vehicleEquipmentText = JSON.stringify(data.vehicleEquipment || {});
-
-    // 🔥 จัดการข้อมูลไฟล์ - เก็บเป็น JSON ของ file IDs
-    let attachmentText = "[]";
-
-    if (
-      data.uploadedFiles &&
-      Array.isArray(data.uploadedFiles) &&
-      data.uploadedFiles.length > 0
-    ) {
-      const fileData = data.uploadedFiles.map((file) => ({
+      data.selectedOptions?.map((option) => option.name).join(', ') || ''
+    const vehicleEquipment = data.vehicleEquipment || {}
+    const attachment =
+      data.uploadedFiles?.map((file) => ({
         id: file.id,
         name: file.name,
-        webViewLink: file.webViewLink || "",
+        webViewLink: file.webViewLink || '',
         savedDate: new Date().toISOString(),
-      }));
-      attachmentText = JSON.stringify(fileData);
+      })) || []
+
+    const recordData = {
+      id: recordId,
+      date: data.date || null,
+      employeeId: data.employeeId || null,
+      username: data.username || null,
+      group: data.group || null,
+      type: data.type || null,
+      safetyCategory: data.safetyCategory || null,
+      subSafetyCategory: data.sub_safetyCategory || null,
+      observedWork: data.observed_work || null,
+      departNotice: data.depart_notice || null,
+      vehicleEquipment,
+      selectedOptions: selectedOptionsText || null,
+      safeActionCount: parseInt(data.safeActionCount) || 0,
+      actionType: data.actionType || null,
+      unsafeActionCount: parseInt(data.unsafeActionCount) || 0,
+      actionTypeUnsafe: data.actionTypeunsafe || null,
+      attachment,
+      other: data.other || null,
+      status: 'pending',
     }
 
-    // สร้าง array ของข้อมูลที่จะส่งไป Google Sheet
-    const row = [
-      recordId, // A: Record ID
-      data.date || "", // B: Date
-      data.employeeId || "", // C: Employee ID
-      data.username || "", // D: Username
-      data.group || "", // E: Group
-      data.type || "", // F: Type
-      data.safetyCategory || "", // G: Safety Category
-      data.sub_safetyCategory || "", // H: Sub Safety Category
-      data.observed_work || "", // I: Observed Work
-      data.depart_notice || "", // J: Department Notice
-      vehicleEquipmentText, // K: Vehicle Equipment (JSON)
-      selectedOptionsText, // L: Selected Options (comma separated)
-      data.safeActionCount || 0, // M: Safe Action Count
-      data.actionType || "", // N: Action Type
-      data.unsafeActionCount || 0, // O: Unsafe Action Count
-      data.actionTypeunsafe || "", // P: Action Type Unsafe
-      attachmentText, // Q: Attachment (JSON with file IDs)
-      data.other || "", // R: Other
-    ];
+    apiLogger.info('💾 Saving record to database...')
+    await prisma.record.create({ data: recordData })
 
-    const rowByshe = [
-      recordId, // A: Record ID
-      data.date || "", // B: Date
-      data.employeeId || "", // C: Employee ID
-      data.username || "", // D: Username
-      data.group || "", // E: Group
-      data.type || "", // F: Type
-      data.safetyCategory || "", // G: Safety Category
-      data.sub_safetyCategory || "", // H: Sub Safety Category
-      data.observed_work || "", // I: Observed Work
-      data.depart_notice || "", // J: Department Notice
-      vehicleEquipmentText, // K: Vehicle Equipment (JSON)
-      selectedOptionsText, // L: Selected Options (comma separated)
-      data.safeActionCount || 0, // M: Safe Action Count
-      data.actionType || "", // N: Action Type
-      data.unsafeActionCount || 0, // O: Unsafe Action Count
-      data.actionTypeunsafe || "", // P: Action Type Unsafe
-      attachmentText, // Q: Attachment (JSON with file IDs)
-      data.other || "", // R: Other
-      data.codeemployee || "", // S: Code Employee
-      data.levelOfSafety || "", // T: levelOfSafety
-    ];
-
-
-
-    apiLogger.info("💾 Saving to Google Sheet...");
-
-    // บันทึกลง Google Sheet
-
-
-    if (data.group !== "SHE" || !data.codeemployee) {
-      // บันทึกข้อมูลของพนักงานทั่วไปที่ไม่ใช่ SHE
-      await appendToSheet("record!A:R", [row]);
-    } else {
-      // บันทึกข้อมูลของพนักงาน SHE
-      await appendToSheet("record!A:R", [row]);
-      await appendToSheet("record_she!A:T", [rowByshe]);
+    // If SHE group with codeemployee, also create SHE record
+    if (data.group === 'SHE' && data.codeemployee) {
+      await prisma.recordShe.create({
+        data: {
+          id: recordId,
+          date: data.date || null,
+          employeeId: data.employeeId || null,
+          username: data.username || null,
+          group: data.group || null,
+          type: data.type || null,
+          safetyCategory: data.safetyCategory || null,
+          subSafetyCategory: data.sub_safetyCategory || null,
+          observedWork: data.observed_work || null,
+          departNotice: data.depart_notice || null,
+          vehicleEquipment,
+          selectedOptions: selectedOptionsText || null,
+          safeActionCount: parseInt(data.safeActionCount) || 0,
+          actionType: data.actionType || null,
+          unsafeActionCount: parseInt(data.unsafeActionCount) || 0,
+          actionTypeUnsafe: data.actionTypeunsafe || null,
+          attachment,
+          other: data.other || null,
+          codeEmployee: data.codeemployee || null,
+          levelOfSafety: data.levelOfSafety || null,
+        },
+      })
     }
 
-    // ✅ ส่ง Notification แบบ Realtime แทนการบันทึก log
+    // Send notification to SHE
     try {
-      const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
-      
-      // Prepare detailed body
-      const category = data.safetyCategory ? `หมวด: ${data.safetyCategory}` : '';
-      const subCategory = data.sub_safetyCategory ? ` (${data.sub_safetyCategory})` : '';
-      const observation = data.observed_work ? `\nรายละเอียด: ${data.observed_work.substring(0, 50)}${data.observed_work.length > 50 ? '...' : ''}` : '';
-      
+      const now = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+      const category = data.safetyCategory ? `หมวด: ${data.safetyCategory}` : ''
+      const subCategory = data.sub_safetyCategory ? ` (${data.sub_safetyCategory})` : ''
+      const observation = data.observed_work
+        ? `\nรายละเอียด: ${data.observed_work.substring(0, 50)}${data.observed_work.length > 50 ? '...' : ''}`
+        : ''
+
       await sendNotificationToTargets(
         {
           title: `📝 มีการรายงาน BBS ใหม่ (${now})`,
-          body: `ผู้รายงาน: ${data.username || "พนักงาน"}\nแผนก: ${data.group || "-"}\n${category}${subCategory}${observation}`,
-          icon: "/icons/ith.png",
-          url: "/dashboard",
-          data: {
-             recordId: recordId,
-             action: "create",
-             from: data.employeeId
-          }
+          body: `ผู้รายงาน: ${data.username || 'พนักงาน'}\nแผนก: ${data.group || '-'}\n${category}${subCategory}${observation}`,
+          icon: '/icons/ith.png',
+          url: '/dashboard',
+          data: { recordId, action: 'create', from: data.employeeId },
         },
-        ["SHE"] // Target Roles
-      );
-      apiLogger.info("🔔 Notification sent to SHE");
+        ['SHE']
+      )
+      apiLogger.info('🔔 Notification sent to SHE')
     } catch (notifError) {
-      apiLogger.error("⚠️ Failed to send notification:", notifError);
-      // ไม่ throw error เพื่อให้การบันทึกข้อมูลหลักยังคงสำเร็จ
+      apiLogger.error('⚠️ Failed to send notification:', notifError)
     }
 
     const responseData = {
-      recordId: recordId,
+      recordId,
       totalFiles: data.uploadedFiles?.length || 0,
       successCount: data.uploadedFiles?.length || 0,
-    };
+    }
 
-    apiLogger.info("✅ Save successful:", responseData);
-
-    return NextResponse.json(
-      {
-        message: "Data added successfully",
-        data: responseData,
-      },
-      { status: 201 }
-    );
+    apiLogger.info('✅ Save successful:', responseData)
+    return NextResponse.json({ message: 'Data added successfully', data: responseData }, { status: 201 })
   } catch (error) {
-    apiLogger.error("❌ API Error:", error);
-    return NextResponse.json(
-      { message: "Error adding data to sheet", error: error.message },
-      { status: 500 }
-    );
+    apiLogger.error('❌ API Error:', error)
+    return NextResponse.json({ message: 'Error adding data', error: error.message }, { status: 500 })
   }
 }

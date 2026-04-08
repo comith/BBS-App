@@ -17,6 +17,17 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 
+const STORAGE_KEY = "bbs_employee_data";
+const getEmployeeGroup = (): string => {
+  if (typeof window === "undefined") return "";
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored).group || "" : "";
+  } catch {
+    return "";
+  }
+};
+
 const EmployeeManager = () => {
   const router = useRouter();
   const { toast } = useToast();
@@ -285,6 +296,7 @@ const EmployeeManager = () => {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "X-Employee-Group": getEmployeeGroup(),
         },
         body: JSON.stringify(requestBody),
       });

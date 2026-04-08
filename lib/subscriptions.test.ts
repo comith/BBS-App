@@ -1,4 +1,3 @@
-
 import {
     addSubscription,
     removeSubscription,
@@ -6,9 +5,22 @@ import {
     clearAllSubscriptions,
     clearExpiredSubscriptions,
     PushSubscription
-} from './subscriptions';
+} from './subscriptions'
 
-// Mock the logger to avoid polluting test output
+// Mock Prisma
+jest.mock('./prisma', () => ({
+    prisma: {
+        subscription: {
+            findMany: jest.fn(),
+            findUnique: jest.fn(),
+            count: jest.fn(),
+            upsert: jest.fn(),
+            update: jest.fn(),
+            updateMany: jest.fn(),
+        },
+    },
+}))
+
 jest.mock('./logger', () => ({
     notificationLogger: {
         debug: jest.fn(),
@@ -16,85 +28,106 @@ jest.mock('./logger', () => ({
         warn: jest.fn(),
         error: jest.fn(),
     },
-}));
+}))
+
+import { prisma } from './prisma'
+
+const mockSubscription: PushSubscription = {
+    endpoint: 'https://example.com/push/123',
+    keys: {
+        p256dh: 'key1',
+        auth: 'auth1',
+    },
+}
+
+const makeDbSub = (overrides = {}) => ({
+    id: 1,
+    endpoint: mockSubscription.endpoint,
+    p256dh: mockSubscription.keys.p256dh,
+    auth: mockSubscription.keys.auth,
+    userId: null,
+    roles: [],
+    status: 'active',
+    timestamp: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+})
 
 describe('Subscriptions Utility', () => {
-    const mockSubscription: PushSubscription = {
-        endpoint: 'https://example.com/push/123',
-        keys: {
-            p256dh: 'key1',
-            auth: 'auth1'
-        }
-    };
-
     beforeEach(() => {
-        // Clear subscriptions before each test
-        clearAllSubscriptions();
-    });
+        jest.clearAllMocks()
+    })
 
-    it('should add a new subscription', () => {
-        const count = addSubscription(mockSubscription, new Date().toISOString());
-        expect(count).toBe(1);
+    it('should add a new subscription', async () => {
+        ;(prisma.subscription.upsert as jest.Mock).mockResolvedValue(makeDbSub())
+        ;(prisma.subscription.count as jest.Mock).mockResolvedValue(1)
 
-        const subs = getSubscriptions();
-        expect(subs).toHaveLength(1);
-        expect(subs[0].subscription).toEqual(mockSubscription);
-    });
+        const count = await addSubscription(mockSubscription, new Date().toISOString())
+        expect(count).toBe(1)
+        expect(prisma.subscription.upsert).toHaveBeenCalledTimes(1)
+    })
 
-    it('should update an existing subscription', () => {
-        addSubscription(mockSubscription, new Date().toISOString());
+    it('should get active subscriptions', async () => {
+        ;(prisma.subscription.findMany as jest.Mock).mockResolvedValue([makeDbSub()])
 
-        // Add same subscription again (should update timestamp/object but not increase count)
-        const count = addSubscription(mockSubscription, new Date().toISOString());
-        expect(count).toBe(1);
+        const subs = await getSubscriptions()
+        expect(subs).toHaveLength(1)
+        expect(subs[0].subscription.endpoint).toBe(mockSubscription.endpoint)
+        expect(subs[0].status).toBe('active')
+    })
 
-        const subs = getSubscriptions();
-        expect(subs).toHaveLength(1);
-    });
+    it('should map subscription keys correctly', async () => {
+        ;(prisma.subscription.findMany as jest.Mock).mockResolvedValue([makeDbSub()])
 
-    it('should remove a subscription', () => {
-        addSubscription(mockSubscription, new Date().toISOString());
-        expect(getSubscriptions()).toHaveLength(1);
+        const subs = await getSubscriptions()
+        expect(subs[0].subscription.keys.p256dh).toBe('key1')
+        expect(subs[0].subscription.keys.auth).toBe('auth1')
+    })
 
-        const count = removeSubscription(mockSubscription.endpoint);
-        expect(count).toBe(0);
-        expect(getSubscriptions()).toHaveLength(0);
-    });
+    it('should remove a subscription by marking it inactive', async () => {
+        ;(prisma.subscription.findUnique as jest.Mock).mockResolvedValue(makeDbSub())
+        ;(prisma.subscription.update as jest.Mock).mockResolvedValue(makeDbSub({ status: 'inactive' }))
+        ;(prisma.subscription.count as jest.Mock).mockResolvedValue(0)
 
-    it('should handle removing non-existent subscription', () => {
-        addSubscription(mockSubscription, new Date().toISOString());
+        const count = await removeSubscription(mockSubscription.endpoint)
+        expect(count).toBe(0)
+        expect(prisma.subscription.update).toHaveBeenCalledWith({
+            where: { endpoint: mockSubscription.endpoint },
+            data: { status: 'inactive' },
+        })
+    })
 
-        const count = removeSubscription('https://example.com/other');
-        expect(count).toBe(1); // Should remain 1
-    });
+    it('should not call update when removing non-existent subscription', async () => {
+        ;(prisma.subscription.findUnique as jest.Mock).mockResolvedValue(null)
+        ;(prisma.subscription.count as jest.Mock).mockResolvedValue(1)
 
-    it('should clear expired subscriptions', () => {
-        // Add expired subscription (8 days ago)
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 8);
+        const count = await removeSubscription('https://example.com/other')
+        expect(count).toBe(1)
+        expect(prisma.subscription.update).not.toHaveBeenCalled()
+    })
 
-        addSubscription(mockSubscription, oldDate.toISOString());
+    it('should clear expired subscriptions', async () => {
+        ;(prisma.subscription.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+        ;(prisma.subscription.count as jest.Mock).mockResolvedValue(1)
 
-        // Add fresh subscription
-        const freshSubscription = { ...mockSubscription, endpoint: 'https://example.com/fresh' };
-        addSubscription(freshSubscription, new Date().toISOString());
+        const count = await clearExpiredSubscriptions()
+        expect(count).toBe(1)
+        expect(prisma.subscription.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({ status: 'active' }),
+                data: { status: 'inactive' },
+            })
+        )
+    })
 
-        expect(getSubscriptions()).toHaveLength(2);
+    it('should clear all subscriptions', async () => {
+        ;(prisma.subscription.updateMany as jest.Mock).mockResolvedValue({ count: 2 })
 
-        const count = clearExpiredSubscriptions();
-        expect(count).toBe(1);
-
-        const subs = getSubscriptions();
-        expect(subs[0].subscription.endpoint).toBe(freshSubscription.endpoint);
-    });
-
-    it('should clear all subscriptions', () => {
-        addSubscription(mockSubscription, new Date().toISOString());
-        addSubscription({ ...mockSubscription, endpoint: 'https://example.com/2' }, new Date().toISOString());
-
-        expect(getSubscriptions()).toHaveLength(2);
-
-        clearAllSubscriptions();
-        expect(getSubscriptions()).toHaveLength(0);
-    });
-});
+        const count = await clearAllSubscriptions()
+        expect(count).toBe(0)
+        expect(prisma.subscription.updateMany).toHaveBeenCalledWith({
+            where: { status: 'active' },
+            data: { status: 'inactive' },
+        })
+    })
+})

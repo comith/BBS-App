@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls d:/ITH/BBS-App/BBS-App/.env*)",
+      "Bash(xargs cat:*)",
+      "Bash(xargs ls:*)",
+      "Bash(find d:/ITH/BBS-App/BBS-App/app/api -name route.ts -exec echo 'FILE: {}')",
+      "Bash(-exec cat:*)",
+      "Bash(2)",
+      "Bash(npm install:*)",
+      "Bash(find d:/ITH/BBS-App/BBS-App -name form-data*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

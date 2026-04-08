@@ -1,0 +1,212 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================
+// Push Notification Subscriptions
+// =============================================
+model Subscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String?
+  roles     String[]
+  status    String   @default("active") // 'active' | 'inactive'
+  timestamp DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+// =============================================
+// Notification Logs
+// =============================================
+model NotificationLog {
+  id             Int      @id @default(autoincrement())
+  timestamp      DateTime @default(now())
+  action         String
+  actionFrom     String   @map("action_from")
+  notificationTo String   @map("notification_to")
+  isNotification Boolean  @default(false)
+
+  @@map("notification_logs")
+}
+
+// =============================================
+// BBS Records
+// =============================================
+model Record {
+  id               String   @id // BBS_${timestamp}
+  date             String?
+  employeeId       String?
+  username         String?
+  group            String?
+  type             String?
+  safetyCategory   String?
+  subSafetyCategory String?
+  observedWork     String?
+  departNotice     String?
+  vehicleEquipment Json?
+  selectedOptions  String?  // comma separated
+  safeActionCount  Int      @default(0)
+  actionType       String?
+  unsafeActionCount Int     @default(0)
+  actionTypeUnsafe String?
+  attachment       Json?    // array of { id, name, webViewLink, savedDate }
+  other            String?
+  status           String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  adminNote        String?
+  approvedDate     DateTime?
+  approvedBy       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@index([date])
+  @@index([status])
+  @@map("records")
+}
+
+// =============================================
+// SHE Records (extends Record with extra fields)
+// =============================================
+model RecordShe {
+  id               String   @id // same BBS_${timestamp} as Record
+  date             String?
+  employeeId       String?
+  username         String?
+  group            String?
+  type             String?
+  safetyCategory   String?
+  subSafetyCategory String?
+  observedWork     String?
+  departNotice     String?
+  vehicleEquipment Json?
+  selectedOptions  String?
+  safeActionCount  Int      @default(0)
+  actionType       String?
+  unsafeActionCount Int     @default(0)
+  actionTypeUnsafe String?
+  attachment       Json?
+  other            String?
+  codeEmployee     String?
+  levelOfSafety    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@map("records_she")
+}
+
+// =============================================
+// Employees
+// =============================================
+model Employee {
+  id          Int     @id @default(autoincrement())
+  employeerId String? @unique
+  fullName    String?
+  department  String?
+  group       String?
+  position    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("employees")
+}
+
+// =============================================
+// Safety Categories
+// =============================================
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String
+  imagePath   String?
+  alt         String?
+
+  subCategories SubCategory[]
+
+  @@map("categories")
+}
+
+// =============================================
+// Sub Safety Categories
+// =============================================
+model SubCategory {
+  id             Int      @id @default(autoincrement())
+  categoryId     Int
+  name           String
+  imagePath      String?
+  alt            String?
+  type           String?  // 'multiselect' | etc.
+  subject        String?
+  placeholder    String?
+  title          String?
+  departcategory Json?    // array of { id, name }
+  createdAt      DateTime @default(now())
+
+  category Category  @relation(fields: [categoryId], references: [id])
+  options  ListOption[]
+
+  @@map("sub_categories")
+}
+
+// =============================================
+// Sub Category Options
+// =============================================
+model ListOption {
+  id            Int    @id @default(autoincrement())
+  name          String
+  subCategoryId Int
+
+  subCategory SubCategory @relation(fields: [subCategoryId], references: [id])
+
+  @@map("list_options")
+}
+
+// =============================================
+// Departments
+// =============================================
+model Department {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  groupName String? @map("group_name") // ITH | SUB
+
+  groups Group[]
+
+  @@map("departments")
+}
+
+// =============================================
+// Maintenance Settings (single row, id=1)
+// =============================================
+model MaintenanceSetting {
+  id        Int       @id @default(1)
+  isActive  Boolean   @default(false)
+  startTime DateTime?
+  endTime   DateTime?
+  message   String?
+  updatedBy String?
+  updatedAt DateTime  @updatedAt
+
+  @@map("maintenance_settings")
+}
+
+// =============================================
+// Groups
+// =============================================
+model Group {
+  id           Int    @id @default(autoincrement())
+  name         String @unique
+  departmentId Int?
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@map("groups")
+}

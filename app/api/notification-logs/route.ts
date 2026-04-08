@@ -10,7 +10,7 @@ export async function GET() {
       orderBy: { timestamp: 'desc' },
     })
 
-    const formattedLogs = logs.map(log => ({
+    const formattedLogs = logs.map((log: (typeof logs)[number]) => ({
       id: log.id,
       timestamp: log.timestamp.toISOString(),
       action: log.action,

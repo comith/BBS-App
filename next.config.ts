@@ -13,22 +13,28 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   },
 });
 
-const nextConfig: NextConfig = {
-  // Uncomment for standalone build (Docker deployment)
-  // output: 'standalone',
+const SUPABASE_INTERNAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://172.16.1.214:8000';
 
+const nextConfig: NextConfig = {
   eslint: {
-    // Temporarily disable ESLint during builds
-    // TODO: Fix linting errors and re-enable
     ignoreDuringBuilds: false,
   },
 
   images: {
-    unoptimized: true
+    unoptimized: true,
   },
 
-  // Enable React Strict Mode for better development experience
   reactStrictMode: true,
+
+  // Proxy Supabase requests ผ่าน Next.js เพื่อแก้ Mixed Content (HTTP → HTTPS)
+  async rewrites() {
+    return [
+      {
+        source: '/supabase/:path*',
+        destination: `${SUPABASE_INTERNAL_URL}/:path*`,
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

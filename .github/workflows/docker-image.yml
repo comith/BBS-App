@@ -1,63 +1,31 @@
-name: Docker Image CI
+name: Deploy
+
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build_and_push:
-    runs-on: ubuntu-latest
-    steps:
-      # ... (Steps for build_and_push remain unchanged)
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_NAMEACCOUNT }}/bbs-app:latest
-          build-args: |
-            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
-
   deploy:
     runs-on: [self-hosted, Linux, X64]
-    needs: build_and_push
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 1. Cleanup: ขั้นตอนนี้ยังคงต้องใช้ sudo ในกรณีที่ NOPASSWD ถูกตั้งค่าไว้
-      # ถ้ายังล้มเหลวที่นี่ ให้ติดตั้ง Docker และ Docker Compose บน Runner ล่วงหน้า
-      - name: Cleanup runner logs and workdir
+      - name: Install dependencies
         run: |
-          echo "🧹 Cleaning up old runner files..."
-          # การล้างไฟล์ระบบของ Runner ยังคงต้องใช้ sudo
-          # (หากขั้นตอนนี้ยังล้มเหลว แสดงว่า NOPASSWD ไม่ได้ผล ให้นำคำสั่งนี้ออกชั่วคราว)
-          # sudo rm -rf /home/computer/actions-runner/_diag/*
-          # sudo rm -rf /home/computer/actions-runner/_work/*
+          cd /home/computer/BBS-App
+          rm -rf node_modules
+          npm ci
 
-      # 2. Deploy with Docker Compose: ขั้นตอนนี้จะทำงานต่อ
-      # (สมมติว่า Docker Compose ถูกติดตั้งล่วงหน้าบนเซิร์ฟเวอร์แล้ว)
-      - name: Deploy with Docker Compose
+      - name: Build
         run: |
-          cd /home/computer/bbs/
-          echo "Pruning system and pulling image..."
-          # คำสั่งเหล่านี้จะไม่ใช้ sudo (ขึ้นอยู่กับสิทธิ์กลุ่ม docker)
-          
-          # ลบคอนเทนเนอร์, อิมเมจที่ไม่ได้ใช้งาน (และ volumes) ก่อน pull
-          docker system prune --volumes -f
-          
-          # ใช้ 'docker compose' (v2 plugin) แทน 'docker-compose'
-          docker compose pull
-          docker compose up -d --force-recreate
-          
-          # ลบอิมเมจที่ห้อยอยู่ (dangling images)
-          docker images --filter "dangling=true" --format "{{.ID}}" | xargs -r docker rmi
+          cd /home/computer/BBS-App
+          npm run build
+        env:
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Restart PM2
+        run: |
+          pm2 restart bbs-app || pm2 start /home/computer/BBS-App/ecosystem.config.js
+          pm2 save

@@ -46,23 +46,24 @@ self.addEventListener('push', function(event) {
 // Event สำหรับจัดการเมื่อผู้ใช้คลิกที่ notification
 self.addEventListener('notificationclick', function(event) {
   console.log('Service Worker: Notification Click');
-  
-  // ปิด notification
+
   event.notification.close();
-  
-  // เปิดหน้าต่างแอป หรือกลับไปที่แอป
+
+  const targetUrl = '/dashboard';
+
   event.waitUntil(
-    self.clients.matchAll().then(function(clientList) {
-      // หาหน้าต่างที่เปิดอยู่แล้ว
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // หาหน้าต่าง dashboard ที่เปิดอยู่แล้ว
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url.includes('/dashboard') && 'focus' in client) {
+          // แจ้งให้ dashboard รีเฟรชข้อมูล
+          client.postMessage({ type: 'REFRESH_REPORTS' });
           return client.focus();
         }
       }
-      
       // ถ้าไม่มีหน้าต่างเปิดอยู่ ให้เปิดใหม่
       if (self.clients.openWindow) {
-        return self.clients.openWindow('/');
+        return self.clients.openWindow(targetUrl);
       }
     })
   );

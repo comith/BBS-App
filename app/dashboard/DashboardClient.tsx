@@ -457,7 +457,7 @@ function AdminDashboard() {
         body: JSON.stringify({
           action: "approved",
           action_from: "SHE",
-          notification_to: "5LD02067",
+          notification_to: selectedReport.employeeId,
         }),
       });
       const notification = await notificationResponse.json();
@@ -736,6 +736,18 @@ function AdminDashboard() {
     fetchReports();
   }, [selectedYear]);
 
+  // Auto-refresh เมื่อรับ message จาก Service Worker (notification click)
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.serviceWorker) return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "REFRESH_REPORTS") {
+        fetchReports();
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -863,7 +875,7 @@ function AdminDashboard() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className={`grid w-full ${isMaintenanceAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
+          <TabsList className={`grid w-full ${isMaintenanceAdmin ? "grid-cols-3" : "grid-cols-3"}`}>
             <TabsTrigger value="reports">รายงานทั้งหมด</TabsTrigger>
             <TabsTrigger value="analytics">สถิติและรายงาน</TabsTrigger>
             <TabsTrigger value="payroll">การจ่ายเงิน</TabsTrigger>

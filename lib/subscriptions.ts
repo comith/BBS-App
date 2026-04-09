@@ -142,7 +142,7 @@ export const removeSubscription = async (endpoint: string): Promise<number> => {
  * Mark subscriptions older than one week as inactive
  */
 export const clearExpiredSubscriptions = async (): Promise<number> => {
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const oneWeekAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
     const result = await prisma.subscription.updateMany({
         where: {

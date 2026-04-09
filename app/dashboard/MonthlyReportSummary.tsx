@@ -192,7 +192,7 @@ export const MonthlyReportSummary = React.memo(({ reports }: { reports: Report[]
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col md:flex-row justify-center items-center gap-3">
           <div className="text-sm text-gray-600">
             รายงานทั้งหมด: {monthlyStats.totalReports} รายการ
           </div>

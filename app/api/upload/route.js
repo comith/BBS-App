@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const BUCKET_NAME = 'bbos_ith'
+const BUCKET_NAME = 'bbso_ith'
 
 export async function POST(request) {
   try {
@@ -33,6 +33,22 @@ export async function POST(request) {
     const timestamp = Date.now()
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
     const storagePath = `uploads/${timestamp}_${safeName}`
+
+    // ตรวจสอบ bucket ว่ามีอยู่หรือยัง ถ้าไม่มีให้สร้างใหม่
+    const { data: buckets } = await supabase.storage.listBuckets()
+    const bucketExists = buckets?.some(b => b.name === BUCKET_NAME)
+    if (!bucketExists) {
+      const { error: createError } = await supabase.storage.createBucket(BUCKET_NAME, {
+        public: true,
+      })
+      if (createError) {
+        console.error('Create bucket error:', createError)
+        return NextResponse.json(
+          { message: 'Error creating storage bucket', error: createError.message },
+          { status: 500 }
+        )
+      }
+    }
 
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)

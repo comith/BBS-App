@@ -1,5 +1,7 @@
 // app/dashboard/types.ts — shared types and pure helpers for the dashboard
 import { CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { fixStorageUrl } from "@/lib/utils";
+
 
 export interface ApiReport {
   record_id: string;
@@ -149,7 +151,8 @@ export const transformApiDataToDashboardReport = (
           return {
             id: file.id || "",
             name: file.name || "ไม่ระบุ",
-            webViewLink: file.webViewLink || "",
+            webViewLink: fixStorageUrl(file.webViewLink),
+
           };
         })
       : [];

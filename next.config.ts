@@ -13,7 +13,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   },
 });
 
-const SUPABASE_INTERNAL_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://172.16.1.214:8000';
+const SUPABASE_INTERNAL_URL = process.env.SUPABASE_INTERNAL_URL || 'http://172.16.1.214:8000';
 
 const nextConfig: NextConfig = {
   eslint: {

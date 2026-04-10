@@ -48,6 +48,7 @@ import {
   Wrench,
   Bike,
   ReceiptText,
+  FileImage,
 } from "lucide-react";
 import {
   Select,
@@ -736,11 +737,26 @@ function AdminDashboard() {
     fetchReports();
   }, [selectedYear]);
 
+  // play notification sound
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audio = new Audio("/sounds/alert.mp3");
+      audio.play().catch((err) => {
+        // Silently ignore autoplay blocks
+        console.warn("Sound playback blocked or failed:", err);
+      });
+    } catch (err) {
+      console.error("Error playing sound:", err);
+    }
+  }, []);
+
   // Auto-refresh เมื่อรับ message จาก Service Worker (notification click)
+
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.serviceWorker) return;
     const handler = (event: MessageEvent) => {
       if (event.data?.type === "REFRESH_REPORTS") {
+        playNotificationSound();
         fetchReports();
       }
     };
@@ -2161,6 +2177,10 @@ function AdminDashboard() {
             <DialogTitle className="flex justify-between items-center">
               <span>รูปภาพแนบ</span>
             </DialogTitle>
+            {/* Added DialogDescription for accessibility (Radix UI requirement) */}
+            <DialogDescription className="sr-only">
+              แสดงรูปภาพที่แนบมากับรายงาน
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto bg-black/5 flex items-center justify-center p-4">
             {viewingImage && (
@@ -2328,8 +2348,8 @@ function AdminDashboard() {
                               onClick={() => setViewingImage(file.webViewLink)}
                               className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-left"
                             >
-                              <div className="w-4 h-4 overflow-hidden relative mr-1">
-                                <Image
+                              {/* <div className="w-4 h-4 overflow-hidden relative mr-1"> */}
+                                 {/* <Image
                                   className="object-cover"
                                   src="/icons/image.png"
                                   alt="img"
@@ -2340,10 +2360,9 @@ function AdminDashboard() {
                                     // But we are in a map, keeping it simple
                                     e.currentTarget.style.display = "none";
                                   }}
-                                />
-                                {/* Fallback svg if image fails to load or just use standard icon */}
-                              </div>
-                              📎 {file.name} (คลิกเพื่อดูรูป)
+                                /> */}
+                              {/* </div>  */}
+                              <FileImage className="w-4 h-4 text-blue-500" /> {file.name} (คลิกเพื่อดูรูป)
                             </button>
                           ) : (
                             <a

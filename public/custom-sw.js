@@ -34,7 +34,8 @@ self.addEventListener('push', function(event) {
     badge: notificationData.badge,
     vibrate: [100, 50, 100],
     data: notificationData.data,
-
+    sound: '/sounds/alert.mp3', // Path to sound file
+    silent: false,             // Ensure it's not silent
     requireInteraction: true 
   };
 

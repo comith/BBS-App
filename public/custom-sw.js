@@ -39,6 +39,17 @@ self.addEventListener('push', function(event) {
     requireInteraction: true 
   };
 
+  // Send message to open dashboard clients immediately
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (const client of clientList) {
+        if (client.url.includes('/dashboard')) {
+          client.postMessage({ type: 'REFRESH_REPORTS' });
+        }
+      }
+    })
+  );
+
   event.waitUntil(
     self.registration.showNotification(notificationData.title, options)
   );

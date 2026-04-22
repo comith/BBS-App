@@ -75,7 +75,7 @@ export async function POST(request) {
         file: {
           id: data.path,
           name: fileName,
-          webViewLink: urlData.publicUrl.replace('http://172.16.1.214:8000', '/supabase'),
+          webViewLink: urlData.publicUrl.replace('http://172.16.1.242:8000', '/supabase'),
         },
         status: 'success',
       },

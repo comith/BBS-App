@@ -15,7 +15,7 @@ export function fixStorageUrl(url: string | null | undefined): string {
   
   // List of base URLs to be proxied
   const storageBases = [
-    "http://172.16.1.214:8000",
+    "http://172.16.1.242:8000",
     "http://localhost:8000",
     // Could add NEXT_PUBLIC_SUPABASE_URL if it's an absolute internal one
   ];

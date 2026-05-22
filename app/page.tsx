@@ -1,7 +1,7 @@
 // app/page.tsx
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { SquareUser, RefreshCw, Shield, Users, BarChart3 } from "lucide-react";
+import { SquareUser, RefreshCw, Shield, Users, BarChart3, Wind, Thermometer, CloudFog } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -209,6 +209,11 @@ const MenuButtons = React.memo(
       router.push("/dashboard");
     }, [router, formData]);
 
+    const handleWeatherClick = useCallback(() => {
+      saveToLocalStorage(formData);
+      router.push("/weather");
+    }, [router, formData]);
+
     const buttonClass =
       "bg-white/80 backdrop-blur-md flex flex-col justify-center rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-6 w-full hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] hover:border-blue-200/50 hover:bg-white transition-all duration-500 cursor-pointer group relative overflow-hidden";
     const imageWrapperClass =
@@ -216,7 +221,7 @@ const MenuButtons = React.memo(
 
     if (formData.position === "SHE") {
       return (
-        <div className="grid grid-cols-2 gap-6 w-full max-w-xl pb-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-6 w-full max-w-2xl pb-4 md:grid-cols-4">
           <button
             type="button"
             className={buttonClass}
@@ -271,16 +276,34 @@ const MenuButtons = React.memo(
               รายงานของคุณ
             </h2>
           </button>
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleWeatherClick}
+          >
+            <div className={imageWrapperClass}>
+              <Image
+                src="/img/weather_icon.png"
+                alt="Weather Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              สภาพอากาศ
+            </h2>
+          </button>
         </div>
       );
     }
 
     if (formData.position === "AC" || formData.position === "Manager") {
       return (
-        <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
+        <div className="grid grid-cols-2 gap-6 w-full max-w-xl pb-4 md:grid-cols-3">
           <button
             type="button"
-            className={`${buttonClass} w-1/2`}
+            className={buttonClass}
             onClick={handleFormClick}
           >
             <div className={imageWrapperClass}>
@@ -298,7 +321,7 @@ const MenuButtons = React.memo(
           </button>
           <button
             type="button"
-            className={`${buttonClass} w-1/2`}
+            className={buttonClass}
             onClick={handleDashboardClick}
           >
             <div className={imageWrapperClass}>
@@ -314,15 +337,33 @@ const MenuButtons = React.memo(
               สรุปผลรายงาน
             </h2>
           </button>
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleWeatherClick}
+          >
+            <div className={imageWrapperClass}>
+              <Image
+                src="/img/weather_icon.png"
+                alt="Weather Icon"
+                fill
+                className="object-contain"
+                sizes="96px"
+              />
+            </div>
+            <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+              สภาพอากาศ
+            </h2>
+          </button>
         </div>
       );
     }
 
     return (
-      <div className="flex flex-row gap-6 w-full max-w-lg pb-4">
+      <div className="grid grid-cols-2 gap-6 w-full max-w-xl pb-4 md:grid-cols-3">
         <button
           type="button"
-          className={`${buttonClass} w-1/2`}
+          className={buttonClass}
           onClick={handleFormClick}
         >
           <div className={imageWrapperClass}>
@@ -340,7 +381,7 @@ const MenuButtons = React.memo(
         </button>
         <button
           type="button"
-          className={`${buttonClass} w-1/2`}
+          className={buttonClass}
           onClick={handleReportClick}
         >
           <div className={imageWrapperClass}>
@@ -354,6 +395,24 @@ const MenuButtons = React.memo(
           </div>
           <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
             สรุปผลรายงาน
+          </h2>
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={handleWeatherClick}
+        >
+          <div className={imageWrapperClass}>
+            <Image
+              src="/img/weather_icon.png"
+              alt="Weather Icon"
+              fill
+              className="object-contain"
+              sizes="96px"
+            />
+          </div>
+          <h2 className="text-base text-center font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+            สภาพอากาศ
           </h2>
         </button>
       </div>
@@ -427,6 +486,75 @@ ClearDataButton.displayName = "ClearDataButton";
 
 const RequiredMark = React.memo(() => <sup className="text-red-500">*</sup>);
 RequiredMark.displayName = "RequiredMark";
+
+// #############################   Environment Card  ######################
+const EnvironmentCard = React.memo(() => {
+  const [envData, setEnvData] = useState<{pm25: string, pm10: string, temp: string} | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/getdata-thingsboard');
+        if (!res.ok) throw new Error('Network response was not ok');
+        const data = await res.json();
+        
+        setEnvData(prev => {
+          // แปลงค่าที่ได้เป็นตัวเลขก่อน
+          const newPm25 = data.pm2_5_1?.[0]?.value ? parseFloat(data.pm2_5_1[0].value) : 0;
+          const newPm10 = data.pm10_1?.[0]?.value ? parseFloat(data.pm10_1[0].value) : 0;
+          const newTemp = data.temperature_1?.[0]?.value ? parseFloat(data.temperature_1[0].value) : 0;
+
+          // เช็คว่าถ้าค่าใหม่มากกว่า 0 ให้ใช้ค่าใหม่ ถ้าไม่ให้ใช้ค่าเดิม (ถ้ามี)
+          return {
+            pm25: newPm25 > 0 ? newPm25.toFixed(1) : (prev?.pm25 || "-"),
+            pm10: newPm10 > 0 ? newPm10.toFixed(1) : (prev?.pm10 || "-"),
+            temp: newTemp > 0 ? newTemp.toFixed(1) : (prev?.temp || "-")
+          };
+        });
+      } catch (err) {
+        console.error("Error fetching environment data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+    const interval = setInterval(fetchData, 1500000); // 25 minutes refresh
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="mt-8 grid grid-cols-3 gap-4 max-w-lg animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-700">
+      <div className="bg-white/60 backdrop-blur-lg border border-white/80 p-4 rounded-2xl flex flex-col items-center justify-center hover:bg-white/90 hover:shadow-lg hover:shadow-orange-500/5 transition-all duration-300 group shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+        <Wind className="w-8 h-8 text-orange-500 mb-2 group-hover:scale-110 transition-transform duration-300" />
+        <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">PM 2.5</span>
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-bold text-slate-800">{loading ? "-" : envData?.pm25}</span>
+          <span className="text-slate-400 text-xs font-medium">μg/m³</span>
+        </div>
+      </div>
+      <div className="bg-white/60 backdrop-blur-lg border border-white/80 p-4 rounded-2xl flex flex-col items-center justify-center hover:bg-white/90 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 group shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+        <CloudFog className="w-8 h-8 text-blue-500 mb-2 group-hover:scale-110 transition-transform duration-300" />
+        <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">PM 10</span>
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-bold text-slate-800">{loading ? "-" : envData?.pm10}</span>
+          <span className="text-slate-400 text-xs font-medium">μg/m³</span>
+        </div>
+      </div>
+      <div className="bg-white/60 backdrop-blur-lg border border-white/80 p-4 rounded-2xl flex flex-col items-center justify-center hover:bg-white/90 hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300 group shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+        <Thermometer className="w-8 h-8 text-red-500 mb-2 group-hover:scale-110 transition-transform duration-300" />
+        <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Temp</span>
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-bold text-slate-800">{loading ? "-" : envData?.temp}</span>
+          <span className="text-slate-400 text-xs font-medium">°C</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+EnvironmentCard.displayName = "EnvironmentCard";
 
 // #############################   Main Component  ######################
 
@@ -530,28 +658,33 @@ function ModernBBSLogin() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Abstract Design */}
-      <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block group">
-        <div className="absolute inset-0 bg-gray-900" />
+      {/* Left side - Premium White Abstract Design */}
+      <div className="w-full xl:w-1/2 relative overflow-hidden hidden xl:block group bg-slate-50 border-r border-slate-100">
+        {/* Animated Pastel Aurora Background Effect */}
+        <div className="absolute top-0 -left-1/4 w-[150%] h-[150%] bg-gradient-to-br from-blue-100/30 via-orange-100/20 to-amber-100/30 opacity-80 blur-[120px] rounded-full animate-pulse" style={{ animationDuration: '15s' }} />
+        <div className="absolute -top-1/4 right-0 w-[120%] h-[120%] bg-gradient-to-bl from-slate-100/50 via-white to-orange-50/30 opacity-90 blur-[130px] rounded-full" />
+        
         <Image
           src="/img/bg_login.png"
           alt="Background"
           fill
           priority
-          className="object-cover w-full h-full opacity-60 group-hover:scale-105 transition-transform duration-[20s]"
+          className="object-cover w-full h-full opacity-[0.04] mix-blend-multiply group-hover:scale-105 transition-all duration-[20s]"
         />
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-transparent to-orange-900/30" />
+        
+        {/* Soft Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-transparent to-transparent" />
 
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 opacity-25">
           <BackgroundSVG />
         </div>
 
         <div className="relative z-10 flex flex-col justify-between h-[100vh] p-12">
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             {/* Logo Section with Glass Effect */}
-            <div className="inline-flex items-center gap-6 p-6 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl hover:bg-white/15 transition-all duration-300 w-fit animate-in fade-in slide-in-from-top-4 duration-700">
-              <div className="relative w-24 h-24 drop-shadow-lg">
+            <div className="inline-flex items-center gap-6 p-6 rounded-3xl bg-white/40 backdrop-blur-xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:bg-white/60 hover:shadow-[0_8px_35px_rgb(0,0,0,0.04)] transition-all duration-500 w-fit animate-in fade-in slide-in-from-top-4 duration-700">
+              <div className="relative w-24 h-24 drop-shadow-xl">
                 <Image
                   src="/img/ith.png"
                   alt="Logo"
@@ -559,42 +692,45 @@ function ModernBBSLogin() {
                   className="object-contain"
                 />
               </div>
-              <div className="h-16 w-px bg-white/20" /> {/* Divider */}
+              <div className="h-16 w-px bg-slate-200" /> {/* Divider */}
               <div className="flex flex-col justify-center">
-                <h1 className="text-3xl font-black text-white tracking-wide uppercase drop-shadow-md">
+                <h1 className="text-3xl font-black text-slate-800 tracking-wide uppercase drop-shadow-sm">
                   ITH Group
                 </h1>
-                <p className="text-blue-200 font-medium tracking-wider text-sm">
+                <p className="text-orange-600 font-semibold tracking-wider text-sm">
                   Safety Management
                 </p>
               </div>
             </div>
 
             {/* Main Typography */}
-            <div className="mt-12 space-y-4">
+            <div className="mt-8 space-y-4">
               <div className="flex flex-col animate-in fade-in slide-in-from-left-4 duration-1000 delay-300">
-                <span className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-yellow-200 filter drop-shadow-sm tracking-tighter">
+                <span className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 filter drop-shadow-sm tracking-tighter">
                   Behavior
                 </span>
-                <span className="text-7xl font-black text-white tracking-tighter drop-shadow-lg">
+                <span className="text-7xl font-black text-slate-800 tracking-tighter drop-shadow-sm">
                   Based Safety
                 </span>
               </div>
 
-              <div className="h-2 w-32 bg-orange-500 rounded-full animate-in fade-in width-[0] hover:w-48 transition-all duration-500 delay-500" />
+              <div className="h-2 w-32 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full animate-in fade-in width-[0] hover:w-48 transition-all duration-500 delay-500 shadow-[0_4px_10px_rgba(249,115,22,0.15)]" />
 
-              <p className="text-2xl text-slate-200 font-light tracking-wide max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
+              <p className="text-2xl text-slate-600 font-light tracking-wide max-w-lg leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
                 ความปลอดภัย... เริ่มต้นที่
-                <span className="font-semibold text-orange-400">
+                <span className="font-semibold text-orange-500 ml-2">
                   พฤติกรรมของคุณ
                 </span>
               </p>
+
+              {/* Environment Card */}
+              <EnvironmentCard />
             </div>
           </div>
 
           {/* Footer / Quote */}
-          <div className="bg-black/30 backdrop-blur-sm p-6 rounded-2xl border-l-4 border-orange-500 max-w-md animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-1000">
-            <p className="text-white/90 italic font-light text-lg">
+          <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border-l-4 border-orange-500/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border-white/85 max-w-md animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-1000">
+            <p className="text-slate-600 italic font-light text-lg">
               "Safety is not just a rule, it's a value we live by every day."
             </p>
           </div>

@@ -46,15 +46,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
+import { AiInsightsCard } from "@/components/AiInsightsCard";
 
 // Interface สำหรับ SHE Violation
 interface SheViolation {
@@ -605,6 +599,16 @@ function SheViolationsManagement() {
                   <p className="text-sm">{selectedViolation.other}</p>
                 </div>
               )}
+              
+              {/* AI Insights Card Integration */}
+              <div className="pt-4 border-t mt-4">
+                <AiInsightsCard 
+                  recordId={selectedViolation.record_id}
+                  recordType="SHE"
+                  reportText={selectedViolation.observed_Work || ""} 
+                  departmentNotice={selectedViolation.department_notice || ""} 
+                />
+              </div>
             </div>
           )}
         </DialogContent>

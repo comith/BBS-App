@@ -79,6 +79,23 @@ export async function POST(request) {
       apiLogger.error('⚠️ Failed to send notification:', notifError)
     }
 
+    // Trigger AI Evaluation in the background if approved
+    if (data.status === 'approved' && record.observedWork) {
+      apiLogger.info(`🤖 Triggering background AI analysis for approved record ${data.recordId}...`)
+      // Non-blocking fetch (do not await)
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      fetch(`${baseUrl}/api/ai-evaluation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordId: data.recordId,
+          recordType: 'BBS',
+          observedWork: record.observedWork,
+          departNotice: record.departNotice
+        })
+      }).catch(e => apiLogger.error('⚠️ Async AI evaluation failed to start:', e))
+    }
+
     const responseData = {
       recordId: data.recordId,
       status: data.status,

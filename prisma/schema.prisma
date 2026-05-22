@@ -68,6 +68,8 @@ model Record {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  aiInsight        AiInsight?
+
   @@index([createdAt(sort: Desc)])
   @@index([date])
   @@index([status])
@@ -100,6 +102,8 @@ model RecordShe {
   levelOfSafety    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  aiInsight        AiInsight?
 
   @@index([createdAt(sort: Desc)])
   @@map("records_she")
@@ -209,4 +213,41 @@ model Group {
   department Department? @relation(fields: [departmentId], references: [id])
 
   @@map("groups")
+}
+
+// =============================================
+// Weather Stations
+// =============================================
+model WeatherStation {
+  id        String   @id
+  name      String
+  desc      String?
+  active    Boolean  @default(true)
+  deviceId  String   @default("")
+  config    Json     // stores pm25Key, pm10Key, tempKey, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("weather_stations")
+}
+
+// =============================================
+// AI Insights
+// =============================================
+model AiInsight {
+  id               Int      @id @default(autoincrement())
+  recordId         String?  @unique
+  recordSheId      String?  @unique
+  category         String?
+  severityScore    Float?
+  rootCause        String?  @db.Text
+  recommendations  Json?    // Array of strings
+  predictiveWarning String? @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  record           Record?    @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  recordShe        RecordShe? @relation(fields: [recordSheId], references: [id], onDelete: Cascade)
+
+  @@map("ai_insights")
 }

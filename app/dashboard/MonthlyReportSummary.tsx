@@ -159,10 +159,10 @@ export const MonthlyReportSummary = React.memo(({ reports }: { reports: Report[]
             approvalRate:
               groupReports.length > 0
                 ? Math.round(
-                    (groupReports.filter((r) => r.status === "approved").length /
-                      groupReports.length) *
-                      100
-                  )
+                  (groupReports.filter((r) => r.status === "approved").length /
+                    groupReports.length) *
+                  100
+                )
                 : 0,
           };
         })
@@ -235,15 +235,14 @@ export const MonthlyReportSummary = React.memo(({ reports }: { reports: Report[]
           >
             <span>สรุปรายกลุ่ม ({monthlyStats.groupSummary.length} กลุ่ม)</span>
             <ChevronDown
-              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
-                isGroupTableOpen ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isGroupTableOpen ? "rotate-180" : ""
+                }`}
             />
           </button>
           {isGroupTableOpen && (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto h-[500px]">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0">
                   <tr className="bg-gray-100">
                     <th className="text-left p-3 font-medium">กลุ่ม</th>
                     <th className="text-center p-3 font-medium">ทั้งหมด</th>
@@ -267,8 +266,8 @@ export const MonthlyReportSummary = React.memo(({ reports }: { reports: Report[]
                             g.approvalRate >= 80
                               ? "bg-green-100 text-green-800"
                               : g.approvalRate >= 60
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
                           }
                         >
                           {g.approvalRate}%

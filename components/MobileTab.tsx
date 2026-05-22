@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Home, FileText, User, Plus, WifiZero } from "lucide-react";
+import { Home, FileText, User, Plus, WifiZero, CloudFog } from "lucide-react";
 
 // TypeScript interfaces
 interface TabItem {
@@ -53,13 +53,13 @@ const defaultTabItems: TabItem[] = [
     isSpecial: true,
   },
   {
-    id: "analytics",
-    label: "",
-    icon: WifiZero,
-    color: "text-purple-500",
-    activeColor: "text-purple-600",
-    bgColor: "bg-purple-50",
-    path: "",
+    id: "weather",
+    label: "อากาศ",
+    icon: CloudFog,
+    color: "text-sky-500",
+    activeColor: "text-sky-600",
+    bgColor: "bg-sky-50",
+    path: "/weather",
   },
   {
     id: "profile",

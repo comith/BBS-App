@@ -50,7 +50,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <div className="fixed top-4 right-4 z-[9999]">
+          <div className="fixed right-4 z-40 top-[43px] md:top-[10px]">
             <NotificationToggleButton />
           </div>
           {children}

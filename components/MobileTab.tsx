@@ -153,7 +153,7 @@ const MobileTabBar: React.FC<MobileTabBarProps> = ({
 
   return (
     <div
-      className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full bg-white border-t border-gray-200 shadow-lg ${className} md:hidden`}
+      className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full bg-white/85 backdrop-blur-md border-t border-slate-200 shadow-lg supports-[backdrop-filter]:bg-white/60 z-40 ${className} md:hidden`}
     >
       <div className="flex items-center justify-around py-2">
         {tabItems.map((item) => {

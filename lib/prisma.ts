@@ -7,7 +7,8 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const rawUrl = new URL(process.env.DATABASE_URL!)
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || "postgresql://localhost:5432/postgres";
+  const rawUrl = new URL(dbUrl)
   const schema = rawUrl.searchParams.get('schema') || 'public'
   rawUrl.searchParams.delete('schema')
 

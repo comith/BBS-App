@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReportStats } from "../hooks/useReports";
+import { cn } from "@/lib/utils";
 
 interface Props {
   stats: ReportStats;
@@ -21,19 +22,12 @@ interface Props {
 export function StatsCards({ stats, isLoading }: Props) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex overflow-x-auto no-scrollbar gap-4 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="h-4 bg-gray-200 rounded mb-2 w-20"></div>
-                    <div className="h-8 bg-gray-200 rounded w-12"></div>
-                  </div>
-                  <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
-                </div>
-              </div>
+          <Card key={i} className="min-w-[140px] flex-shrink-0 border-slate-100 shadow-sm rounded-2xl animate-pulse">
+            <CardContent className="p-4">
+              <div className="h-4 bg-slate-200 rounded mb-2 w-16"></div>
+              <div className="h-8 bg-slate-200 rounded w-10"></div>
             </CardContent>
           </Card>
         ))}
@@ -41,199 +35,139 @@ export function StatsCards({ stats, isLoading }: Props) {
     );
   }
 
+  const overviewCards = [
+    {
+      label: "รออนุมัติ",
+      value: stats.pending,
+      icon: Clock,
+      colorClass: "text-yellow-600",
+      bgClass: "bg-yellow-100/50",
+    },
+    {
+      label: "อนุมัติแล้ว",
+      value: stats.approved,
+      icon: Check,
+      colorClass: "text-green-600",
+      bgClass: "bg-green-100/50",
+    },
+    {
+      label: "วันนี้",
+      value: stats.todayReports,
+      icon: Calendar,
+      colorClass: "text-blue-600",
+      bgClass: "bg-blue-100/50",
+    },
+    {
+      label: "ทั้งหมด",
+      value: stats.total,
+      icon: FileText,
+      colorClass: "text-slate-700",
+      bgClass: "bg-slate-100",
+    },
+  ];
+
+  const categoryCards = [
+    {
+      label: "PPE",
+      value: stats.ppe,
+      safe: stats.ppe_safe,
+      unsafe: stats.ppe_unsafe,
+      icon: HardHat,
+      colorClass: "text-orange-600",
+      bgClass: "bg-orange-50",
+    },
+    {
+      label: "เครื่องมือ",
+      value: stats.tools,
+      safe: stats.tools_safe,
+      unsafe: stats.tools_unsafe,
+      icon: Wrench,
+      colorClass: "text-indigo-600",
+      bgClass: "bg-indigo-50",
+    },
+    {
+      label: "การกระทำ",
+      value: stats.unsafe_actions,
+      safe: stats.unsafe_actions_safe,
+      unsafe: stats.unsafe_actions_unsafe,
+      icon: Bike,
+      colorClass: "text-rose-600",
+      bgClass: "bg-rose-50",
+    },
+    {
+      label: "สภาพแวดล้อม",
+      value: stats.unsafe_condition,
+      safe: stats.unsafe_condition_safe,
+      unsafe: stats.unsafe_condition_unsafe,
+      icon: ReceiptText,
+      colorClass: "text-cyan-600",
+      bgClass: "bg-cyan-50",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">รอการอนุมัติ</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {stats.pending}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center">
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-6">
+      {/* Overview Carousel */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-800 mb-3 px-1">ภาพรวมรายงาน</h2>
+        <div className="flex overflow-x-auto no-scrollbar gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory">
+          {overviewCards.map((card, idx) => {
+            const Icon = card.icon;
+            return (
+              <div 
+                key={idx} 
+                className={cn(
+                  "snap-center min-w-[130px] sm:min-w-[150px] flex-shrink-0 flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 relative overflow-hidden",
+                  "active:scale-95 transition-transform"
+                )}
+              >
+                <div className={cn("absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-20 blur-xl", card.bgClass)} />
+                <div className="flex flex-col gap-2">
+                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", card.bgClass)}>
+                    <Icon className={cn("w-4 h-4", card.colorClass)} />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900 leading-none mb-1">{card.value}</p>
+                    <p className="text-xs font-medium text-slate-500">{card.label}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">อนุมัติแล้ว</p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats.approved}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-              <Check className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">วันนี้</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {stats.todayReports}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">รายงานทั้งหมด</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-            <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-              <FileText className="h-6 w-6 text-gray-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* PPE */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div className="w-full md:w-3/4">
-              <div className="flex items-center gap-2 justify-between w-full">
-                <p className="text-sm font-medium text-gray-600">PPE</p>
-                <div className="h-12 w-12  md:hidden  bg-orange-100 rounded-full flex items-center justify-center">
-                  <HardHat className="h-6 w-6 text-orange-600" />
+      {/* Categories Grid */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-800 mb-3 px-1">แยกตามหมวดหมู่</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {categoryCards.map((cat, idx) => {
+            const Icon = cat.icon;
+            return (
+              <div key={idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 flex flex-col justify-between">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0", cat.bgClass)}>
+                    <Icon className={cn("w-3.5 h-3.5", cat.colorClass)} />
+                  </div>
+                  <p className="text-xs font-medium text-slate-700 truncate">{cat.label}</p>
+                  <p className="text-sm font-bold text-slate-900 ml-auto">{cat.value}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 mt-auto">
+                  <div className="bg-emerald-50/50 rounded-lg p-2 text-center">
+                    <p className="text-[10px] text-emerald-600 font-medium mb-0.5">ปลอดภัย</p>
+                    <p className="text-sm font-bold text-emerald-700 leading-none">{cat.safe}</p>
+                  </div>
+                  <div className="bg-rose-50/50 rounded-lg p-2 text-center">
+                    <p className="text-[10px] text-rose-600 font-medium mb-0.5">ไม่ปลอดภัย</p>
+                    <p className="text-sm font-bold text-rose-700 leading-none">{cat.unsafe}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col mt-4 md:mt-0">
-                <p className="text-2xl font-bold text-gray-900">{stats.ppe}</p>
-                <div className="flex flex-col mt-4 md:mt-0">
-                  <p className="text-sm text-green-600">
-                    Safe Act. : {stats.ppe_safe}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    UnSafe Act. : {stats.ppe_unsafe}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="h-12 w-12 hidden md:flex bg-orange-100 rounded-full flex items-center justify-center">
-              <HardHat className="h-6 w-6 text-orange-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tools */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div className="w-full md:w-3/4">
-              <div className="flex items-center gap-2 justify-between w-full">
-                <p className="text-sm font-medium text-gray-600">Tools</p>
-                <div className="h-12 w-12 md:hidden bg-gray-100 rounded-full flex items-center justify-center">
-                  <Wrench className="h-6 w-6 text-gray-600" />
-                </div>
-              </div>
-              <div className="flex flex-col mt-4 md:mt-0">
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.tools}
-                </p>
-                <div className="flex flex-col mt-4 md:mt-0">
-                  <p className="text-sm text-green-600">
-                    Safe Act. : {stats.tools_safe}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    UnSafe Act. : {stats.tools_unsafe}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="h-12 w-12 hidden md:flex bg-gray-100 rounded-full flex items-center justify-center">
-              <Wrench className="h-6 w-6 text-gray-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Unsafe Action */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div className="w-full md:w-3/4">
-              <div className="flex items-center gap-2 justify-between w-full">
-                <p className="text-sm font-medium text-gray-600">
-                  Unsafe Action
-                </p>
-                <div className="h-12 w-12 md:hidden bg-green-100 rounded-full flex items-center justify-center">
-                  <Bike className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-              <div className="flex flex-col mt-4 md:mt-0">
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.unsafe_actions}
-                </p>
-                <div className="flex flex-col mt-4 md:mt-0">
-                  <p className="text-sm text-green-600">
-                    Safe Act. : {stats.unsafe_actions_safe}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    UnSafe Act. : {stats.unsafe_actions_unsafe}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="h-12 w-12 hidden md:flex bg-green-100 rounded-full flex items-center justify-center">
-              <Bike className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Unsafe Condition */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div className="w-full md:w-3/4">
-              <div className="flex items-center gap-2 justify-between w-full">
-                <p className="text-sm font-medium text-gray-600">
-                  Unsafe Condition
-                </p>
-                <div className="h-12 w-12 md:hidden bg-blue-100 rounded-full flex items-center justify-center">
-                  <ReceiptText className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-              <div className="flex flex-col mt-4 md:mt-0">
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.unsafe_condition}
-                </p>
-                <div className="flex flex-col mt-4 md:mt-0">
-                  <p className="text-sm text-green-600">
-                    Safe Act. : {stats.unsafe_condition_safe}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    UnSafe Act. : {stats.unsafe_condition_unsafe}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="h-12 w-12 hidden md:flex bg-blue-100 rounded-full flex items-center justify-center">
-              <ReceiptText className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -17,7 +17,7 @@ export default function FormLayout({
         {children}
         <Toaster />
       </div>
-      <MobileTabBar activeTab="form" />
+      <MobileTabBar activeTab="create" />
      
     </div>
   )

@@ -39,7 +39,7 @@ export function ReportDetailModal({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-[95vw] sm:w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         {report && (
           <>
             <DialogHeader>
@@ -49,7 +49,7 @@ export function ReportDetailModal({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 break-words">
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold mb-2">ข้อมูลพนักงาน</h3>
@@ -76,7 +76,7 @@ export function ReportDetailModal({
                       <strong>วันที่:</strong>{" "}
                       {format(report.date, "dd MMMM yyyy", { locale: th })}
                     </p>
-                    <p>
+                    <p className="break-words whitespace-pre-wrap">
                       <strong>งานที่สังเกต:</strong> {report.observedWork}
                     </p>
                     <p>
@@ -110,7 +110,7 @@ export function ReportDetailModal({
                         <Badge
                           key={index}
                           variant="secondary"
-                          className="text-xs !text-wrap"
+                          className="text-xs whitespace-normal break-words h-auto text-left py-1"
                         >
                           {option === "8. อื่นๆ"
                             ? "อื่นๆ: " + report.other
@@ -164,19 +164,19 @@ export function ReportDetailModal({
                         {isImg ? (
                           <button
                             onClick={() => onViewImage(file.webViewLink)}
-                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-left"
+                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer inline-flex items-center gap-1 text-left max-w-full"
                           >
-                            <FileImage className="w-4 h-4 text-blue-500" />{" "}
-                            {file.name} (คลิกเพื่อดูรูป)
+                            <FileImage className="w-4 h-4 text-blue-500 flex-shrink-0" />{" "}
+                            <span className="break-all">{file.name}</span> (คลิกเพื่อดูรูป)
                           </button>
                         ) : (
                           <a
                             href={file.webViewLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline cursor-pointer flex items-center"
+                            className="text-sm text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1 max-w-full"
                           >
-                            📎 {file.name}
+                            <span className="flex-shrink-0">📎</span> <span className="break-all">{file.name}</span>
                           </a>
                         )}
                       </div>
@@ -233,20 +233,27 @@ export function ReportDetailModal({
             )}
 
             {report.status === "pending" && (
-              <div className="mt-6 flex space-x-4">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Button
                   onClick={() => onApprove(report)}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 flex-1 min-w-[120px]"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   อนุมัติ
                 </Button>
-                <Button onClick={() => onReject(report)}>
+                <Button 
+                  onClick={() => onReject(report)}
+                  className="flex-1 min-w-[120px]"
+                >
                   <Ban className="h-4 w-4 mr-2" />
                   ไม่อนุมัติ
                 </Button>
                 {isSheOrManager && (
-                  <Button variant="secondary" onClick={() => onAiView(report)}>
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => onAiView(report)}
+                    className="flex-1 min-w-[120px]"
+                  >
                     <BrainCircuit className="h-4 w-4 mr-2" />
                     วิเคราะห์ AI
                   </Button>

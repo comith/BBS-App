@@ -5,27 +5,20 @@ import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card } from "@/components/ui/card";
 import {
   Ban,
   BrainCircuit,
   Check,
-  ChevronDown,
-  ChevronUp,
-  Eye,
+  ChevronRight,
 } from "lucide-react";
 import { type Report, getStatusInfo } from "../types";
 
 interface Props {
   report: Report;
-  isOpen: boolean;
+  isOpen?: boolean; // Kept for backwards compatibility with DashboardClient
   isSheOrManager: boolean;
-  onToggle: () => void;
+  onToggle?: () => void; // Kept for backwards compatibility
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;
@@ -34,9 +27,7 @@ interface Props {
 
 export function ReportCard({
   report,
-  isOpen,
   isSheOrManager,
-  onToggle,
   onApprove,
   onReject,
   onView,
@@ -47,253 +38,120 @@ export function ReportCard({
 
   return (
     <Card
-      className="hover:shadow-md transition-shadow border-l-4 border-l-transparent data-[status=pending]:border-l-yellow-400 data-[status=approved]:border-l-green-500 data-[status=rejected]:border-l-red-500"
-      data-status={report.status}
+      onClick={onView}
+      className="mb-2 overflow-hidden hover:bg-slate-50 cursor-pointer active:scale-[0.99] transition-transform border border-slate-200 shadow-sm relative group"
     >
-      <Collapsible open={isOpen} onOpenChange={onToggle}>
-        <CollapsibleTrigger asChild>
-          <CardContent className="p-3 md:p-4 cursor-pointer hover:bg-gray-50">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900">
-                    #{report.id}
-                  </span>
-                  <Badge
-                    className={cn("hidden md:flex", statusInfo.color)}
-                  >
-                    <StatusIcon className="h-3 w-3 mr-1" />
-                    {statusInfo.label}
-                  </Badge>
-                  <Badge
-                    className={cn(
-                      "md:hidden text-[10px] px-1.5 h-5",
-                      statusInfo.color
-                    )}
-                  >
-                    {statusInfo.label}
-                  </Badge>
-                  {report.priority === "high" && (
-                    <Badge
-                      variant="outline"
-                      className="text-red-600 border-red-200 text-[10px] h-5 px-1.5"
-                    >
-                      สำคัญ
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500">
-                    {format(report.submittedDate, "dd/MM/yy HH:mm")}
-                  </span>
-                  {isOpen ? (
-                    <ChevronUp className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                  )}
-                </div>
-              </div>
+      <div
+        className={cn(
+          "absolute left-0 top-0 bottom-0 w-1",
+          report.status === "pending"
+            ? "bg-yellow-400"
+            : report.status === "approved"
+            ? "bg-green-500"
+            : "bg-red-500"
+        )}
+      />
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center">
-                <div className="md:col-span-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 uppercase">
-                      {report.employeeName.substring(0, 2)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                        {report.employeeName}
-                      </p>
-                      <p className="text-xs text-gray-500 line-clamp-1">
-                        {report.department}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      <div className="p-4 flex gap-4">
+        {/* Avatar */}
+        <div className="flex-shrink-0 h-10 w-10 mt-1 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-sm border border-indigo-100">
+          {report.employeeName.substring(0, 2)}
+        </div>
 
-                <div className="hidden md:block md:col-span-4">
-                  <p
-                    className="text-sm text-gray-600 line-clamp-1"
-                    title={report.safetyCategory}
-                  >
-                    {report.safetyCategory}
-                  </p>
-                </div>
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-0.5">
+            <h3 className="text-sm font-semibold text-slate-900 truncate pr-2">
+              {report.employeeName}
+            </h3>
+            <span className="text-[10px] text-slate-400 flex-shrink-0">
+              {format(report.submittedDate, "dd/MM/yy HH:mm")}
+            </span>
+          </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 text-sm">
-                  <div
-                    className="flex items-center gap-1.5"
-                    title="Safe Actions"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="font-medium text-gray-700">
-                      {report.safeCount}
-                    </span>
-                  </div>
-                  <div
-                    className="flex items-center gap-1.5"
-                    title="Unsafe Actions"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="font-medium text-gray-700">
-                      {report.unsafeCount}
-                    </span>
-                  </div>
-                </div>
+          <p className="text-xs text-slate-500 truncate mb-2">
+            {report.department} • #{report.id}
+          </p>
 
-                <div
-                  className="md:col-span-2 flex items-center justify-end gap-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {report.status === "pending" && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onApprove();
-                        }}
-                        title="อนุมัติ"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onReject();
-                        }}
-                        title="ไม่อนุมัติ"
-                      >
-                        <Ban className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                  {isSheOrManager && report.aiInsight && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAiView();
-                      }}
-                      title="ดูผลวิเคราะห์ AI"
-                    >
-                      <BrainCircuit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-gray-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView();
-                    }}
-                    title="ดูรายละเอียด"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="secondary"
+              className={cn("text-[10px] px-1.5 py-0 font-medium", statusInfo.color)}
+            >
+              <StatusIcon className="w-3 h-3 mr-1" />
+              {statusInfo.label}
+            </Badge>
 
-              <div className="md:hidden text-xs text-gray-500 line-clamp-1 mt-1">
-                {report.safetyCategory}
-              </div>
+            {report.priority === "high" && (
+              <Badge
+                variant="outline"
+                className="text-red-600 border-red-200 bg-red-50 text-[10px] py-0 px-1.5 font-medium"
+              >
+                สำคัญ
+              </Badge>
+            )}
+
+            <div className="flex items-center gap-2 text-xs bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+              <span className="flex items-center text-green-600 font-medium">
+                <Check className="w-3 h-3 mr-0.5" />
+                {report.safeCount}
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="flex items-center text-red-600 font-medium">
+                <Ban className="w-3 h-3 mr-0.5" />
+                {report.unsafeCount}
+              </span>
             </div>
-          </CardContent>
-        </CollapsibleTrigger>
+          </div>
+        </div>
 
-        <CollapsibleContent>
-          <CardContent className="pt-4 pb-4 px-4 bg-gray-50/50 border-t">
-            <div className="pt-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-600">หมวดหมู่ความปลอดภัย</p>
-                  <p className="font-medium text-sm">
-                    {report.safetyCategory}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">งานที่สังเกต</p>
-                  <p className="font-medium">{report.observedWork}</p>
-                </div>
-                {report.subCategory && (
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-gray-600">หมวดหมู่ย่อย</p>
-                    <p className="font-medium text-sm">{report.subCategory}</p>
-                  </div>
-                )}
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600">รายการที่เลือก</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {report.selectedOptions.map((option, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="text-xs"
-                      >
-                        {option}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">ไฟล์แนบ</p>
-                  <p className="font-medium text-blue-600">
-                    {report.attachment.length} ไฟล์
-                  </p>
-                </div>
-              </div>
+        {/* Chevron Right (Only show if not pending, since pending has buttons) */}
+        {report.status !== "pending" && (
+          <div className="flex-shrink-0 flex items-center text-slate-300 group-hover:text-indigo-400 transition-colors">
+            <ChevronRight className="w-5 h-5" />
+          </div>
+        )}
+      </div>
 
-              {report.status === "approved" && report.approvedDate && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                  <p className="text-sm text-green-800">
-                    <strong>อนุมัติเมื่อ:</strong>{" "}
-                    {format(report.approvedDate, "dd MMMM yyyy HH:mm", {
-                      locale: th,
-                    })}
-                  </p>
-                  <p className="text-sm text-green-800">
-                    <strong>อนุมัติโดย:</strong> {report.approvedBy}
-                  </p>
-                  {report.adminNote && (
-                    <p className="text-sm text-green-800 mt-1">
-                      <strong>หมายเหตุ:</strong> {report.adminNote}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {report.status === "rejected" && report.adminNote && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
-                  <p className="text-sm text-red-800">
-                    <strong>เหตุผลที่ไม่อนุมัติ:</strong> {report.adminNote}
-                  </p>
-                  <p className="text-sm text-red-800">
-                    <strong>โดย:</strong> {report.approvedBy} เมื่อ{" "}
-                    {report.approvedDate &&
-                      format(report.approvedDate, "dd/MM/yyyy HH:mm")}
-                  </p>
-                </div>
-              )}
-
-              {report.status === "pending" && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
-                  <p className="text-sm text-yellow-800">
-                    🕐 รายงานนี้รอการพิจารณาอนุมัติ
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Action Bar for Pending Items or AI Insights */}
+      {(report.status === "pending" || (isSheOrManager && report.aiInsight)) && (
+        <div 
+          className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isSheOrManager && report.aiInsight && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+              onClick={onAiView}
+            >
+              <BrainCircuit className="w-3 h-3 mr-1.5" />
+              วิเคราะห์ AI
+            </Button>
+          )}
+          {report.status === "pending" && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                onClick={onReject}
+              >
+                ไม่อนุมัติ
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                onClick={onApprove}
+              >
+                <Check className="w-3 h-3 mr-1.5" />
+                อนุมัติ
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

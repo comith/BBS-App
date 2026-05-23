@@ -11,7 +11,7 @@ export default function FormLayout({
       <div className="flex flex-col w-full mx-auto mb-[50px] md:mb-0">
         {children}
       </div>
-      <MobileTabBar activeTab="form" />
+      <MobileTabBar activeTab="reports" />
      
     </div>
   )

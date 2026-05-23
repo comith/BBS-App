@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 import PayrollReportSummary from "./PayrollReportSummary";
 import { type Report } from "./types";
@@ -30,6 +31,30 @@ import { AiInsightDialog } from "./components/AiInsightDialog";
 import { ReportDetailModal } from "./components/ReportDetailModal";
 import { MaintenanceSettings } from "./components/MaintenanceSettings";
 import { AnalyticsTab } from "./components/AnalyticsTab";
+
+function InfiniteScrollTrigger({ onIntersect }: { onIntersect: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          onIntersect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [onIntersect]);
+
+  return (
+    <div ref={ref} className="w-full py-4 flex justify-center text-gray-400">
+      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+    </div>
+  );
+}
 
 function AdminDashboard() {
   const session = useEmployeeSession();
@@ -93,7 +118,7 @@ function AdminDashboard() {
       setApprovalError(null);
       setIsApprovalModalOpen(true);
     },
-    []
+    [],
   );
 
   const closeApprovalModal = useCallback(() => {
@@ -128,7 +153,7 @@ function AdminDashboard() {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.message || "Failed to update approval status"
+          errorData.message || "Failed to update approval status",
         );
       }
 
@@ -157,8 +182,8 @@ function AdminDashboard() {
                 approvedDate: new Date(result.data.approvedDate),
                 approvedBy: result.data.approvedBy,
               }
-            : report
-        )
+            : report,
+        ),
       );
       setIsApprovalModalOpen(false);
       setSelectedReport(null);
@@ -176,9 +201,7 @@ function AdminDashboard() {
     } catch (err) {
       console.error("❌ Error updating approval status:", err);
       setApprovalError(
-        err instanceof Error
-          ? err.message
-          : "เกิดข้อผิดพลาดในการอัพเดตสถานะ"
+        err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการอัพเดตสถานะ",
       );
     } finally {
       setIsSubmittingApproval(false);
@@ -219,8 +242,8 @@ function AdminDashboard() {
                 {error === "DB_ERROR"
                   ? "ไม่สามารถเชื่อมต่อฐานข้อมูลได้"
                   : error === "CONNECTION_FAILED"
-                  ? "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้"
-                  : error}
+                    ? "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้"
+                    : error}
               </p>
               <p className="text-red-500 text-sm mb-3">
                 {error === "DB_ERROR" || error === "CONNECTION_FAILED"
@@ -257,15 +280,36 @@ function AdminDashboard() {
           className="space-y-6"
         >
           <TabsList
-            className={`grid w-full ${
-              session.isMaintenanceAdmin ? "grid-cols-4" : "grid-cols-3"
-            }`}
+            className={cn(
+              "flex overflow-x-auto no-scrollbar w-full justify-start sm:h-full sm:grid bg-slate-100/80 backdrop-blur-md p-1.5 sm:p-2 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/60 shadow-sm",
+              session.isMaintenanceAdmin ? "sm:grid-cols-4" : "sm:grid-cols-3",
+            )}
           >
-            <TabsTrigger value="reports">รายงานทั้งหมด</TabsTrigger>
-            <TabsTrigger value="analytics">สถิติและรายงาน</TabsTrigger>
-            <TabsTrigger value="payroll">การจ่ายเงิน</TabsTrigger>
+            <TabsTrigger
+              value="reports"
+              className="rounded-xl px-5 py-2 sm:py-2.5 text-sm whitespace-nowrap min-w-fit"
+            >
+              รายงานทั้งหมด
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="rounded-xl px-5 py-2 sm:py-2.5 text-sm whitespace-nowrap min-w-fit"
+            >
+              สถิติและรายงาน
+            </TabsTrigger>
+            <TabsTrigger
+              value="payroll"
+              className="rounded-xl px-5 py-2 sm:py-2.5 text-sm whitespace-nowrap min-w-fit"
+            >
+              การจ่ายเงิน
+            </TabsTrigger>
             {session.isMaintenanceAdmin && (
-              <TabsTrigger value="system">จัดการระบบ</TabsTrigger>
+              <TabsTrigger
+                value="system"
+                className="rounded-xl px-5 py-2 sm:py-2.5 text-sm whitespace-nowrap min-w-fit"
+              >
+                จัดการระบบ
+              </TabsTrigger>
             )}
           </TabsList>
 
@@ -316,9 +360,7 @@ function AdminDashboard() {
                       isOpen={openAccordions.has(report.recordId)}
                       isSheOrManager={session.isSheOrManager}
                       onToggle={() => toggleAccordion(report.recordId)}
-                      onApprove={() =>
-                        handleApprovalAction("approve", report)
-                      }
+                      onApprove={() => handleApprovalAction("approve", report)}
                       onReject={() => handleApprovalAction("reject", report)}
                       onView={() => setSelectedReport(report)}
                       onAiView={() => setSelectedAiReport(report)}
@@ -326,18 +368,7 @@ function AdminDashboard() {
                   ))}
 
                   {filters.visibleCount < filters.filteredReports.length && (
-                    <div className="flex justify-center py-4">
-                      <Button
-                        variant="outline"
-                        onClick={filters.loadMore}
-                        className="flex items-center gap-2"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                        โหลดเพิ่ม (
-                        {filters.filteredReports.length - filters.visibleCount}{" "}
-                        รายการ)
-                      </Button>
-                    </div>
+                    <InfiniteScrollTrigger onIntersect={filters.loadMore} />
                   )}
                 </>
               )}
@@ -355,20 +386,14 @@ function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="payroll" className="space-y-4">
-            <Card className="py-4 px-0 md:p-6">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <DollarSign className="h-5 w-5" />
-                  <span>รายงานการจ่ายเงิน BBS</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4 px-2 md:p-6">
-                <PayrollReportSummary
-                  reports={reports}
-                  employeeList={employeeList}
-                />
-              </CardContent>
-            </Card>
+            <div className="flex items-center space-x-2 mb-2 px-1">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-lg font-semibold text-slate-800">รายงานการจ่ายเงิน BBS</h2>
+            </div>
+            <PayrollReportSummary
+              reports={reports}
+              employeeList={employeeList}
+            />
           </TabsContent>
 
           {session.isMaintenanceAdmin && (
@@ -394,10 +419,7 @@ function AdminDashboard() {
         onCancel={closeApprovalModal}
       />
 
-      <ImageViewer
-        image={viewingImage}
-        onClose={() => setViewingImage(null)}
-      />
+      <ImageViewer image={viewingImage} onClose={() => setViewingImage(null)} />
 
       <ReportDetailModal
         report={selectedReport}

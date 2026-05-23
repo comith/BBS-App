@@ -8,22 +8,24 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:14b';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { recordId, recordType, observedWork, departNotice } = body;
+    const { recordId, recordType, observedWork, departNotice, forceReanalyze } = body;
 
     if (!recordId) {
       return NextResponse.json({ error: 'Missing recordId' }, { status: 400 });
     }
 
     // 1. ตรวจสอบว่ามีข้อมูล Insight ในระบบแล้วหรือยัง
-    const existingInsight = await prisma.aiInsight.findFirst({
-      where: recordType === 'SHE' 
-        ? { recordSheId: recordId }
-        : { recordId: recordId },
-    });
+    if (!forceReanalyze) {
+      const existingInsight = await prisma.aiInsight.findFirst({
+        where: recordType === 'SHE' 
+          ? { recordSheId: recordId }
+          : { recordId: recordId },
+      });
 
-    // ถ้ามีแล้ว ส่งข้อมูลจาก Database กลับไปเลย (ลดการเรียก AI ซ้ำ)
-    if (existingInsight) {
-      return NextResponse.json(existingInsight);
+      // ถ้ามีแล้ว ส่งข้อมูลจาก Database กลับไปเลย (ลดการเรียก AI ซ้ำ)
+      if (existingInsight) {
+        return NextResponse.json(existingInsight);
+      }
     }
 
     // 2. ถ้ายังไม่มี ให้เตรียมข้อความส่งไปให้ Ollama AI

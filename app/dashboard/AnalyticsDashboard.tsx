@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,62 +55,102 @@ export function AnalyticsDashboard({
     stats,
     departmentList,
 }: AnalyticsDashboardProps) {
-    // Calculate current month reports
-    const currentMonthReports = reports.filter((r) => {
-        const reportDate = new Date(r.submittedDate);
+    const {
+        currentMonthCount,
+        safeCount,
+        unsafeCount,
+        nearMissCount,
+        categoryTotal,
+        countByEmployee,
+        countByDepartment,
+        topDepartment,
+        recentReports,
+    } = useMemo(() => {
         const now = new Date();
-        return (
-            reportDate.getMonth() === now.getMonth() &&
-            reportDate.getFullYear() === now.getFullYear()
-        );
-    });
+        const curMonth = now.getMonth();
+        const curYear = now.getFullYear();
 
-    // Calculate category counts
-    const safeCount = reports.filter((r) => r.safeCount > 0).length;
-    const unsafeCount = reports.filter((r) => r.unsafeCount > 0).length;
-    const nearMissCount = reports.filter((r) =>
-        r.safetyCategory?.toLowerCase().includes("near miss")
-    ).length;
-    const categoryTotal = safeCount + unsafeCount + nearMissCount || 1;
+        let currentMonthCount = 0;
+        let safeCount = 0;
+        let unsafeCount = 0;
+        let nearMissCount = 0;
+        const countByEmployee = new Map<string, number>();
+        const countByDepartment = new Map<string, number>();
+        const approved: Report[] = [];
 
-    // Top contributors
-    const topContributors = employeeList
-        .map((emp) => {
-            // Handle both employeeId and employeerId fields
-            const empId = emp.employeeId || emp.employeerId || '';
-            const reportCount = reports.filter((r) => {
-                const reportEmpId = r.employeeId || r.employeerId || '';
-                return reportEmpId === empId;
-            }).length;
+        for (const r of reports) {
+            const d = new Date(r.submittedDate);
+            if (d.getMonth() === curMonth && d.getFullYear() === curYear) {
+                currentMonthCount++;
+            }
+            if (r.safeCount > 0) safeCount++;
+            if (r.unsafeCount > 0) unsafeCount++;
+            if (r.safetyCategory?.toLowerCase().includes("near miss")) {
+                nearMissCount++;
+            }
 
-            return {
-                ...emp,
-                employeeId: empId, // Normalize to employeeId
-                reportCount,
-            };
-        })
-        .filter(emp => emp.reportCount > 0) // Only show employees with reports
-        .sort((a, b) => b.reportCount - a.reportCount)
-        .slice(0, 5);
+            const empId = r.employeeId || r.employeerId || "";
+            if (empId) {
+                countByEmployee.set(empId, (countByEmployee.get(empId) ?? 0) + 1);
+            }
+            countByDepartment.set(
+                r.department,
+                (countByDepartment.get(r.department) ?? 0) + 1
+            );
 
-    // Recent approved reports
-    const recentReports = reports
-        .filter((r) => r.status === "approved")
-        .sort(
-            (a, b) =>
-                new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()
-        )
-        .slice(0, 5);
+            if (r.status === "approved") approved.push(r);
+        }
 
-    // Top performing department
-    const topDepartment =
-        departmentList.length > 0
-            ? departmentList.reduce((best, dept) => {
-                const count = reports.filter((r) => r.department === dept).length;
-                const bestCount = reports.filter((r) => r.department === best).length;
-                return count > bestCount ? dept : best;
-            }, departmentList[0])
-            : "-";
+        let topDepartment = "-";
+        let topCount = -1;
+        for (const [dept, count] of countByDepartment) {
+            if (count > topCount) {
+                topCount = count;
+                topDepartment = dept;
+            }
+        }
+
+        const recentReports = approved
+            .sort(
+                (a, b) =>
+                    new Date(b.submittedDate).getTime() -
+                    new Date(a.submittedDate).getTime()
+            )
+            .slice(0, 5);
+
+        return {
+            currentMonthCount,
+            safeCount,
+            unsafeCount,
+            nearMissCount,
+            categoryTotal: safeCount + unsafeCount + nearMissCount || 1,
+            countByEmployee,
+            countByDepartment,
+            topDepartment,
+            recentReports,
+        };
+    }, [reports]);
+
+    const topContributors = useMemo(() => {
+        return employeeList
+            .map((emp) => {
+                const empId = emp.employeeId || emp.employeerId || "";
+                return {
+                    ...emp,
+                    employeeId: empId,
+                    reportCount: countByEmployee.get(empId) ?? 0,
+                };
+            })
+            .filter((emp) => emp.reportCount > 0)
+            .sort((a, b) => b.reportCount - a.reportCount)
+            .slice(0, 5);
+    }, [employeeList, countByEmployee]);
+
+    const maxDeptCount = useMemo(() => {
+        let max = 0;
+        for (const c of countByDepartment.values()) if (c > max) max = c;
+        return max || 1;
+    }, [countByDepartment]);
 
     return (
         <div className="space-y-6">
@@ -123,7 +164,7 @@ export function AnalyticsDashboard({
                                     รายงานเดือนนี้
                                 </p>
                                 <p className="text-3xl font-bold text-blue-600 mt-2">
-                                    {currentMonthReports.length}
+                                    {currentMonthCount}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
                                     +{Math.round(Math.random() * 20)}% จากเดือนที่แล้ว
@@ -284,27 +325,20 @@ export function AnalyticsDashboard({
                     <CardContent>
                         <div className="space-y-3">
                             {departmentList.slice(0, 6).map((dept) => {
-                                const deptReports = reports.filter((r) => r.department === dept);
-                                const maxReports = Math.max(
-                                    ...departmentList.map(
-                                        (d) => reports.filter((r) => r.department === d).length
-                                    )
-                                );
-
+                                const count = countByDepartment.get(dept) ?? 0;
                                 return (
                                     <div key={dept} className="space-y-1">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-700 font-medium">{dept}</span>
                                             <span className="text-gray-600">
-                                                {deptReports.length} รายงาน
+                                                {count} รายงาน
                                             </span>
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-3">
                                             <div
                                                 className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
                                                 style={{
-                                                    width: `${(deptReports.length / (maxReports || 1)) * 100
-                                                        }%`,
+                                                    width: `${(count / maxDeptCount) * 100}%`,
                                                 }}
                                             ></div>
                                         </div>

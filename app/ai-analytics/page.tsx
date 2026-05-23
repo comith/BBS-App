@@ -15,9 +15,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LabelList
 } from "recharts";
+import { useRouter } from "next/navigation";
 import {
   BrainCircuit, TrendingUp, AlertTriangle, ShieldAlert, Activity,
-  ArrowUpRight, Sparkles, RefreshCw, DatabaseZap, Search, Check, ChevronsUpDown
+  ArrowUpRight, Sparkles, RefreshCw, DatabaseZap, Search, Check, ChevronsUpDown, Clock, ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -89,8 +90,41 @@ export default function AiAnalyticsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [openCategoryFilter, setOpenCategoryFilter] = useState(false);
+  const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
   const itemsPerPage = 10;
   const { success, error: toastError } = useToast();
+  const router = useRouter();
+
+  const handleReanalyze = async (insight: any) => {
+    if (!insight.recordId) {
+      toastError('เกิดข้อผิดพลาด', 'ไม่พบรหัสข้อมูลต้นฉบับ ไม่สามารถวิเคราะห์ใหม่ได้');
+      return;
+    }
+
+    setReanalyzingId(insight.id);
+    try {
+      const res = await fetch('/api/ai-evaluation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordId: insight.recordId,
+          recordType: insight.recordType,
+          observedWork: insight.observedWork,
+          departNotice: insight.departNotice,
+          forceReanalyze: true
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to re-analyze');
+      
+      success('วิเคราะห์ใหม่สำเร็จ', 'อัปเดตผลการวิเคราะห์เรียบร้อยแล้ว');
+      fetchData(); // Refresh table
+    } catch (err: any) {
+      toastError('วิเคราะห์ใหม่ล้มเหลว', err.message || 'เกิดข้อผิดพลาดในการวิเคราะห์');
+    } finally {
+      setReanalyzingId(null);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -189,24 +223,27 @@ export default function AiAnalyticsDashboard() {
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-inner">
-                <BrainCircuit className="h-8 w-8 text-white" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="-ml-2 hover:bg-slate-100">
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </Button>
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl shadow-inner hidden sm:flex">
+                <BrainCircuit className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
                   AI Safety Analytics
-                  <Badge variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50">Live</Badge>
+                  <Badge variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50 text-xs sm:text-sm hidden sm:flex">Live</Badge>
                 </h1>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-gray-500 text-xs sm:text-sm mt-1 hidden sm:block">
                   ระบบประเมินและคาดการณ์ความเสี่ยงด้วยปัญญาประดิษฐ์ (ข้อมูลจริงจาก Ollama AI)
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-start">
               <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-36 bg-white">
+                <SelectTrigger className="w-[140px] sm:w-36 bg-white shrink-0">
                   <SelectValue placeholder="ช่วงเวลา" />
                 </SelectTrigger>
                 <SelectContent>
@@ -216,42 +253,64 @@ export default function AiAnalyticsDashboard() {
                   <SelectItem value="1y">1 ปีที่ผ่านมา</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex flex-col items-end gap-2">
-                <Button
-                  variant="default"
-                  onClick={handleBatchProcess}
-                  disabled={isProcessing || loading}
-                  className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"
-                >
-                  <BrainCircuit className={`h-4 w-4 ${isProcessing ? 'animate-pulse' : ''}`} />
-                  {isProcessing ? 'กำลังวิเคราะห์ด้วย AI...' : 'วิเคราะห์ข้อมูลที่เหลือทั้งหมด'}
-                </Button>
+              
+              <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2">
+                <div className="flex flex-row gap-2 shrink-0">
+                  <Button
+                    variant="default"
+                    onClick={handleBatchProcess}
+                    disabled={isProcessing || loading}
+                    className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4"
+                    title="วิเคราะห์ข้อมูลที่เหลือทั้งหมด"
+                  >
+                    <BrainCircuit className={`h-4 w-4 ${isProcessing ? 'animate-pulse' : ''}`} />
+                    <span className="hidden sm:inline">
+                      {isProcessing ? 'กำลังวิเคราะห์ด้วย AI...' : 'วิเคราะห์ข้อมูลที่เหลือทั้งหมด'}
+                    </span>
+                  </Button>
 
-                {progress.show && (
-                  <div className="w-full text-right mt-1">
-                    <div className="flex justify-between text-xs text-gray-500 mb-1 font-medium">
-                      <span>กำลังดำเนินการ...</span>
-                      <span>{progress.current} / {progress.total > 0 ? progress.total : '?'} รายการ</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 w-48 ml-auto">
-                      <div
-                        className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
-                        style={{ width: `${progress.total > 0 ? Math.min((progress.current / progress.total) * 100, 100) : 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
+                  <Button
+                    variant="outline"
+                    onClick={fetchData}
+                    disabled={loading || isProcessing}
+                    className="gap-2 px-3 sm:px-4"
+                    title="รีเฟรชข้อมูล"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">รีเฟรชข้อมูล</span>
+                  </Button>
+                </div>
+
+                <div className="hidden sm:block w-full text-right mt-1">
+                  {progress.show ? (
+                    <>
+                      <div className="flex justify-between text-xs text-gray-500 mb-1 font-medium">
+                        <span>กำลังดำเนินการ...</span>
+                        <span>{progress.current} / {progress.total > 0 ? progress.total : '?'} รายการ</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 w-48 ml-auto">
+                        <div
+                          className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${progress.total > 0 ? Math.min((progress.current / progress.total) * 100, 100) : 0}%` }}
+                        ></div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-xs text-gray-500 mb-1 font-medium">
+                        <span>วิเคราะห์แล้ว</span>
+                        <span>{kpis?.totalProcessed || 0} / {kpis?.totalReports || 0} รายการ</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 w-48 ml-auto">
+                        <div
+                          className="bg-indigo-400 h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${(kpis?.totalReports || 0) > 0 ? Math.min(((kpis?.totalProcessed || 0) / (kpis?.totalReports || 1)) * 100, 100) : 0}%` }}
+                        ></div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-
-              <Button
-                variant="outline"
-                onClick={fetchData}
-                disabled={loading || isProcessing}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                รีเฟรชข้อมูล
-              </Button>
             </div>
           </div>
         </div>
@@ -647,7 +706,8 @@ export default function AiAnalyticsDashboard() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>วันที่รายงาน</TableHead>
@@ -694,7 +754,15 @@ export default function AiAnalyticsDashboard() {
                                 ผลการวิเคราะห์จาก AI
                               </DialogTitle>
                               <DialogDescription>
-                                รายงานวันที่ {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'} โดย {insight.employeeId} ({insight.group})
+                                <span className="block mb-1">
+                                  รายงานวันที่ {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'} โดย {insight.employeeId} ({insight.group})
+                                </span>
+                                {insight.createdAt && (
+                                  <span className="flex items-center gap-1 text-indigo-600">
+                                    <Clock className="w-3 h-3" />
+                                    <span>วิเคราะห์เมื่อ: {new Date(insight.createdAt).toLocaleString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </span>
+                                )}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
@@ -739,6 +807,17 @@ export default function AiAnalyticsDashboard() {
                                 <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
                               </div>
                             </div>
+                            <div className="flex justify-between items-center mt-6">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleReanalyze(insight)}
+                                disabled={reanalyzingId === insight.id}
+                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                              >
+                                <RefreshCw className={`mr-2 h-4 w-4 ${reanalyzingId === insight.id ? 'animate-spin' : ''}`} />
+                                {reanalyzingId === insight.id ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ใหม่'}
+                              </Button>
+                            </div>
                           </DialogContent>
                         </Dialog>
                       </TableCell>
@@ -746,6 +825,7 @@ export default function AiAnalyticsDashboard() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination Controls */}
               {filteredInsights.length > 0 && (

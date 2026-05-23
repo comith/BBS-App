@@ -27,6 +27,7 @@ export interface ApiReport {
   approvedDate?: string;
   approvedBy?: string;
   comment?: string;
+  aiInsight?: any;
 }
 
 export interface Report {
@@ -59,6 +60,7 @@ export interface Report {
   actionTypeunsafe?: string;
   other?: string;
   comment?: string;
+  aiInsight?: any;
 }
 
 export const getStatusInfo = (status: string) => {
@@ -187,6 +189,7 @@ export const transformApiDataToDashboardReport = (
       actionTypeunsafe: item.actionTypeunsafe || "",
       other: item.other || "",
       comment: item.comment || "",
+      aiInsight: item.aiInsight || null,
     };
   });
 };

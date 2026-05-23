@@ -59,62 +59,99 @@ export const IndividualReportSummary = React.memo(({ reports }: { reports: Repor
     });
   }, [reports, selectedMonth]);
 
+  type IndividualStat = {
+    employeeId: string;
+    employeeName: string;
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    totalSafe: number;
+    totalUnsafe: number;
+  };
+
   const individualSummary = useMemo(() => {
-    const individuals = [...new Set(ithOeReports.map((r) => r.employeeId))];
-    return individuals
-      .map((employeeId) => {
-        const employeeReports = ithOeReports.filter((r) => r.employeeId === employeeId);
-        return {
-          employeeId,
-          employeeName: employeeReports[0]?.employeeName || employeeId,
-          total: employeeReports.length,
-          approved: employeeReports.filter((r) => r.status === "approved").length,
-          pending: employeeReports.filter((r) => r.status === "pending").length,
-          rejected: employeeReports.filter((r) => r.status === "rejected").length,
-          totalSafe: employeeReports.reduce((sum, r) => sum + r.safeCount, 0),
-          totalUnsafe: employeeReports.reduce((sum, r) => sum + r.unsafeCount, 0),
-          approvalRate:
-            employeeReports.length > 0
-              ? Math.round(
-                  (employeeReports.filter((r) => r.status === "approved").length /
-                    employeeReports.length) *
-                    100
-                )
-              : 0,
+    const byEmp = new Map<string, IndividualStat>();
+    for (const r of ithOeReports) {
+      let s = byEmp.get(r.employeeId);
+      if (!s) {
+        s = {
+          employeeId: r.employeeId,
+          employeeName: r.employeeName || r.employeeId,
+          total: 0,
+          approved: 0,
+          pending: 0,
+          rejected: 0,
+          totalSafe: 0,
+          totalUnsafe: 0,
         };
-      })
+        byEmp.set(r.employeeId, s);
+      }
+      s.total++;
+      if (r.status === "approved") s.approved++;
+      else if (r.status === "pending") s.pending++;
+      else if (r.status === "rejected") s.rejected++;
+      s.totalSafe += r.safeCount;
+      s.totalUnsafe += r.unsafeCount;
+    }
+
+    return [...byEmp.values()]
+      .map((s) => ({
+        ...s,
+        approvalRate:
+          s.total > 0 ? Math.round((s.approved / s.total) * 100) : 0,
+      }))
       .sort((a, b) => b.total - a.total);
   }, [ithOeReports]);
 
   const weeklySummary = useMemo(() => {
     const weeks = getWeeksInMonth(selectedMonth);
-    const individuals = [...new Set(ithOeReports.map((r) => r.employeeId))];
+    const weekBounds = weeks.map((w) => ({
+      start: startOfDay(w.start).getTime(),
+      end: endOfDay(w.end).getTime(),
+    }));
 
-    return weeks.map((week) => {
-      const weekReports = ithOeReports.filter((r) => {
-        const d = startOfDay(r.submittedDate);
-        return d >= startOfDay(week.start) && d <= endOfDay(week.end);
-      });
+    const perWeek = weeks.map(() => ({
+      total: 0,
+      byEmp: new Map<string, IndividualStat>(),
+    }));
 
-      const individualStats = individuals
-        .map((employeeId) => {
-          const employeeReports = weekReports.filter((r) => r.employeeId === employeeId);
-          return {
-            employeeId,
-            employeeName:
-              ithOeReports.find((r) => r.employeeId === employeeId)?.employeeName || employeeId,
-            total: employeeReports.length,
-            approved: employeeReports.filter((r) => r.status === "approved").length,
-            pending: employeeReports.filter((r) => r.status === "pending").length,
-            rejected: employeeReports.filter((r) => r.status === "rejected").length,
-            totalSafe: employeeReports.reduce((sum, r) => sum + r.safeCount, 0),
-            totalUnsafe: employeeReports.reduce((sum, r) => sum + r.unsafeCount, 0),
-          };
-        })
-        .filter((s) => s.total > 0);
+    for (const r of ithOeReports) {
+      const t = startOfDay(r.submittedDate).getTime();
+      for (let i = 0; i < weekBounds.length; i++) {
+        if (t >= weekBounds[i].start && t <= weekBounds[i].end) {
+          const slot = perWeek[i];
+          slot.total++;
+          let s = slot.byEmp.get(r.employeeId);
+          if (!s) {
+            s = {
+              employeeId: r.employeeId,
+              employeeName: r.employeeName || r.employeeId,
+              total: 0,
+              approved: 0,
+              pending: 0,
+              rejected: 0,
+              totalSafe: 0,
+              totalUnsafe: 0,
+            };
+            slot.byEmp.set(r.employeeId, s);
+          }
+          s.total++;
+          if (r.status === "approved") s.approved++;
+          else if (r.status === "pending") s.pending++;
+          else if (r.status === "rejected") s.rejected++;
+          s.totalSafe += r.safeCount;
+          s.totalUnsafe += r.unsafeCount;
+          break;
+        }
+      }
+    }
 
-      return { ...week, totalReports: weekReports.length, individualStats };
-    });
+    return weeks.map((week, i) => ({
+      ...week,
+      totalReports: perWeek[i].total,
+      individualStats: [...perWeek[i].byEmp.values()],
+    }));
   }, [ithOeReports, selectedMonth]);
 
   const changeMonth = (direction: "prev" | "next") => {

@@ -119,54 +119,97 @@ export const MonthlyReportSummary = React.memo(({ reports }: { reports: Report[]
     const weeks = getWeeksInMonth(selectedMonth);
     const groups = [...new Set(monthlyReports.map((r) => r.group))].sort();
 
-    return weeks.map((week) => {
-      const weekReports = monthlyReports.filter((report) => {
-        const reportDate = startOfDay(report.submittedDate);
-        return reportDate >= startOfDay(week.start) && reportDate <= endOfDay(week.end);
-      });
+    const weekBounds = weeks.map((w) => ({
+      start: startOfDay(w.start).getTime(),
+      end: endOfDay(w.end).getTime(),
+    }));
 
-      const groupStats = groups.map((group) => {
-        const groupReports = weekReports.filter((r) => r.group === group);
-        return {
-          group,
-          total: groupReports.length,
-          approved: groupReports.filter((r) => r.status === "approved").length,
-          pending: groupReports.filter((r) => r.status === "pending").length,
-          rejected: groupReports.filter((r) => r.status === "rejected").length,
-        };
-      });
-
-      return { ...week, totalReports: weekReports.length, groupStats };
+    type GroupStat = {
+      group: string;
+      total: number;
+      approved: number;
+      pending: number;
+      rejected: number;
+    };
+    const emptyStat = (group: string): GroupStat => ({
+      group,
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
     });
+
+    const perWeek = weeks.map(() => {
+      const m = new Map<string, GroupStat>();
+      for (const g of groups) m.set(g, emptyStat(g));
+      return { total: 0, byGroup: m };
+    });
+
+    for (const r of monthlyReports) {
+      const t = startOfDay(r.submittedDate).getTime();
+      for (let i = 0; i < weekBounds.length; i++) {
+        if (t >= weekBounds[i].start && t <= weekBounds[i].end) {
+          const slot = perWeek[i];
+          slot.total++;
+          const gs = slot.byGroup.get(r.group);
+          if (gs) {
+            gs.total++;
+            if (r.status === "approved") gs.approved++;
+            else if (r.status === "pending") gs.pending++;
+            else if (r.status === "rejected") gs.rejected++;
+          }
+          break;
+        }
+      }
+    }
+
+    return weeks.map((week, i) => ({
+      ...week,
+      totalReports: perWeek[i].total,
+      groupStats: [...perWeek[i].byGroup.values()],
+    }));
   }, [monthlyReports, selectedMonth]);
 
   const monthlyStats = useMemo(() => {
-    const groups = [...new Set(monthlyReports.map((r) => r.group))].sort();
+    const byGroup = new Map<
+      string,
+      { total: number; approved: number; pending: number; rejected: number }
+    >();
+    let totalApproved = 0;
+    let totalPending = 0;
+    let totalRejected = 0;
+
+    for (const r of monthlyReports) {
+      if (r.status === "approved") totalApproved++;
+      else if (r.status === "pending") totalPending++;
+      else if (r.status === "rejected") totalRejected++;
+
+      let g = byGroup.get(r.group);
+      if (!g) {
+        g = { total: 0, approved: 0, pending: 0, rejected: 0 };
+        byGroup.set(r.group, g);
+      }
+      g.total++;
+      if (r.status === "approved") g.approved++;
+      else if (r.status === "pending") g.pending++;
+      else if (r.status === "rejected") g.rejected++;
+    }
+
+    const groupSummary = [...byGroup.entries()]
+      .map(([group, s]) => ({
+        group,
+        ...s,
+        approvalRate:
+          s.total > 0 ? Math.round((s.approved / s.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
     return {
       totalReports: monthlyReports.length,
-      totalApproved: monthlyReports.filter((r) => r.status === "approved").length,
-      totalPending: monthlyReports.filter((r) => r.status === "pending").length,
-      totalRejected: monthlyReports.filter((r) => r.status === "rejected").length,
-      groupSummary: groups
-        .map((group) => {
-          const groupReports = monthlyReports.filter((r) => r.group === group);
-          return {
-            group,
-            total: groupReports.length,
-            approved: groupReports.filter((r) => r.status === "approved").length,
-            pending: groupReports.filter((r) => r.status === "pending").length,
-            rejected: groupReports.filter((r) => r.status === "rejected").length,
-            approvalRate:
-              groupReports.length > 0
-                ? Math.round(
-                  (groupReports.filter((r) => r.status === "approved").length /
-                    groupReports.length) *
-                  100
-                )
-                : 0,
-          };
-        })
-        .sort((a, b) => b.total - a.total),
+      totalApproved,
+      totalPending,
+      totalRejected,
+      groupSummary,
     };
   }, [monthlyReports]);
 

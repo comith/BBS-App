@@ -149,10 +149,13 @@ export async function GET() {
       recommendations: insight.recommendations || [],
       predictiveWarning: insight.predictiveWarning || '-',
       createdAt: insight.createdAt,
-      recordDate: insight.record?.date || insight.recordShe?.date || '-',
-      employeeId: insight.record?.employeeId || insight.recordShe?.employeeId || '-',
-      group: insight.recordShe?.group || insight.record?.departNotice || '-',
-      observedWork: insight.record?.observedWork || insight.recordShe?.observedWork || '-',
+      recordDate: insight.recordShe?.date || insight.record?.date || null,
+      employeeId: insight.recordShe?.employeeId || insight.record?.employeeId || 'Unknown',
+      group: insight.recordShe?.group || insight.record?.departNotice || 'Unknown',
+      observedWork: insight.recordShe?.observedWork || insight.record?.observedWork || '-',
+      recordId: insight.recordSheId || insight.recordId,
+      recordType: insight.recordSheId ? 'SHE' : 'BBS',
+      departNotice: insight.recordShe?.departNotice || insight.record?.departNotice || '',
     }));
 
     return NextResponse.json({

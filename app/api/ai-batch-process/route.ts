@@ -4,6 +4,31 @@ import { prisma } from '@/lib/prisma';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5-coder:14b';
 
+// กรองอักษรต่างดาว (combining marks จากภาษาอื่น เช่น Arabic/Hebrew) ที่ AI มักแทรกมาปนกับข้อความไทย
+// เก็บเฉพาะ: Thai block (U+0E00-U+0E7F), ASCII printable, Latin-1 Supplement, whitespace
+function sanitizeText(text: unknown): any {
+  if (typeof text !== 'string') return text;
+  return text
+    .normalize('NFC')
+    .replace(/[^฀-๿ -~ -ÿ\n\r\t]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function sanitizeInsight(insight: any) {
+  return {
+    category: sanitizeText(insight.category),
+    ai_severity_score: typeof insight.ai_severity_score === 'number'
+      ? insight.ai_severity_score
+      : parseFloat(insight.ai_severity_score) || 0,
+    root_cause_analysis: sanitizeText(insight.root_cause_analysis),
+    recommendations: Array.isArray(insight.recommendations)
+      ? insight.recommendations.map(sanitizeText).filter((s: string) => s && s.length > 0)
+      : [],
+    predictive_warning: sanitizeText(insight.predictive_warning),
+  };
+}
+
 async function analyzeWithOllama(observedWork: string, departNotice: string) {
   const prompt = `
 คุณคือผู้เชี่ยวชาญด้านความปลอดภัยในโรงงานอุตสาหกรรม (Safety Officer Expert)
@@ -90,13 +115,29 @@ export async function POST(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const totalPending = unprocessedBBS.length + unprocessedSHE.length;
+    const pendingBBSCount = await prisma.record.count({
+      where: {
+        aiInsight: null,
+        observedWork: { not: null },
+      }
+    });
+
+    const pendingSHECount = await prisma.recordShe.count({
+      where: {
+        aiInsight: null,
+        observedWork: { not: null },
+      }
+    });
+
+    const totalPending = pendingBBSCount + pendingSHECount;
+    const batchTotal = unprocessedBBS.length + unprocessedSHE.length;
 
     if (totalPending === 0) {
       return NextResponse.json({
         message: 'ไม่มีรายงานที่ต้องวิเคราะห์เพิ่มเติม (ทุกรายงานถูก AI ประมวลผลหมดแล้ว)',
         processed: 0,
         errors: 0,
+        totalPending: 0
       });
     }
 
@@ -132,7 +173,7 @@ export async function POST(req: Request) {
         });
 
         processed++;
-        console.log(`✅ [BBS] Processed ${record.id} (${processed}/${totalPending})`);
+        console.log(`✅ [BBS] Processed ${record.id} (${processed}/${batchTotal})`);
       } catch (err: any) {
         errors++;
         errorDetails.push(`BBS ${record.id}: ${err.message}`);
@@ -168,7 +209,7 @@ export async function POST(req: Request) {
         });
 
         processed++;
-        console.log(`✅ [SHE] Processed ${record.id} (${processed}/${totalPending})`);
+        console.log(`✅ [SHE] Processed ${record.id} (${processed}/${batchTotal})`);
       } catch (err: any) {
         errors++;
         errorDetails.push(`SHE ${record.id}: ${err.message}`);

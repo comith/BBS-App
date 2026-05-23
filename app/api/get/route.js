@@ -29,6 +29,7 @@ function recordToApiFormat(r) {
     adminNote: r.adminNote || null,
     approvedDate: r.approvedDate ? r.approvedDate.toISOString() : null,
     approvedBy: r.approvedBy || null,
+    aiInsight: r.aiInsight || null,
   }
 }
 
@@ -59,6 +60,7 @@ export async function GET(request) {
           : {}
         const records = await prisma.record.findMany({
           where,
+          include: { aiInsight: true },
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * limit,
           take: limit,

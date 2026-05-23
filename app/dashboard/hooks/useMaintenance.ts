@@ -17,7 +17,16 @@ interface SaveMessage {
 
 const toDatetimeLocal = (iso?: string | null) => {
   if (!iso) return "";
-  return new Date(iso).toISOString().slice(0, 16);
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  // Force conversion to UTC+7 (Thailand)
+  const thTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  const yyyy = thTime.getUTCFullYear();
+  const mm = String(thTime.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(thTime.getUTCDate()).padStart(2, "0");
+  const hh = String(thTime.getUTCHours()).padStart(2, "0");
+  const min = String(thTime.getUTCMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 };
 
 export interface MaintenanceState {
@@ -78,6 +87,13 @@ export function useMaintenance(isMaintenanceAdmin: boolean): MaintenanceState {
     setIsSaving(true);
     if (saveMsgTimeoutRef.current) clearTimeout(saveMsgTimeoutRef.current);
     try {
+      const getISO = (localStr: string) => {
+        if (!localStr) return null;
+        // Append +07:00 to ensure it is always treated as Thailand time
+        const d = new Date(`${localStr}:00+07:00`);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+      };
+
       const res = await fetch("/api/maintenance", {
         method: "POST",
         headers: {
@@ -86,8 +102,8 @@ export function useMaintenance(isMaintenanceAdmin: boolean): MaintenanceState {
         },
         body: JSON.stringify({
           isActive: maintenanceSetting.isActive,
-          startTime: maintenanceSetting.startTime || null,
-          endTime: maintenanceSetting.endTime || null,
+          startTime: getISO(maintenanceSetting.startTime),
+          endTime: getISO(maintenanceSetting.endTime),
           message: maintenanceSetting.message || null,
         }),
       });

@@ -27,6 +27,7 @@ export async function POST(request: Request) {
 
   try {
     const { isActive, startTime, endTime, message } = await request.json()
+    console.log("Maintenance API received payload:", { isActive, startTime, endTime, message })
 
     const setting = await prisma.maintenanceSetting.upsert({
       where: { id: 1 },

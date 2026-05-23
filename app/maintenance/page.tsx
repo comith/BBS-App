@@ -11,8 +11,10 @@ interface MaintenanceData {
 }
 
 function formatThaiDateTime(iso?: string) {
+  console.log("iso", iso);
   if (!iso) return "-";
   return new Date(iso).toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -62,7 +64,7 @@ export default function MaintenancePage() {
       const m = Math.floor((diff % 3_600_000) / 60_000);
       const s = Math.floor((diff % 60_000) / 1_000);
       setTimeLeft(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`,
       );
     };
 

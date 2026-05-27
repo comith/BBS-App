@@ -421,6 +421,88 @@ export function usePayrollData(
         };
       });
 
+    // Deduplicate employees appearing in multiple groups (especially 2EN supervisors)
+    // to prevent duplicate payments or missing out.
+    const employeeGroupMap = new Map<
+      string,
+      {
+        deptIndex: number;
+        groupIndex: number;
+        isEligible: boolean;
+        hasShePenalty: boolean;
+      }[]
+    >();
+
+    departmentResults.forEach((dept, dIdx) => {
+      dept.subGroups.forEach((group, gIdx) => {
+        group.employees.forEach((emp) => {
+          if (!employeeGroupMap.has(emp.employeeId)) {
+            employeeGroupMap.set(emp.employeeId, []);
+          }
+          employeeGroupMap.get(emp.employeeId)!.push({
+            deptIndex: dIdx,
+            groupIndex: gIdx,
+            isEligible: group.isEligible,
+            hasShePenalty: emp.hasShePenalty,
+          });
+        });
+      });
+    });
+
+    employeeGroupMap.forEach((occurrences, empId) => {
+      if (occurrences.length > 1) {
+        let bestIndex = 0;
+        let bestScore = -1;
+
+        // Find the absolute best group for this employee
+        for (let i = 0; i < occurrences.length; i++) {
+          const occ = occurrences[i];
+          const group =
+            departmentResults[occ.deptIndex].subGroups[occ.groupIndex];
+          
+          let score = 0;
+          if (group.isEligible) score += 100000;
+          if (!occ.hasShePenalty) score += 10000;
+          
+          // Tie-breaker: choose the group with more overall BBS activity
+          score += group.totalBbsCount;
+          
+          if (score > bestScore) {
+            bestScore = score;
+            bestIndex = i;
+          }
+        }
+
+        // Keep the best one, remove from others
+        for (let i = 0; i < occurrences.length; i++) {
+          if (i !== bestIndex) {
+            const occ = occurrences[i];
+            const group =
+              departmentResults[occ.deptIndex].subGroups[occ.groupIndex];
+            group.employees = group.employees.filter(
+              (e) => e.employeeId !== empId
+            );
+          }
+        }
+        
+        if (empId.startsWith("2EN")) {
+          console.log(`[DEDUP DEBUG] Employee ${empId} occurrences: ${occurrences.length}`);
+          for (let i = 0; i < occurrences.length; i++) {
+            const occ = occurrences[i];
+            const group = departmentResults[occ.deptIndex].subGroups[occ.groupIndex];
+            console.log(`  Group ${group.name} | isEligible: ${group.isEligible} | bbs: ${group.totalBbsCount} | Chosen: ${i === bestIndex}`);
+          }
+        }
+      }
+    });
+
+    // Re-calculate total employees after deduplication
+    departmentResults.forEach((dept) => {
+      dept.subGroups.forEach((group) => {
+        group.totalEmployees = group.employees.length;
+      });
+    });
+
     departmentResults.sort((a, b) =>
       a.departmentName.localeCompare(b.departmentName)
     );

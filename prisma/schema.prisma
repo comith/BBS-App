@@ -43,32 +43,32 @@ model NotificationLog {
 // BBS Records
 // =============================================
 model Record {
-  id               String   @id // BBS_${timestamp}
-  date             String?
-  employeeId       String?
-  username         String?
-  group            String?
-  type             String?
-  safetyCategory   String?
+  id                String    @id // BBS_${timestamp}
+  date              String?
+  employeeId        String?
+  username          String?
+  group             String?
+  type              String?
+  safetyCategory    String?
   subSafetyCategory String?
-  observedWork     String?
-  departNotice     String?
-  vehicleEquipment Json?
-  selectedOptions  String?  // comma separated
-  safeActionCount  Int      @default(0)
-  actionType       String?
-  unsafeActionCount Int     @default(0)
-  actionTypeUnsafe String?
-  attachment       Json?    // array of { id, name, webViewLink, savedDate }
-  other            String?
-  status           String   @default("pending") // 'pending' | 'approved' | 'rejected'
-  adminNote        String?
-  approvedDate     DateTime?
-  approvedBy       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  observedWork      String?
+  departNotice      String?
+  vehicleEquipment  Json?
+  selectedOptions   String? // comma separated
+  safeActionCount   Int       @default(0)
+  actionType        String?
+  unsafeActionCount Int       @default(0)
+  actionTypeUnsafe  String?
+  attachment        Json? // array of { id, name, webViewLink, savedDate }
+  other             String?
+  status            String    @default("pending") // 'pending' | 'approved' | 'rejected'
+  adminNote         String?
+  approvedDate      DateTime?
+  approvedBy        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  aiInsight        AiInsight?
+  aiInsight AiInsight?
 
   @@index([createdAt(sort: Desc)])
   @@index([date])
@@ -80,30 +80,30 @@ model Record {
 // SHE Records (extends Record with extra fields)
 // =============================================
 model RecordShe {
-  id               String   @id // same BBS_${timestamp} as Record
-  date             String?
-  employeeId       String?
-  username         String?
-  group            String?
-  type             String?
-  safetyCategory   String?
+  id                String   @id // same BBS_${timestamp} as Record
+  date              String?
+  employeeId        String?
+  username          String?
+  group             String?
+  type              String?
+  safetyCategory    String?
   subSafetyCategory String?
-  observedWork     String?
-  departNotice     String?
-  vehicleEquipment Json?
-  selectedOptions  String?
-  safeActionCount  Int      @default(0)
-  actionType       String?
-  unsafeActionCount Int     @default(0)
-  actionTypeUnsafe String?
-  attachment       Json?
-  other            String?
-  codeEmployee     String?
-  levelOfSafety    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  observedWork      String?
+  departNotice      String?
+  vehicleEquipment  Json?
+  selectedOptions   String?
+  safeActionCount   Int      @default(0)
+  actionType        String?
+  unsafeActionCount Int      @default(0)
+  actionTypeUnsafe  String?
+  attachment        Json?
+  other             String?
+  codeEmployee      String?
+  levelOfSafety     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  aiInsight        AiInsight?
+  aiInsight AiInsight?
 
   @@index([createdAt(sort: Desc)])
   @@map("records_she")
@@ -113,8 +113,8 @@ model RecordShe {
 // Employees
 // =============================================
 model Employee {
-  id          Int     @id @default(autoincrement())
-  employeerId String? @unique
+  id          Int      @id @default(autoincrement())
+  employeerId String?
   fullName    String?
   department  String?
   group       String?
@@ -129,10 +129,10 @@ model Employee {
 // Safety Categories
 // =============================================
 model Category {
-  id          Int     @id @default(autoincrement())
-  name        String
-  imagePath   String?
-  alt         String?
+  id        Int     @id @default(autoincrement())
+  name      String
+  imagePath String?
+  alt       String?
 
   subCategories SubCategory[]
 
@@ -148,14 +148,14 @@ model SubCategory {
   name           String
   imagePath      String?
   alt            String?
-  type           String?  // 'multiselect' | etc.
+  type           String? // 'multiselect' | etc.
   subject        String?
   placeholder    String?
   title          String?
-  departcategory Json?    // array of { id, name }
+  departcategory Json? // array of { id, name }
   createdAt      DateTime @default(now())
 
-  category Category  @relation(fields: [categoryId], references: [id])
+  category Category     @relation(fields: [categoryId], references: [id])
   options  ListOption[]
 
   @@map("sub_categories")
@@ -224,7 +224,7 @@ model WeatherStation {
   desc      String?
   active    Boolean  @default(true)
   deviceId  String   @default("")
-  config    Json     // stores pm25Key, pm10Key, tempKey, etc.
+  config    Json // stores pm25Key, pm10Key, tempKey, etc.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -235,19 +235,19 @@ model WeatherStation {
 // AI Insights
 // =============================================
 model AiInsight {
-  id               Int      @id @default(autoincrement())
-  recordId         String?  @unique
-  recordSheId      String?  @unique
-  category         String?
-  severityScore    Float?
-  rootCause        String?  @db.Text
-  recommendations  Json?    // Array of strings
-  predictiveWarning String? @db.Text
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  recordId          String?  @unique
+  recordSheId       String?  @unique
+  category          String?
+  severityScore     Float?
+  rootCause         String?  @db.Text
+  recommendations   Json? // Array of strings
+  predictiveWarning String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  record           Record?    @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  recordShe        RecordShe? @relation(fields: [recordSheId], references: [id], onDelete: Cascade)
+  record    Record?    @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  recordShe RecordShe? @relation(fields: [recordSheId], references: [id], onDelete: Cascade)
 
   @@map("ai_insights")
 }

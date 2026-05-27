@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
@@ -56,6 +57,7 @@ const EmployeeManager = () => {
   const [error, setError] = useState("");
   const [duplicateCheck, setDuplicateCheck] = useState("");
   const [unDuplicated, setUnDuplicated] = useState<Employee[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,6 +110,42 @@ const EmployeeManager = () => {
       setOptionsLoading(false);
     }
   };
+
+  // ฟังก์ชันซิงค์ข้อมูลจาก Google Sheets
+  const syncFromSheets = async () => {
+    setSyncing(true);
+    setError("");
+    try {
+      const response = await fetch("/api/sync-sheets", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      toast({
+        title: "ซิงค์ข้อมูลสำเร็จ",
+        description: `ซิงค์พนักงาน ${result.summary?.employees || 0} คนจาก Google Sheets เรียบร้อยแล้ว`,
+        variant: "success",
+      });
+      // รีเฟรชข้อมูลหลังซิงค์
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Error syncing from sheets:", error);
+      setError(
+        "ไม่สามารถซิงค์ข้อมูลจาก Google Sheets ได้: " +
+          (error instanceof Error ? error.message : String(error))
+      );
+      toast({
+        title: "ซิงค์ข้อมูลไม่สำเร็จ",
+        description: `ไม่สามารถซิงค์ข้อมูลได้: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
 
 
 
@@ -562,7 +600,19 @@ const EmployeeManager = () => {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={syncFromSheets}
+            disabled={syncing || loading}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+          >
+            {syncing ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {syncing ? "กำลังซิงค์..." : "ซิงค์จาก Google Sheets"}
+          </button>
           <button
             onClick={fetchEmployees}
             disabled={loading}

@@ -127,6 +127,10 @@ async function main() {
     console.log('\n📦 Migrating employees...')
     const empRaw = await getSheetData(sheets, 'employee!A1:F')
     const empRows = toRows(empRaw)
+    
+    // Clear all existing employees first
+    await db.query('DELETE FROM employees')
+    
     let empCount = 0
     for (const row of empRows) {
       const vals = Object.values(row)
@@ -134,13 +138,7 @@ async function main() {
       if (!employeerId) continue
       await db.query(
         `INSERT INTO employees ("employeerId", "fullName", department, "group", position, "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-         ON CONFLICT ("employeerId") DO UPDATE
-           SET "fullName" = EXCLUDED."fullName",
-               department = EXCLUDED.department,
-               "group" = EXCLUDED."group",
-               position = EXCLUDED.position,
-               "updatedAt" = NOW()`,
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
         [
           employeerId,
           str(row['fullName'] || vals[2]),

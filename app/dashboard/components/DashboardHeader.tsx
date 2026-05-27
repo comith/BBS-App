@@ -16,8 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BrainCircuit, Home, MoreVertical, RefreshCw, Settings } from "lucide-react";
+import { BrainCircuit, Home, MoreVertical, RefreshCw, Settings, CloudDownload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SyncSheetsButton, useSyncSheets } from "@/components/SyncSheetsButton";
 
 interface Props {
   selectedYear: number;
@@ -53,6 +54,8 @@ export function DashboardHeader({
     }).toString();
     router.push(`/manageusers?${params}`);
   };
+
+  const { isSyncing: isSyncingSheets, handleSync: handleSyncSheets } = useSyncSheets(onRefresh);
 
   return (
     <div className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200 shadow-sm supports-[backdrop-filter]:bg-white/60">
@@ -106,9 +109,12 @@ export function DashboardHeader({
               onClick={onRefresh}
               disabled={isLoading}
               className="h-8 w-8 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              title="รีเฟรชข้อมูล"
             >
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             </Button>
+
+            <SyncSheetsButton onSuccess={onRefresh} />
 
             <Button
               variant="ghost"
@@ -150,6 +156,14 @@ export function DashboardHeader({
                   <DropdownMenuItem onClick={handleSettings}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>จัดการผู้ใช้</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSyncSheets} disabled={isSyncingSheets}>
+                    {isSyncingSheets ? (
+                      <RefreshCw className="mr-2 h-4 w-4 text-blue-600 animate-spin" />
+                    ) : (
+                      <CloudDownload className="mr-2 h-4 w-4 text-blue-600" />
+                    )}
+                    <span className="text-blue-600">{isSyncingSheets ? "กำลังซิงค์..." : "ซิงค์จาก Sheet"}</span>
                   </DropdownMenuItem>
                   {isSheOrManager && (
                     <DropdownMenuItem onClick={() => router.push("/ai-analytics")}>

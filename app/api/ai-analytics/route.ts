@@ -6,8 +6,20 @@ export async function GET() {
     // 1. ดึงข้อมูล AI Insights ทั้งหมด พร้อม Record/RecordShe
     const allInsights = await prisma.aiInsight.findMany({
       include: {
-        record: { select: { id: true, date: true, observedWork: true, employeeId: true, departNotice: true } },
-        recordShe: { select: { id: true, date: true, observedWork: true, employeeId: true, group: true, departNotice: true } },
+        record: { 
+          select: { 
+            id: true, date: true, observedWork: true, employeeId: true, departNotice: true, group: true,
+            username: true, type: true, safetyCategory: true, subSafetyCategory: true, selectedOptions: true, other: true,
+            safeActionCount: true, actionType: true, unsafeActionCount: true, actionTypeUnsafe: true
+          } 
+        },
+        recordShe: { 
+          select: { 
+            id: true, date: true, observedWork: true, employeeId: true, group: true, departNotice: true,
+            username: true, type: true, safetyCategory: true, subSafetyCategory: true, selectedOptions: true, other: true,
+            safeActionCount: true, actionType: true, unsafeActionCount: true, actionTypeUnsafe: true
+          } 
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -141,22 +153,35 @@ export async function GET() {
         };
       });
 
-    const recentInsights = allInsights.map(insight => ({
-      id: insight.id,
-      category: insight.category || 'N/A',
-      severityScore: insight.severityScore || 0,
-      rootCause: insight.rootCause || '-',
-      recommendations: insight.recommendations || [],
-      predictiveWarning: insight.predictiveWarning || '-',
-      createdAt: insight.createdAt,
-      recordDate: insight.recordShe?.date || insight.record?.date || null,
-      employeeId: insight.recordShe?.employeeId || insight.record?.employeeId || 'Unknown',
-      group: insight.recordShe?.group || insight.record?.departNotice || 'Unknown',
-      observedWork: insight.recordShe?.observedWork || insight.record?.observedWork || '-',
-      recordId: insight.recordSheId || insight.recordId,
-      recordType: insight.recordSheId ? 'SHE' : 'BBS',
-      departNotice: insight.recordShe?.departNotice || insight.record?.departNotice || '',
-    }));
+    const recentInsights = allInsights.map(insight => {
+      const recordData = insight.recordShe || insight.record;
+      return {
+        id: insight.id,
+        category: insight.category || 'N/A',
+        severityScore: insight.severityScore || 0,
+        rootCause: insight.rootCause || '-',
+        recommendations: insight.recommendations || [],
+        predictiveWarning: insight.predictiveWarning || '-',
+        createdAt: insight.createdAt,
+        recordDate: recordData?.date || null,
+        employeeId: recordData?.employeeId || '-',
+        username: recordData?.username || '-',
+        group: recordData?.group || '-',
+        departNotice: recordData?.departNotice || '-',
+        observedWork: recordData?.observedWork || '-',
+        recordId: insight.recordSheId || insight.recordId,
+        recordType: insight.recordSheId ? 'SHE' : 'BBS',
+        type: recordData?.type || '-',
+        safetyCategory: recordData?.safetyCategory || '-',
+        subSafetyCategory: recordData?.subSafetyCategory || '-',
+        selectedOptions: recordData?.selectedOptions || '-',
+        other: recordData?.other || '-',
+        safeActionCount: recordData?.safeActionCount || 0,
+        actionType: recordData?.actionType || '-',
+        unsafeActionCount: recordData?.unsafeActionCount || 0,
+        actionTypeUnsafe: recordData?.actionTypeUnsafe || '-',
+      };
+    });
 
     return NextResponse.json({
       kpis: {

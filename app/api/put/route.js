@@ -23,7 +23,7 @@ export async function PUT(request) {
       }
     }
     if (!employee && data.employeerId) {
-      employee = await prisma.employee.findUnique({ where: { employeerId: data.employeerId } })
+      employee = await prisma.employee.findFirst({ where: { employeerId: data.employeerId } })
     }
 
     if (!employee) {

@@ -18,9 +18,13 @@ import {
 import { useRouter } from "next/navigation";
 import {
   BrainCircuit, TrendingUp, AlertTriangle, ShieldAlert, Activity,
-  ArrowUpRight, Sparkles, RefreshCw, DatabaseZap, Search, Check, ChevronsUpDown, Clock, ArrowLeft
+  ArrowUpRight, Sparkles, RefreshCw, DatabaseZap, Search, Check, ChevronsUpDown, Clock, ArrowLeft, Calendar as CalendarIcon
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
@@ -75,7 +79,18 @@ interface AnalyticsData {
     recordDate: string;
     employeeId: string;
     group: string;
+    departNotice: string;
     observedWork: string;
+    username?: string;
+    type?: string;
+    safetyCategory?: string;
+    subSafetyCategory?: string;
+    selectedOptions?: string;
+    other?: string;
+    safeActionCount?: number;
+    actionType?: string;
+    unsafeActionCount?: number;
+    actionTypeUnsafe?: string;
   }>;
 }
 
@@ -89,6 +104,10 @@ export default function AiAnalyticsDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [tableDateRange, setTableDateRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
   const [openCategoryFilter, setOpenCategoryFilter] = useState(false);
   const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
   const itemsPerPage = 10;
@@ -116,7 +135,7 @@ export default function AiAnalyticsDashboard() {
       });
 
       if (!res.ok) throw new Error('Failed to re-analyze');
-      
+
       success('วิเคราะห์ใหม่สำเร็จ', 'อัปเดตผลการวิเคราะห์เรียบร้อยแล้ว');
       fetchData(); // Refresh table
     } catch (err: any) {
@@ -203,13 +222,31 @@ export default function AiAnalyticsDashboard() {
     const group = typeof insight.group === 'string' ? insight.group : '';
     const query = typeof searchQuery === 'string' ? searchQuery.toLowerCase() : '';
 
-    const matchesSearch = 
-      work.toLowerCase().includes(query) || 
+    const matchesSearch =
+      work.toLowerCase().includes(query) ||
       group.toLowerCase().includes(query);
-    
+
     const matchesCategory = filterCategory === "all" || insight.category === filterCategory;
 
-    return matchesSearch && matchesCategory;
+    let matchesDate = true;
+    if (tableDateRange?.from) {
+      if (insight.recordDate) {
+        const recordDate = new Date(insight.recordDate);
+        recordDate.setHours(0, 0, 0, 0);
+        
+        const fromDate = new Date(tableDateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        let toDate = tableDateRange.to ? new Date(tableDateRange.to) : new Date(fromDate);
+        toDate.setHours(23, 59, 59, 999);
+        
+        matchesDate = recordDate >= fromDate && recordDate <= toDate;
+      } else {
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesDate;
   });
 
   const totalPages = Math.ceil(filteredInsights.length / itemsPerPage);
@@ -253,7 +290,7 @@ export default function AiAnalyticsDashboard() {
                   <SelectItem value="1y">1 ปีที่ผ่านมา</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2">
                 <div className="flex flex-row gap-2 shrink-0">
                   <Button
@@ -642,6 +679,48 @@ export default function AiAnalyticsDashboard() {
                       }}
                     />
                   </div>
+                  <div className={cn("grid gap-2")}>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="date"
+                          variant={"outline"}
+                          className={cn(
+                            "w-full sm:w-[260px] justify-start text-left font-normal bg-white",
+                            !tableDateRange?.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {tableDateRange?.from ? (
+                            tableDateRange.to ? (
+                              <>
+                                {format(tableDateRange.from, "d MMM yyyy", { locale: th })} -{" "}
+                                {format(tableDateRange.to, "d MMM yyyy", { locale: th })}
+                              </>
+                            ) : (
+                              format(tableDateRange.from, "d MMM yyyy", { locale: th })
+                            )
+                          ) : (
+                            <span>ช่วงวันที่รายงาน...</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          autoFocus
+                          mode="range"
+                          defaultMonth={tableDateRange?.from}
+                          selected={tableDateRange}
+                          onSelect={(range) => {
+                            setTableDateRange(range);
+                            setCurrentPage(1);
+                          }}
+                          numberOfMonths={2}
+                          locale={th}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   <Popover open={openCategoryFilter} onOpenChange={setOpenCategoryFilter}>
                     <PopoverTrigger asChild>
                       <Button
@@ -708,123 +787,183 @@ export default function AiAnalyticsDashboard() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table className="min-w-[800px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>วันที่รายงาน</TableHead>
-                    <TableHead>แผนก</TableHead>
-                    <TableHead>หมวดหมู่ความเสี่ยง</TableHead>
-                    <TableHead>ความรุนแรง</TableHead>
-                    <TableHead className="w-[30%]">ข้อความรายงาน</TableHead>
-                    <TableHead className="text-right">รายละเอียด</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedInsights.map((insight) => (
-                    <TableRow key={insight.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'}
-                      </TableCell>
-                      <TableCell>{insight.group}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700">
-                          {insight.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
-                            {insight.severityScore}/10
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[250px] truncate" title={insight.observedWork}>
-                        {insight.observedWork}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50">
-                              ดูผลวิเคราะห์
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle className="text-xl flex items-center gap-2">
-                                <BrainCircuit className="h-6 w-6 text-indigo-600" />
-                                ผลการวิเคราะห์จาก AI
-                              </DialogTitle>
-                              <DialogDescription>
-                                <span className="block mb-1">
-                                  รายงานวันที่ {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'} โดย {insight.employeeId} ({insight.group})
-                                </span>
-                                {insight.createdAt && (
-                                  <span className="flex items-center gap-1 text-indigo-600">
-                                    <Clock className="w-3 h-3" />
-                                    <span>วิเคราะห์เมื่อ: {new Date(insight.createdAt).toLocaleString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </span>
-                                )}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                              <div className="p-4 bg-slate-50 rounded-lg border">
-                                <h4 className="text-sm font-semibold text-gray-500 mb-1">ข้อความที่พนักงานรายงาน:</h4>
-                                <p className="text-gray-800 text-sm">{insight.observedWork}</p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 border rounded-lg">
-                                  <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
-                                  <p className="font-medium text-indigo-700">{insight.category}</p>
-                                </div>
-                                <div className="p-4 border rounded-lg">
-                                  <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
-                                  <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
-                                    {insight.severityScore} / 10
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
-                                <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
-                                  <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
-                                </h4>
-                                <p className="text-rose-900 text-sm">{insight.rootCause}</p>
-                              </div>
-                              <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
-                                <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
-                                <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
-                                  {Array.isArray(insight.recommendations) ? (
-                                    insight.recommendations.map((rec: string, i: number) => (
-                                      <li key={i}>{rec}</li>
-                                    ))
-                                  ) : (
-                                    <li>{String(insight.recommendations || '-')}</li>
-                                  )}
-                                </ul>
-                              </div>
-                              <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
-                                <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
-                                  <ShieldAlert className="h-4 w-4" /> Predictive Warning
-                                </h4>
-                                <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-6">
-                              <Button
-                                variant="outline"
-                                onClick={() => handleReanalyze(insight)}
-                                disabled={reanalyzingId === insight.id}
-                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                              >
-                                <RefreshCw className={`mr-2 h-4 w-4 ${reanalyzingId === insight.id ? 'animate-spin' : ''}`} />
-                                {reanalyzingId === insight.id ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ใหม่'}
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </TableCell>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>วันที่รายงาน</TableHead>
+                      <TableHead>แผนก</TableHead>
+                      <TableHead>หมวดหมู่ความเสี่ยง</TableHead>
+                      <TableHead>ความรุนแรง</TableHead>
+                      <TableHead className="w-[30%]">ข้อความรายงาน</TableHead>
+                      <TableHead className="text-right">รายละเอียด</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedInsights.map((insight) => (
+                      <TableRow key={insight.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'}
+                        </TableCell>
+                        <TableCell>{insight.group}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700">
+                            {insight.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-medium ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+                              {insight.severityScore}/10
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[250px] truncate" title={insight.observedWork}>
+                          {insight.observedWork}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50">
+                                ดูผลวิเคราะห์
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle className="text-xl flex items-center gap-2">
+                                  <BrainCircuit className="h-6 w-6 text-indigo-600" />
+                                  ผลการวิเคราะห์จาก AI
+                                </DialogTitle>
+                                <DialogDescription>
+                                  <span className="block mb-1">
+                                    รายงานวันที่ {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH') : '-'} โดย {insight.employeeId} ({insight.group})
+                                  </span>
+                                  {insight.createdAt && (
+                                    <span className="flex items-center gap-1 text-indigo-600">
+                                      <Clock className="w-3 h-3" />
+                                      <span>วิเคราะห์เมื่อ: {new Date(insight.createdAt).toLocaleString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                    </span>
+                                  )}
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-6 mt-4">
+                                {/* ส่วนข้อมูลดิบจากพนักงาน */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* คอลัมน์ซ้าย */}
+                                  <div className="space-y-6">
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-2">ข้อมูลพนักงาน</h3>
+                                      <div className="bg-slate-50 p-4 rounded-md space-y-2 text-sm text-gray-700">
+                                        <p><span className="font-semibold text-gray-900">ชื่อ:</span> {insight.username || '-'}</p>
+                                        <p><span className="font-semibold text-gray-900">รหัส:</span> {insight.employeeId || '-'}</p>
+                                        <p><span className="font-semibold text-gray-900">แผนก:</span> {insight.departNotice || '-'}</p>
+                                        <p><span className="font-semibold text-gray-900">กลุ่ม:</span> {insight.group || '-'}</p>
+                                      </div>
+                                    </div>
+                                    
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-2">ข้อมูลการสังเกต</h3>
+                                      <div className="bg-slate-50 p-4 rounded-md space-y-2 text-sm text-gray-700">
+                                        <p><span className="font-semibold text-gray-900">วันที่:</span> {insight.recordDate ? new Date(insight.recordDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</p>
+                                        <p><span className="font-semibold text-gray-900">งานที่สังเกต:</span> {insight.observedWork || '-'}</p>
+                                        <p><span className="font-semibold text-gray-900">แผนกที่ถูกสังเกต:</span> {insight.departNotice || '-'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* คอลัมน์ขวา */}
+                                  <div className="space-y-6">
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-2">หมวดหมู่ความปลอดภัย</h3>
+                                      <div className="bg-slate-50 p-4 rounded-md space-y-2 text-sm text-gray-700">
+                                        <p><span className="font-semibold text-gray-900">หมวดหมู่หลัก:</span> {insight.safetyCategory || '-'} {insight.subSafetyCategory && insight.subSafetyCategory !== '-' ? `/ ${insight.subSafetyCategory}` : ''}</p>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-2">รายการที่เลือก</h3>
+                                      <div className="bg-slate-50 p-4 rounded-md text-sm text-gray-700">
+                                        <p className="whitespace-pre-wrap">{insight.selectedOptions || '-'}</p>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-2">ผลการสังเกต</h3>
+                                      <div className="bg-slate-50 p-4 rounded-md space-y-2 text-sm">
+                                        <p><span className="font-semibold text-green-600">Safe Actions:</span> {insight.safeActionCount || 0} คน</p>
+                                        <p>
+                                          <span className="font-semibold text-red-600">Unsafe Actions:</span> {insight.unsafeActionCount || 0} คน
+                                          {(insight.unsafeActionCount ?? 0) > 0 && insight.actionTypeUnsafe && insight.actionTypeUnsafe !== '-' && (
+                                            <span> และได้ดำเนินการ <span className="font-semibold text-red-600">{insight.actionTypeUnsafe}</span></span>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <hr className="my-6 border-slate-200" />
+                                
+                                {/* ส่วนผลลัพธ์จาก AI */}
+                                <div>
+                                  <h3 className="font-semibold text-lg text-indigo-700 mb-4 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5" />
+                                    ผลการวิเคราะห์จาก AI
+                                  </h3>
+                                  <div className="grid grid-cols-2 gap-4">
+                                  <div className="p-4 border rounded-lg">
+                                    <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
+                                    <p className="font-medium text-indigo-700">{insight.category}</p>
+                                  </div>
+                                  <div className="p-4 border rounded-lg">
+                                    <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
+                                    <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+                                      {insight.severityScore} / 10
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
+                                  <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
+                                  </h4>
+                                  <p className="text-rose-900 text-sm">{insight.rootCause}</p>
+                                </div>
+                                <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                                  <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
+                                  <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
+                                    {Array.isArray(insight.recommendations) ? (
+                                      insight.recommendations.map((rec: string, i: number) => (
+                                        <li key={i}>{rec}</li>
+                                      ))
+                                    ) : (
+                                      <li>{String(insight.recommendations || '-')}</li>
+                                    )}
+                                  </ul>
+                                </div>
+                                <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
+                                  <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                                    <ShieldAlert className="h-4 w-4" /> Predictive Warning
+                                  </h4>
+                                  <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
+                                </div>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center mt-6">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleReanalyze(insight)}
+                                  disabled={reanalyzingId === insight.id}
+                                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                >
+                                  <RefreshCw className={`mr-2 h-4 w-4 ${reanalyzingId === insight.id ? 'animate-spin' : ''}`} />
+                                  {reanalyzingId === insight.id ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ใหม่'}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
               {/* Pagination Controls */}

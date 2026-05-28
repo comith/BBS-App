@@ -45,140 +45,150 @@ export async function POST() {
       options: 0
     };
 
-    // 1. Departments
-    const deptRes = await sheets.spreadsheets.values.get({
+    // ──────────────────────────────────────────────
+    // ดึงข้อมูลจาก Google Sheets ทั้ง 4 แผ่นพร้อมกันในครั้งเดียว (batchGet)
+    // แทนที่จะเรียก API ทีละแผ่น 4 ครั้งตามลำดับ
+    // ──────────────────────────────────────────────
+    const batchRes = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
-      range: 'list_department!A1:D',
+      ranges: [
+        'list_department!A1:D',
+        'list_group!A1:C',
+        'employee!A1:F',
+        'list_option!A1:C',
+      ],
     });
-    const deptRows = toRows(deptRes.data.values || []);
-    for (const row of deptRows) {
-      const vals = Object.values(row);
-      const name = str(row['name'] || row['shortname'] || vals[1]);
-      const groupName = str(row['groupName'] || row['group_name'] || vals[2]);
-      
-      if (!name) continue;
 
-      await prisma.department.upsert({
-        where: { name },
-        update: { groupName },
-        create: { name, groupName },
-      });
-      summary.departments++;
-    }
+    const valueRanges = batchRes.data.valueRanges || [];
+    const deptRows = toRows(valueRanges[0]?.values || []);
+    const groupRows = toRows(valueRanges[1]?.values || []);
+    const empRows = toRows(valueRanges[2]?.values || []);
+    const optRaw = valueRanges[3]?.values || [];
 
-    // 2. Groups
-    const groupRes = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'list_group!A1:C',
-    });
-    const groupRows = toRows(groupRes.data.values || []);
-    for (const row of groupRows) {
-      const vals = Object.values(row);
-      const name = str(row['name'] || vals[1]);
-      const deptName = str(row['department'] || row['departmentName'] || vals[2]);
-      
-      if (!name) continue;
+    // ──────────────────────────────────────────────
+    // ใช้ Prisma Transaction เพื่อ batch DB operations ทั้งหมดรวมกัน
+    // ลด round-trip ไปยังฐานข้อมูล
+    // ──────────────────────────────────────────────
+    await prisma.$transaction(async (tx) => {
 
-      let departmentId: number | null = null;
-      if (deptName) {
-        const dept = await prisma.department.findUnique({
-          where: { name: deptName }
-        });
-        departmentId = dept?.id ?? null;
+      // 1. Departments — รวบรวม upsert operations แล้วยิงพร้อมกัน
+      const deptOps = [];
+      for (const row of deptRows) {
+        const vals = Object.values(row);
+        const name = str(row['name'] || row['shortname'] || vals[1]);
+        const groupName = str(row['groupName'] || row['group_name'] || vals[2]);
+
+        if (!name) continue;
+
+        deptOps.push(
+          tx.department.upsert({
+            where: { name },
+            update: { groupName },
+            create: { name, groupName },
+          })
+        );
+        summary.departments++;
       }
+      await Promise.all(deptOps);
 
-      await prisma.group.upsert({
-        where: { name },
-        update: { departmentId },
-        create: { name, departmentId },
-      });
-      summary.groups++;
-    }
+      // สร้าง lookup map สำหรับ department name -> id
+      // เพื่อหลีกเลี่ยงการ query ทีละรายการในลูปของ Groups
+      const allDepts = await tx.department.findMany({ select: { id: true, name: true } });
+      const deptMap = new Map(allDepts.map((d) => [d.name, d.id]));
 
-    // 3. Employees
-    const empRes = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'employee!A1:F',
-    });
-    const empRows = toRows(empRes.data.values || []);
-    
-    // Clear all existing employees first so we don't duplicate them across multiple sync actions
-    await prisma.employee.deleteMany();
+      // 2. Groups — ใช้ deptMap แทนการ findUnique ทีละรอบ
+      const groupOps = [];
+      for (const row of groupRows) {
+        const vals = Object.values(row);
+        const name = str(row['name'] || vals[1]);
+        const deptName = str(row['department'] || row['departmentName'] || vals[2]);
 
-    const employeesToCreate = [];
-    for (const row of empRows) {
-      const vals = Object.values(row);
-      let employeerId = str(row['employeerId'] || row['employeerID'] || vals[1]);
-      const fullName = str(row['fullName'] || vals[2]);
-      const department = str(row['department'] || vals[3]);
-      const group = str(row['group'] || vals[4]);
-      const position = str(row['position'] || vals[5]);
+        if (!name) continue;
 
-      // ถ้าไม่มีทั้ง employeerId และ fullName ให้ข้ามแถวว่าง
-      if (!employeerId && !fullName) continue;
+        const departmentId = deptName ? (deptMap.get(deptName) ?? null) : null;
 
-      if (!employeerId) {
-        // ไม่มี employeerId -> สร้างด้วย generated ID
-        employeerId = `EMP_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        groupOps.push(
+          tx.group.upsert({
+            where: { name },
+            update: { departmentId },
+            create: { name, departmentId },
+          })
+        );
+        summary.groups++;
       }
+      await Promise.all(groupOps);
 
-      employeesToCreate.push({
-        employeerId,
-        fullName,
-        department,
-        group,
-        position,
-      });
-      summary.employees++;
-    }
+      // 3. Employees — ลบทั้งหมดแล้ว createMany ครั้งเดียว (เดิมก็ทำแบบนี้อยู่แล้ว)
+      await tx.employee.deleteMany();
 
-    if (employeesToCreate.length > 0) {
-      await prisma.employee.createMany({
-        data: employeesToCreate,
-      });
-    }
+      const employeesToCreate = [];
+      for (const row of empRows) {
+        const vals = Object.values(row);
+        let employeerId = str(row['employeerId'] || row['employeerID'] || vals[1]);
+        const fullName = str(row['fullName'] || vals[2]);
+        const department = str(row['department'] || vals[3]);
+        const group = str(row['group'] || vals[4]);
+        const position = str(row['position'] || vals[5]);
 
-    // 4. List Options (Assuming they rely on an existing SubCategoryId)
-    // For List Options, the schema doesn't have a unique constraint on 'name', 
-    // but typically we can try to find first or we might just use a unique constraint if we have one.
-    // In the migration script, it uses `ON CONFLICT DO NOTHING` but without a unique constraint in Prisma,
-    // this can be tricky. We will use findFirst to prevent duplicate inserts.
-    const optRes = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'list_option!A1:C',
-    });
-    const optRaw = optRes.data.values || [];
-    for (let i = 1; i < optRaw.length; i++) {
-      const optRow = optRaw[i];
-      const optId = safeInt(optRow[0]);
-      const optName = str(optRow[1] || '');
-      const subId = safeInt(optRow[2]);
+        // ถ้าไม่มีทั้ง employeerId และ fullName ให้ข้ามแถวว่าง
+        if (!employeerId && !fullName) continue;
 
-      if (!subId || !optName) continue;
-
-      // Check if subCategory exists to avoid foreign key errors
-      const subExists = await prisma.subCategory.findUnique({
-        where: { id: subId }
-      });
-
-      if (subExists) {
-        // Since list_options does not have a unique identifier across name/subCategory,
-        // we check if it already exists before inserting.
-        const existingOpt = await prisma.listOption.findFirst({
-          where: { name: optName, subCategoryId: subId }
-        });
-
-        if (!existingOpt) {
-          await prisma.listOption.create({
-            data: {
-              name: optName,
-              subCategoryId: subId
-            }
-          });
-          summary.options++;
+        if (!employeerId) {
+          // ไม่มี employeerId -> สร้างด้วย generated ID
+          employeerId = `EMP_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         }
+
+        employeesToCreate.push({
+          employeerId,
+          fullName,
+          department,
+          group,
+          position,
+        });
+        summary.employees++;
       }
-    }
+
+      if (employeesToCreate.length > 0) {
+        await tx.employee.createMany({
+          data: employeesToCreate,
+        });
+      }
+
+      // 4. List Options
+      // โหลด subCategory IDs ทั้งหมดและ listOption ที่มีอยู่ขึ้นมาเก็บใน memory
+      // เพื่อหลีกเลี่ยงการ query ทีละรายการ
+      const allSubCategories = await tx.subCategory.findMany({ select: { id: true } });
+      const subCatIds = new Set(allSubCategories.map((s) => s.id));
+
+      const allExistingOpts = await tx.listOption.findMany({
+        select: { name: true, subCategoryId: true },
+      });
+      const existingOptKeys = new Set(
+        allExistingOpts.map((o) => `${o.name}::${o.subCategoryId}`)
+      );
+
+      const optionsToCreate: { name: string; subCategoryId: number }[] = [];
+      for (let i = 1; i < optRaw.length; i++) {
+        const optRow = optRaw[i];
+        const optName = str(optRow[1] || '');
+        const subId = safeInt(optRow[2]);
+
+        if (!subId || !optName) continue;
+        if (!subCatIds.has(subId)) continue;
+
+        const key = `${optName}::${subId}`;
+        if (existingOptKeys.has(key)) continue;
+
+        // ป้องกัน duplicate ภายใน batch เดียวกัน
+        existingOptKeys.add(key);
+        optionsToCreate.push({ name: optName, subCategoryId: subId });
+        summary.options++;
+      }
+
+      if (optionsToCreate.length > 0) {
+        await tx.listOption.createMany({ data: optionsToCreate });
+      }
+    });
 
     return NextResponse.json({ success: true, summary });
 

@@ -1,6 +1,7 @@
 // app/weather/page.tsx
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Wind, Thermometer, CloudFog, Droplets,
@@ -102,7 +103,7 @@ export default function WeatherDashboard() {
       await Promise.all(
         activeStations.map(async (station) => {
           try {
-            const res = await fetch(`/api/getdata-thingsboard?deviceId=${station.deviceId}`);
+            const res = await apiFetch(`/api/getdata-thingsboard?deviceId=${station.deviceId}`);
             if (!res.ok) throw new Error(`Telemetry request failed for ${station.name}`);
             const data = await res.json();
 
@@ -179,7 +180,7 @@ export default function WeatherDashboard() {
   const loadStations = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("/api/stations");
+      const res = await apiFetch("/api/stations");
       if (!res.ok) throw new Error("Could not load weather stations configuration");
       const list: Station[] = await res.json();
       setStations(list);
@@ -307,7 +308,7 @@ export default function WeatherDashboard() {
     setSuccessMessage(null);
 
     try {
-      const res = await fetch("/api/stations", {
+      const res = await apiFetch("/api/stations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedList)

@@ -1,5 +1,6 @@
 // services/notificationLogService.ts
 import { NotificationLog } from '../types/notificationLog';
+import { apiFetch } from '@/lib/api-fetch';
 
 export class NotificationLogService {
   private static instance: NotificationLogService;
@@ -15,7 +16,7 @@ export class NotificationLogService {
 
   async fetchLogs(): Promise<NotificationLog[]> {
     try {
-      const response = await fetch('/api/notification-logs');
+      const response = await apiFetch('/api/notification-logs');
       if (!response.ok) throw new Error('Failed to fetch logs');
       return await response.json();
     } catch (error) {
@@ -26,7 +27,7 @@ export class NotificationLogService {
 
   async createLog(log: Omit<NotificationLog, 'id' | 'created_at' | 'updated_at'>): Promise<NotificationLog> {
     try {
-      const response = await fetch('/api/notification-logs', {
+      const response = await apiFetch('/api/notification-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(log),
@@ -41,7 +42,7 @@ export class NotificationLogService {
 
   async updateLog(id: number, updates: Partial<NotificationLog>): Promise<NotificationLog> {
     try {
-      const response = await fetch(`/api/notification-logs/${id}`, {
+      const response = await apiFetch(`/api/notification-logs/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -56,7 +57,7 @@ export class NotificationLogService {
 
   async deleteLog(id: number): Promise<void> {
     try {
-      const response = await fetch(`/api/notification-logs/${id}`, {
+      const response = await apiFetch(`/api/notification-logs/${id}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete log');

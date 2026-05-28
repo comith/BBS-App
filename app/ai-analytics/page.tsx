@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,7 @@ export default function AiAnalyticsDashboard() {
 
     setReanalyzingId(insight.id);
     try {
-      const res = await fetch('/api/ai-evaluation', {
+      const res = await apiFetch('/api/ai-evaluation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,7 +150,7 @@ export default function AiAnalyticsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/ai-analytics');
+      const res = await apiFetch('/api/ai-analytics');
       if (!res.ok) throw new Error('Failed to fetch analytics');
       const json = await res.json();
       setData(json);
@@ -175,7 +176,7 @@ export default function AiAnalyticsDashboard() {
     try {
       while (keepProcessing) {
         // ประมวลผลทีละ 20 รายการเพื่อไม่ให้ Browser ติด Timeout
-        const res = await fetch('/api/ai-batch-process', {
+        const res = await apiFetch('/api/ai-batch-process', {
           method: 'POST',
           body: JSON.stringify({ limit: 60 })
         });

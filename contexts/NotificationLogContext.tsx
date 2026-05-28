@@ -14,6 +14,7 @@ import {
 import { NotificationLogService } from "@/services/notificationLogService";
 import { useAlertNotification } from "@/hooks/alertNotification";
 import { useNotification } from "@/hooks/useNotification";
+import { apiFetch } from "@/lib/api-fetch";
 
 const NotificationLogContext = createContext<NotificationLogContextType | null>(
   null
@@ -85,7 +86,7 @@ const changeStatus = (status:string) =>{
 
 const updateLogNotification = (log: any) => {
   // update logs notification
-  fetch('/api/notification-logs', {
+  apiFetch('/api/notification-logs', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { type Report } from "../types";
 import {
   type EmployeeInfoLoose,
@@ -110,7 +111,7 @@ export function usePayrollData(
   const fetchSheViolations = useCallback(async () => {
     setIsLoadingShe(true);
     try {
-      const response = await fetch("/api/get?type=she_violations");
+      const response = await apiFetch("/api/get?type=she_violations");
       if (!response.ok) {
         console.warn(`SHE API returned status: ${response.status}`);
         setSheViolations([]);

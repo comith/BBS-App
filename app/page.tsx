@@ -1,6 +1,8 @@
 // app/page.tsx
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { apiFetch } from "@/lib/api-fetch";
+
 import { SquareUser, RefreshCw, Shield, Users, BarChart3, Wind, Thermometer, CloudFog } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -495,7 +497,7 @@ const EnvironmentCard = React.memo(() => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/getdata-thingsboard');
+        const res = await apiFetch('/api/getdata-thingsboard');
         if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         

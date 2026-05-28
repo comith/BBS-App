@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { startOfDay } from "date-fns";
 import {
   type Report,
@@ -79,13 +80,13 @@ export function useReports(sessionLoaded: boolean): ReportsState {
       const cached = staticDataRef.current;
 
       const fetchPromises: Promise<Response>[] = [
-        fetch(`/api/get?${params.toString()}`),
+        apiFetch(`/api/get?${params.toString()}`),
         ...(cached
           ? []
           : [
-              fetch("/api/get?type=category"),
-              fetch("/api/get?type=subcategory"),
-              fetch("/api/get?type=employee"),
+              apiFetch("/api/get?type=category"),
+              apiFetch("/api/get?type=subcategory"),
+              apiFetch("/api/get?type=employee"),
             ]),
       ];
 

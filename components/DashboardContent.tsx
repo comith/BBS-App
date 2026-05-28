@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   format,
@@ -714,7 +715,7 @@ const group = employeeData?.group || "";
         note: adminNote.trim() || null,
       });
 
-      const response = await fetch("/api/approve", {
+      const response = await apiFetch("/api/approve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -791,9 +792,9 @@ const group = employeeData?.group || "";
 
       const [recordResponse, categoryResponse, subCategoryResponse] =
         await Promise.all([
-          fetch("/api/get?type=record"),
-          fetch("/api/get?type=category"),
-          fetch("/api/get?type=subcategory"),
+          apiFetch("/api/get?type=record"),
+          apiFetch("/api/get?type=category"),
+          apiFetch("/api/get?type=subcategory"),
         ]);
 
       if (!recordResponse.ok) {
@@ -1907,7 +1908,7 @@ const group = employeeData?.group || "";
         setIsLoadingShe(true);
         try {
           // เรียก API สำหรับข้อมูล SHE violations
-          const response = await fetch("/api/get?type=she_violations");
+          const response = await apiFetch("/api/get?type=she_violations");
           if (response.ok) {
             const data = await response.json();
             setSheViolations(data);

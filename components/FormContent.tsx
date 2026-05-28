@@ -2,6 +2,7 @@
 "use client";
 // ===================================== Import Statements =====================================
 import * as React from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -310,7 +311,7 @@ const loadFromLocalStorage = () => {
       formData.append("filename", file.name);
 
       // ส่งไฟล์ไป API upload
-      const response = await fetch("/api/upload", {
+      const response = await apiFetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -369,25 +370,25 @@ const loadFromLocalStorage = () => {
   };
 
   const fetchDepartments = async (): Promise<Department[]> => {
-    const response = await fetch("/api/get?type=department");
+    const response = await apiFetch("/api/get?type=department");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchGroups = async (): Promise<Group[]> => {
-    const response = await fetch("/api/get?type=group");
+    const response = await apiFetch("/api/get?type=group");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchCategories = async (): Promise<Category[]> => {
-    const response = await fetch("/api/get?type=category");
+    const response = await apiFetch("/api/get?type=category");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchSubSafetyCategories = async (): Promise<SubSafetyCategory[]> => {
-    const response = await fetch("/api/get?type=subcategory");
+    const response = await apiFetch("/api/get?type=subcategory");
     const data = await response.json();
     console.log("Fetched sub safety categories:", data);
     return Array.isArray(data) ? data : [];
@@ -477,7 +478,7 @@ const loadFromLocalStorage = () => {
     }
 
     try {
-      const response = await fetch("/api/post", {
+      const response = await apiFetch("/api/post", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -591,7 +592,7 @@ const loadFromLocalStorage = () => {
         });
 
         // ส่งข้อมูลเป็น JSON
-        const response = await fetch("/api/post", {
+        const response = await apiFetch("/api/post", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -637,7 +638,7 @@ const loadFromLocalStorage = () => {
 
         console.log("📤 Submitting without files");
 
-        const response = await fetch("/api/post", {
+        const response = await apiFetch("/api/post", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

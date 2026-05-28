@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { MAINTENANCE_ADMIN } from "./useEmployeeSession";
 
 export interface MaintenanceSetting {
@@ -54,7 +55,7 @@ export function useMaintenance(isMaintenanceAdmin: boolean): MaintenanceState {
   const fetchSetting = useCallback(async () => {
     if (!isMaintenanceAdmin) return;
     try {
-      const res = await fetch("/api/maintenance", {
+      const res = await apiFetch("/api/maintenance", {
         headers: { "x-employee-id": MAINTENANCE_ADMIN },
       });
       if (res.ok) {
@@ -94,7 +95,7 @@ export function useMaintenance(isMaintenanceAdmin: boolean): MaintenanceState {
         return isNaN(d.getTime()) ? null : d.toISOString();
       };
 
-      const res = await fetch("/api/maintenance", {
+      const res = await apiFetch("/api/maintenance", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   AlertCircle,
   CheckCircle2,
@@ -135,7 +136,7 @@ function AdminDashboard() {
     setIsSubmittingApproval(true);
 
     try {
-      const response = await fetch("/api/approve", {
+      const response = await apiFetch("/api/approve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -159,7 +160,7 @@ function AdminDashboard() {
 
       const result = await response.json();
 
-      fetch("/api/notification-logs", {
+      apiFetch("/api/notification-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

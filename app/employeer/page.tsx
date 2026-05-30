@@ -15,6 +15,7 @@ import { startOfDay } from "date-fns";
 import { Report, transformApiDataToDashboardReport } from "@/app/dashboard/types";
 import { ReportStats } from "@/app/dashboard/hooks/useReports";
 import { useReportFilters } from "@/app/dashboard/hooks/useReportFilters";
+import { apiFetch } from "@/lib/api-fetch";
 
 // Dashboard components
 import { StatsCards } from "@/app/dashboard/components/StatsCards";
@@ -307,9 +308,9 @@ export default function EmployeeDashboard() {
     setError(null);
     try {
       const [recordResponse, categoryResponse, subCategoryResponse] = await Promise.all([
-        fetch("/api/get?type=record"),
-        fetch("/api/get?type=category"),
-        fetch("/api/get?type=subcategory"),
+        apiFetch("/api/get?type=record"),
+        apiFetch("/api/get?type=category"),
+        apiFetch("/api/get?type=subcategory"),
       ]);
 
       if (!recordResponse.ok) throw new Error("Failed to fetch records");
@@ -342,7 +343,7 @@ export default function EmployeeDashboard() {
   const fetchSheViolations = useCallback(async () => {
     if (!employeeId) return;
     try {
-      const response = await fetch("/api/get?type=she_violations");
+      const response = await apiFetch("/api/get?type=she_violations");
       if (!response.ok) throw new Error("Failed to fetch she violations");
       const apiData = await response.json();
       const myViolations = apiData.filter((item: SheViolation) => item.employee_code === employeeId);

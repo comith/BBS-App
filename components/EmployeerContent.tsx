@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect } from "react";
 import { Suspense } from "react";
 import {
@@ -405,7 +406,7 @@ function EmployeeReportStatus() {
     try {
       console.log("🔄 Fetching SHE violations for employee:", employeeId);
 
-      const response = await fetch("/api/get?type=she_violations");
+      const response = await apiFetch("/api/get?type=she_violations");
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -522,8 +523,8 @@ function EmployeeReportStatus() {
   const fetchCategoriesAndSubCategories = async () => {
     try {
       const [categoryResponse, subCategoryResponse] = await Promise.all([
-        fetch("/api/get?type=category"),
-        fetch("/api/get?type=subcategory"),
+        apiFetch("/api/get?type=category"),
+        apiFetch("/api/get?type=subcategory"),
       ]);
 
       const categoryData = await categoryResponse.json();
@@ -823,9 +824,9 @@ function EmployeeReportStatus() {
       // เรียกข้อมูลทั้งหมดพร้อมกัน
       const [recordResponse, categoryResponse, subCategoryResponse] =
         await Promise.all([
-          fetch("/api/get?type=record"),
-          fetch("/api/get?type=category"),
-          fetch("/api/get?type=subcategory"),
+          apiFetch("/api/get?type=record"),
+          apiFetch("/api/get?type=category"),
+          apiFetch("/api/get?type=subcategory"),
         ]);
 
       if (!recordResponse.ok) {

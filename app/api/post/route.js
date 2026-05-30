@@ -124,7 +124,10 @@ export async function POST(request) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       fetch(`${baseUrl}/api/ai-evaluation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.API_SECRET_KEY || ''
+        },
         body: JSON.stringify({
           recordId: recordId,
           recordType: 'SHE',

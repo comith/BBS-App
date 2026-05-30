@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -129,9 +130,9 @@ function SheViolationsManagement() {
     try {
 
       const [violationsResponse, categoriesResponse, employeesResponse] = await Promise.all([
-        fetch("/api/get?type=she_violations"),
-        fetch("/api/get?type=category"),
-        fetch("/api/get?type=employee"),
+        apiFetch("/api/get?type=she_violations"),
+        apiFetch("/api/get?type=category"),
+        apiFetch("/api/get?type=employee"),
       ]);
 
       if (!violationsResponse.ok) {
@@ -165,7 +166,7 @@ function SheViolationsManagement() {
   const updateViolation = async (updatedData: SheViolation) => {
     setSaving(true);
     try {
-      const response = await fetch("/api/put", {
+      const response = await apiFetch("/api/put", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -215,7 +216,7 @@ function SheViolationsManagement() {
   const deleteViolation = async (recordId: string) => {
     setSaving(true);
     try {
-      const response = await fetch("/api/delete", {
+      const response = await apiFetch("/api/delete", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

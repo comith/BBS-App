@@ -2,6 +2,7 @@
 "use client";
 // ===================================== Import Statements =====================================
 import * as React from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -340,7 +341,7 @@ function SafetyObservationForm() {
       formData.append("folderId", "1Jmu78EX1IAoH4w8VvvCEJKZWn9k84SUL");
 
       // ส่งไฟล์ไป API upload
-      const response = await fetch("/api/upload", {
+      const response = await apiFetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -418,25 +419,25 @@ function SafetyObservationForm() {
   };
 
   const fetchDepartments = async (): Promise<Department[]> => {
-    const response = await fetch("/api/get?type=department");
+    const response = await apiFetch("/api/get?type=department");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchGroups = async (): Promise<Group[]> => {
-    const response = await fetch("/api/get?type=group");
+    const response = await apiFetch("/api/get?type=group");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchCategories = async (): Promise<Category[]> => {
-    const response = await fetch("/api/get?type=category");
+    const response = await apiFetch("/api/get?type=category");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
 
   const fetchSubSafetyCategories = async (): Promise<SubSafetyCategory[]> => {
-    const response = await fetch("/api/get?type=subcategory");
+    const response = await apiFetch("/api/get?type=subcategory");
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   };
@@ -597,7 +598,7 @@ function SafetyObservationForm() {
     }
 
     try {
-      const response = await fetch("/api/post", {
+      const response = await apiFetch("/api/post", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -641,7 +642,7 @@ function SafetyObservationForm() {
 
   const updateUser = async () => {
     try {
-      const response = await fetch("/api/put", {
+      const response = await apiFetch("/api/put", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -742,7 +743,7 @@ function SafetyObservationForm() {
         };
 
         // ส่งข้อมูลเป็น JSON
-        const response = await fetch("/api/post", {
+        const response = await apiFetch("/api/post", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -784,7 +785,7 @@ function SafetyObservationForm() {
           other: data.other || "",
         };
 
-        const response = await fetch("/api/post", {
+        const response = await apiFetch("/api/post", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

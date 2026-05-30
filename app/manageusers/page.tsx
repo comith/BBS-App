@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   Plus,
   Edit2,
@@ -92,14 +93,14 @@ const EmployeeManager = () => {
     setOptionsLoading(true);
     try {
       // ดึงข้อมูลแผนก
-      const deptResponse = await fetch("/api/get?type=department");
+      const deptResponse = await apiFetch("/api/get?type=department");
       if (deptResponse.ok) {
         const deptData = await deptResponse.json();
         setDepartments(deptData);
       }
 
       // ดึงข้อมูลกลุ่ม
-      const groupResponse = await fetch("/api/get?type=group");
+      const groupResponse = await apiFetch("/api/get?type=group");
       if (groupResponse.ok) {
         const groupData = await groupResponse.json();
         setGroups(groupData);
@@ -116,7 +117,7 @@ const EmployeeManager = () => {
     setSyncing(true);
     setError("");
     try {
-      const response = await fetch("/api/sync-sheets", {
+      const response = await apiFetch("/api/sync-sheets", {
         method: "POST",
       });
       if (!response.ok) {
@@ -154,7 +155,7 @@ const EmployeeManager = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/get?type=employee");
+      const response = await apiFetch("/api/get?type=employee");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -231,7 +232,7 @@ const EmployeeManager = () => {
   ): Promise<AddEmployeeAPIResponse> => {
     setSaving(true);
     try {
-      const response = await fetch("/api/post", {
+      const response = await apiFetch("/api/post", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -275,7 +276,7 @@ const EmployeeManager = () => {
   ): Promise<UpdateEmployeeAPIResponse> => {
     setSaving(true);
     try {
-      const response = await fetch("/api/put", {
+      const response = await apiFetch("/api/put", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -330,7 +331,7 @@ const EmployeeManager = () => {
         type: "employee",
         id: employeeId,
       };
-      const response = await fetch("/api/delete", {
+      const response = await apiFetch("/api/delete", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

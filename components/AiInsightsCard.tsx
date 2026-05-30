@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -44,7 +45,7 @@ export function AiInsightsCard({ recordId, recordType, reportText, departmentNot
       setError(null);
       
       try {
-        const res = await fetch('/api/ai-evaluation', {
+        const res = await apiFetch('/api/ai-evaluation', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

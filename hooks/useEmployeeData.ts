@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api-fetch';
 
 export interface Employee {
   employeerId: string;
@@ -23,7 +24,7 @@ export const employeeKeys = {
 const fetchEmployees = async (): Promise<Employee[]> => {
   console.log('🔄 Fetching employee data from API...');
   
-  const response = await fetch("/api/get?type=employee", {
+  const response = await apiFetch("/api/get?type=employee", {
     headers: {
       'Cache-Control': 'no-cache',
     },

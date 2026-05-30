@@ -1,6 +1,7 @@
 // hooks/useNotification.js
 "use client";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function useNotification() {
   const [permission, setPermission] = useState("default");
@@ -115,7 +116,7 @@ export function useNotification() {
 
   const saveSubscriptionToServer = async (subscription, userInfo = {}) => {
     try {
-      const response = await fetch("/api/subscribe", {
+      const response = await apiFetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -239,7 +240,7 @@ export function useNotification() {
 
   const sendPushNotification = async (title, body, options = {}) => {
     try {
-      const response = await fetch("/api/send-notification", {
+      const response = await apiFetch("/api/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

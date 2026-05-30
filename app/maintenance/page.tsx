@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { useRouter } from "next/navigation";
 
 interface MaintenanceData {
@@ -30,7 +31,7 @@ export default function MaintenancePage() {
 
   const checkStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/maintenance-status");
+      const res = await apiFetch("/api/maintenance-status");
       if (!res.ok) return;
       const json: MaintenanceData = await res.json();
       setData(json);

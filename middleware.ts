@@ -15,6 +15,24 @@ const BYPASS_PREFIXES = [
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
+  // --- API Authentication ---
+  if (pathname.startsWith('/api/')) {
+    const publicApiRoutes = ['/api/maintenance-status'];
+    if (!publicApiRoutes.includes(pathname)) {
+      const apiKey = request.headers.get('x-api-key');
+      const validApiKey = process.env.API_SECRET_KEY;
+      
+      console.log(`[Middleware] Auth Check: pathname=${pathname}, providedKey=${apiKey}, validKey=${validApiKey}`);
+      
+      // If API_SECRET_KEY is configured and doesn't match the incoming key, reject it.
+      // (If not configured in env, we still reject unless handled otherwise, but let's assume it's mandatory)
+      if (!validApiKey || apiKey !== validApiKey) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+    }
+  }
+
+  // --- Maintenance Mode Check ---
   if (BYPASS_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }

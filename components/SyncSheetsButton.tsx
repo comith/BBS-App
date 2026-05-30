@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { CloudDownload, Loader } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,7 +15,7 @@ export function useSyncSheets(onSuccess?: () => void) {
     try {
       setIsSyncing(true);
 
-      const res = await fetch("/api/sync-sheets", { method: "POST" });
+      const res = await apiFetch("/api/sync-sheets", { method: "POST" });
       const data = await res.json();
 
       if (!res.ok) {

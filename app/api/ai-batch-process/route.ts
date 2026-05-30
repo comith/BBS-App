@@ -29,21 +29,47 @@ function sanitizeInsight(insight: any) {
   };
 }
 
-async function analyzeWithOllama(observedWork: string, departNotice: string) {
+async function analyzeWithOllama(record: any) {
   const prompt = `
-คุณคือผู้เชี่ยวชาญด้านความปลอดภัยในโรงงานอุตสาหกรรม (Safety Officer Expert)
-กรุณาวิเคราะห์ข้อความรายงานปัญหาด้านความปลอดภัยต่อไปนี้ และสกัดข้อมูลออกมาเป็นรูปแบบ JSON เท่านั้น ห้ามมีข้อความอื่นปะปน
+คุณคือผู้เชี่ยวชาญด้านความปลอดภัยและพฤติกรรมศาสตร์ในเหมืองแร่และโรงงานอุตสาหกรรมหนัก (Mining & Heavy Industry Safety Expert)
+ระบบนี้คือระบบ BBSO (Behavior-Based Safety Observation - เพื่อนช่วยเตือนเพื่อน) ที่เน้นการสังเกตพฤติกรรมการทำงานในพื้นที่เสี่ยงสูง เช่น เหมืองแร่, Workshop, งานช่างกล, งานช่างเชื่อม, งานช่างไฟฟ้า และ Operator ประจำสายพานลำเลียง
 
-ข้อมูลจากพนักงาน: "${observedWork || '-'}"
-ข้อสังเกตเพิ่มเติมจากแผนก: "${departNotice || '-'}"
+กรุณาวิเคราะห์รายงานการสังเกตพฤติกรรมด้านความปลอดภัยต่อไปนี้ และสกัดข้อมูลออกมาเป็นรูปแบบ JSON เท่านั้น ห้ามมีข้อความอื่นปะปน
 
-รูปแบบ JSON ที่ต้องการ:
+[คำสั่งเพิ่มเติมสำคัญมาก]
+- ห้ามใช้ตัวอักษรภาษาจีน (Chinese Characters), ญี่ปุ่น, เกาหลี หรือภาษาอื่นๆ โดยเด็ดขาด!
+- ให้ตอบกลับโดยใช้ "ภาษาไทย" เป็นหลัก และใช้ "ภาษาอังกฤษ" ได้เฉพาะคำศัพท์ทางเทคนิคเท่านั้น (เช่น LOTO, PPE, Safety)
+- หากข้อมูลมีคำแปลกปลอม ให้คุณใช้คำภาษาไทยที่ถูกต้องแทนเสมอ
+
+[กรณีพฤติกรรมปลอดภัย (Safe Actions > 0 และ Unsafe Actions = 0)]
+- หากพบว่าไม่มีพนักงานทำผิดกฎเลย (Unsafe Actions = 0) แสดงว่าเป็นรายงาน "เชิงบวก" (Positive Observation)
+- ให้ ai_severity_score เป็น 0
+- root_cause_analysis: ให้วิเคราะห์ "ปัจจัยความสำเร็จ" (Success Factor) ที่ทำให้พนักงานทำงานได้ปลอดภัย (เช่น มีวินัย, เตรียมพร้อมดี)
+- recommendations: แนะนำเพื่อ "รักษามาตรฐาน" และชื่นชม (Positive Reinforcement)
+- predictive_warning: คาดการณ์เชิงบวก (เช่น "หากรักษามาตรฐานนี้ไว้ จะเป็นแบบอย่างที่ดีและเกิดวัฒนธรรมความปลอดภัยอย่างยั่งยืน")
+
+[ข้อมูลการสังเกตการณ์]
+1. งานที่สังเกต: "${record.observedWork || '-'}"
+2. แผนกที่ถูกสังเกต: "${record.departNotice || '-'}"
+3. หมวดหมู่หลักความปลอดภัย: "${record.safetyCategory || '-'}"
+4. หมวดหมู่ย่อย: "${record.subSafetyCategory || '-'}"
+
+[ข้อมูลพฤติกรรมและการจัดการ]
+5. จำนวนพนักงานที่ปฏิบัติถูกต้อง (Safe Actions): ${record.safeActionCount || 0} คน
+6. จำนวนพนักงานที่ปฏิบัติไม่ถูกต้อง (Unsafe Actions): ${record.unsafeActionCount || 0} คน
+7. การดำเนินการเบื้องต้นของผู้แจ้ง (Action Taken): "${record.actionTypeUnsafe || '-'}"
+
+[รูปแบบ JSON ที่ต้องการให้ตอบกลับ]
 {
-  "category": "ชื่อหมวดหมู่ปัญหา (เช่น Ergonomics, PPE, Electrical, Housekeeping, etc.)",
-  "ai_severity_score": ตัวเลขคะแนนความรุนแรงจาก 1.0 ถึง 10.0 (ประเมินความเสี่ยงต่อชีวิตและทรัพย์สิน),
-  "root_cause_analysis": "อธิบายสาเหตุที่แท้จริงที่ทำให้เกิดปัญหานี้สั้นๆ (ภาษาไทย)",
-  "recommendations": ["ข้อเสนอแนะที่ 1", "ข้อเสนอแนะที่ 2", "ข้อเสนอแนะที่ 3"],
-  "predictive_warning": "คำเตือนล่วงหน้าหากปล่อยปัญหานี้ทิ้งไว้ (ภาษาไทย)"
+  "category": "หมวดหมู่ความเสี่ยง (ประเมินให้สอดคล้องกับ หมวดหมู่หลัก/ย่อย ที่ให้ไป เช่น การตัดแยกพลังงาน (LOTO), การทำงานบนที่สูง, ความร้อน/ประกายไฟ, เครื่องจักร/สายพาน ฯลฯ)",
+  "ai_severity_score": ตัวเลขคะแนนความรุนแรงจาก 1.0 ถึง 10.0 (ประเมินจากโอกาสเกิดอุบัติเหตุร้ายแรงในเหมือง/โรงงาน หักลบด้วย การดำเนินการเบื้องต้น หากผู้แจ้งแก้ไขได้ดีความรุนแรงอาจลดลง),
+  "root_cause_analysis": "อธิบายสาเหตุรากเหง้า (Root Cause) ที่คาดว่าทำให้พนักงานมีพฤติกรรม Unsafe Action สั้นๆ เป็นภาษาไทย (เช่น ความเร่งรีบ, ขาดความตระหนัก, หรือข้อจำกัดด้านเครื่องมือ)",
+  "recommendations": [
+    "ข้อเสนอแนะเชิงพฤติกรรมหรือวิศวกรรมที่ 1 (เน้นการป้องกันไม่ให้เกิดซ้ำ)",
+    "ข้อเสนอแนะที่ 2 (การให้ความรู้ การฝึกอบรม หรือการปรับปรุงพื้นที่)",
+    "ข้อเสนอแนะที่ 3"
+  ],
+  "predictive_warning": "คำเตือนล่วงหน้าหากพฤติกรรมหรือสภาพแวดล้อมนี้ยังดำเนินต่อไปในพื้นที่อุตสาหกรรมหนักนี้ (ภาษาไทย)"
 }
 `;
 
@@ -95,6 +121,11 @@ export async function POST(req: Request) {
         id: true,
         observedWork: true,
         departNotice: true,
+        safetyCategory: true,
+        subSafetyCategory: true,
+        safeActionCount: true,
+        unsafeActionCount: true,
+        actionTypeUnsafe: true,
       },
       take: Math.ceil(limit / 2),
       orderBy: { createdAt: 'desc' },
@@ -110,6 +141,11 @@ export async function POST(req: Request) {
         id: true,
         observedWork: true,
         departNotice: true,
+        safetyCategory: true,
+        subSafetyCategory: true,
+        safeActionCount: true,
+        unsafeActionCount: true,
+        actionTypeUnsafe: true,
       },
       take: Math.ceil(limit / 2),
       orderBy: { createdAt: 'desc' },
@@ -148,27 +184,27 @@ export async function POST(req: Request) {
     // 3. ประมวลผล BBS Records
     for (const record of unprocessedBBS) {
       try {
-        const insightData = await analyzeWithOllama(
-          record.observedWork || '',
-          record.departNotice || ''
-        );
+        const insightData = await analyzeWithOllama(record);
+
+        // ใช้ sanitizeInsight เพื่อกรองตัวอักษรแปลกประหลาดที่หลุดมา (ถ้ามี)
+        const sanitizedData = sanitizeInsight(insightData);
 
         await prisma.aiInsight.upsert({
           where: { recordId: record.id },
           update: {
-            category: insightData.category,
-            severityScore: insightData.ai_severity_score,
-            rootCause: insightData.root_cause_analysis,
-            recommendations: insightData.recommendations,
-            predictiveWarning: insightData.predictive_warning,
+            category: sanitizedData.category,
+            severityScore: sanitizedData.ai_severity_score,
+            rootCause: sanitizedData.root_cause_analysis,
+            recommendations: sanitizedData.recommendations,
+            predictiveWarning: sanitizedData.predictive_warning,
           },
           create: {
             recordId: record.id,
-            category: insightData.category,
-            severityScore: insightData.ai_severity_score,
-            rootCause: insightData.root_cause_analysis,
-            recommendations: insightData.recommendations,
-            predictiveWarning: insightData.predictive_warning,
+            category: sanitizedData.category,
+            severityScore: sanitizedData.ai_severity_score,
+            rootCause: sanitizedData.root_cause_analysis,
+            recommendations: sanitizedData.recommendations,
+            predictiveWarning: sanitizedData.predictive_warning,
           },
         });
 
@@ -184,27 +220,27 @@ export async function POST(req: Request) {
     // 4. ประมวลผล SHE Records
     for (const record of unprocessedSHE) {
       try {
-        const insightData = await analyzeWithOllama(
-          record.observedWork || '',
-          record.departNotice || ''
-        );
+        const insightData = await analyzeWithOllama(record);
+
+        // ใช้ sanitizeInsight เพื่อกรองตัวอักษรแปลกประหลาดที่หลุดมา (ถ้ามี)
+        const sanitizedData = sanitizeInsight(insightData);
 
         await prisma.aiInsight.upsert({
           where: { recordSheId: record.id },
           update: {
-            category: insightData.category,
-            severityScore: insightData.ai_severity_score,
-            rootCause: insightData.root_cause_analysis,
-            recommendations: insightData.recommendations,
-            predictiveWarning: insightData.predictive_warning,
+            category: sanitizedData.category,
+            severityScore: sanitizedData.ai_severity_score,
+            rootCause: sanitizedData.root_cause_analysis,
+            recommendations: sanitizedData.recommendations,
+            predictiveWarning: sanitizedData.predictive_warning,
           },
           create: {
             recordSheId: record.id,
-            category: insightData.category,
-            severityScore: insightData.ai_severity_score,
-            rootCause: insightData.root_cause_analysis,
-            recommendations: insightData.recommendations,
-            predictiveWarning: insightData.predictive_warning,
+            category: sanitizedData.category,
+            severityScore: sanitizedData.ai_severity_score,
+            rootCause: sanitizedData.root_cause_analysis,
+            recommendations: sanitizedData.recommendations,
+            predictiveWarning: sanitizedData.predictive_warning,
           },
         });
 

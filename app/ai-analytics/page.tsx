@@ -233,13 +233,13 @@ export default function AiAnalyticsDashboard() {
       if (insight.recordDate) {
         const recordDate = new Date(insight.recordDate);
         recordDate.setHours(0, 0, 0, 0);
-        
+
         const fromDate = new Date(tableDateRange.from);
         fromDate.setHours(0, 0, 0, 0);
-        
+
         let toDate = tableDateRange.to ? new Date(tableDateRange.to) : new Date(fromDate);
         toDate.setHours(23, 59, 59, 999);
-        
+
         matchesDate = recordDate >= fromDate && recordDate <= toDate;
       } else {
         matchesDate = false;
@@ -858,7 +858,7 @@ export default function AiAnalyticsDashboard() {
                                         <p><span className="font-semibold text-gray-900">กลุ่ม:</span> {insight.group || '-'}</p>
                                       </div>
                                     </div>
-                                    
+
                                     <div>
                                       <h3 className="font-semibold text-gray-900 mb-2">ข้อมูลการสังเกต</h3>
                                       <div className="bg-slate-50 p-4 rounded-md space-y-2 text-sm text-gray-700">
@@ -901,49 +901,49 @@ export default function AiAnalyticsDashboard() {
                                 </div>
 
                                 <hr className="my-6 border-slate-200" />
-                                
+
                                 {/* ส่วนผลลัพธ์จาก AI */}
-                                <div>
+                                <div className="flex flex-col gap-2">
                                   <h3 className="font-semibold text-lg text-indigo-700 mb-4 flex items-center gap-2">
                                     <Sparkles className="w-5 h-5" />
                                     ผลการวิเคราะห์จาก AI
                                   </h3>
                                   <div className="grid grid-cols-2 gap-4">
-                                  <div className="p-4 border rounded-lg">
-                                    <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
-                                    <p className="font-medium text-indigo-700">{insight.category}</p>
+                                    <div className="p-4 border rounded-lg">
+                                      <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
+                                      <p className="font-medium text-indigo-700">{insight.category}</p>
+                                    </div>
+                                    <div className="p-4 border rounded-lg">
+                                      <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
+                                      <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+                                        {insight.severityScore} / 10
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="p-4 border rounded-lg">
-                                    <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
-                                    <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
-                                      {insight.severityScore} / 10
-                                    </p>
+                                  <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
+                                    <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
+                                    </h4>
+                                    <p className="text-rose-900 text-sm">{insight.rootCause}</p>
                                   </div>
-                                </div>
-                                <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
-                                  <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
-                                    <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
-                                  </h4>
-                                  <p className="text-rose-900 text-sm">{insight.rootCause}</p>
-                                </div>
-                                <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
-                                  <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
-                                  <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
-                                    {Array.isArray(insight.recommendations) ? (
-                                      insight.recommendations.map((rec: string, i: number) => (
-                                        <li key={i}>{rec}</li>
-                                      ))
-                                    ) : (
-                                      <li>{String(insight.recommendations || '-')}</li>
-                                    )}
-                                  </ul>
-                                </div>
-                                <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
-                                  <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
-                                    <ShieldAlert className="h-4 w-4" /> Predictive Warning
-                                  </h4>
-                                  <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
-                                </div>
+                                  <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                                    <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
+                                    <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
+                                      {Array.isArray(insight.recommendations) ? (
+                                        insight.recommendations.map((rec: string, i: number) => (
+                                          <li key={i}>{rec}</li>
+                                        ))
+                                      ) : (
+                                        <li>{String(insight.recommendations || '-')}</li>
+                                      )}
+                                    </ul>
+                                  </div>
+                                  <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
+                                    <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                                      <ShieldAlert className="h-4 w-4" /> Predictive Warning
+                                    </h4>
+                                    <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex justify-between items-center mt-6">

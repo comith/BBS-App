@@ -114,12 +114,12 @@ export function ReportCard({
       </div>
 
       {/* Action Bar for Pending Items or AI Insights */}
-      {(report.status === "pending" || (isSheOrManager && report.aiInsight)) && (
+      {(report.status === "pending" || report.aiInsight) && (
         <div 
           className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {isSheOrManager && report.aiInsight && (
+          {report.aiInsight && (
             <Button
               size="sm"
               variant="outline"
@@ -127,10 +127,10 @@ export function ReportCard({
               onClick={onAiView}
             >
               <BrainCircuit className="w-3 h-3 mr-1.5" />
-              วิเคราะห์ AI
+              ผลวิเคราะห์ AI
             </Button>
           )}
-          {report.status === "pending" && (
+          {report.status === "pending" && isSheOrManager && (
             <>
               <Button
                 size="sm"

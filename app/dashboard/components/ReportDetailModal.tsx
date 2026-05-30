@@ -232,30 +232,34 @@ export function ReportDetailModal({
               </div>
             )}
 
-            {report.status === "pending" && (
+            {(report.status === "pending" || report.aiInsight) && (
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button
-                  onClick={() => onApprove(report)}
-                  className="bg-green-600 hover:bg-green-700 flex-1 min-w-[120px]"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  อนุมัติ
-                </Button>
-                <Button 
-                  onClick={() => onReject(report)}
-                  className="flex-1 min-w-[120px]"
-                >
-                  <Ban className="h-4 w-4 mr-2" />
-                  ไม่อนุมัติ
-                </Button>
-                {isSheOrManager && (
+                {report.status === "pending" && isSheOrManager && (
+                  <>
+                    <Button
+                      onClick={() => onApprove(report)}
+                      className="bg-green-600 hover:bg-green-700 flex-1 min-w-[120px]"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      อนุมัติ
+                    </Button>
+                    <Button 
+                      onClick={() => onReject(report)}
+                      className="flex-1 min-w-[120px]"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      ไม่อนุมัติ
+                    </Button>
+                  </>
+                )}
+                {report.aiInsight && (
                   <Button 
-                    variant="secondary" 
+                    variant="outline" 
                     onClick={() => onAiView(report)}
-                    className="flex-1 min-w-[120px]"
+                    className="flex-1 min-w-[120px] bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
                   >
                     <BrainCircuit className="h-4 w-4 mr-2" />
-                    วิเคราะห์ AI
+                    ผลวิเคราะห์ AI
                   </Button>
                 )}
               </div>

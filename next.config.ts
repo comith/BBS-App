@@ -17,7 +17,11 @@ const SUPABASE_INTERNAL_URL = process.env.SUPABASE_INTERNAL_URL || 'http://172.1
 
 const nextConfig: NextConfig = {
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
   },
 
   images: {

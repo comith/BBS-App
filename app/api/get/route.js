@@ -60,7 +60,7 @@ export async function GET(request) {
           : {}
         const records = await prisma.record.findMany({
           where,
-          include: { aiInsight: true },
+          include: { aiInsight: { select: { updatedAt: true } } },
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * limit,
           take: limit,

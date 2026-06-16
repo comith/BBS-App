@@ -31,15 +31,16 @@ export async function GET() {
     ]);
 
     // 3. คำนวณ KPIs
-    const totalProcessed = allInsights.length;
+    const successfulInsights = allInsights.filter(insight => insight.category !== 'FAILED');
+    const totalProcessed = successfulInsights.length;
     const totalReports = totalRecords + totalRecordsShe;
     const avgSeverity = totalProcessed > 0
-      ? allInsights.reduce((sum, i) => sum + (i.severityScore || 0), 0) / totalProcessed
+      ? successfulInsights.reduce((sum, i) => sum + (i.severityScore || 0), 0) / totalProcessed
       : 0;
 
     // 4. หาแผนกที่มีความเสี่ยงสูงสุด
     const groupRiskMap: Record<string, { totalScore: number; count: number }> = {};
-    allInsights.forEach((insight) => {
+    successfulInsights.forEach((insight) => {
       let group = insight.recordShe?.departNotice || insight.record?.departNotice || 'ไม่ระบุแผนก';
       // Clean up the string if it's empty or whitespace
       if (group.trim() === '') group = 'ไม่ระบุแผนก';
@@ -63,7 +64,7 @@ export async function GET() {
 
     // 5. จัดกลุ่มตาม Category
     const categoryMap: Record<string, number> = {};
-    allInsights.forEach((insight) => {
+    successfulInsights.forEach((insight) => {
       const cat = insight.category || 'Uncategorized';
       categoryMap[cat] = (categoryMap[cat] || 0) + 1;
     });
@@ -100,7 +101,7 @@ export async function GET() {
     ];
 
     const rootCauseCount: Record<string, number> = {};
-    allInsights.forEach((insight) => {
+    successfulInsights.forEach((insight) => {
       const text = insight.rootCause || '';
       let matched = false;
       for (const kw of rootCauseKeywords) {
@@ -125,7 +126,7 @@ export async function GET() {
 
     // 7. สรุปเทรนด์รายเดือน (จากวันที่ใน record)
     const monthlyMap: Record<string, { count: number; totalSeverity: number }> = {};
-    allInsights.forEach((insight) => {
+    successfulInsights.forEach((insight) => {
       const dateStr = insight.recordShe?.date || insight.record?.date;
       if (!dateStr) return;
       try {

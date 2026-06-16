@@ -131,6 +131,11 @@ export default function AiAnalyticsDashboard() {
           recordType: insight.recordType,
           observedWork: insight.observedWork,
           departNotice: insight.departNotice,
+          safetyCategory: insight.safetyCategory,
+          subSafetyCategory: insight.subSafetyCategory,
+          safeActionCount: insight.safeActionCount,
+          unsafeActionCount: insight.unsafeActionCount,
+          actionTypeUnsafe: insight.actionTypeUnsafe,
           forceReanalyze: true
         })
       });
@@ -170,38 +175,43 @@ export default function AiAnalyticsDashboard() {
     setProgress({ current: 0, total: 0, show: true });
 
     let totalProcessed = 0;
+    let totalErrors = 0;
     let keepProcessing = true;
     let initialTotal = 0;
 
     try {
       while (keepProcessing) {
-        // ประมวลผลทีละ 20 รายการเพื่อไม่ให้ Browser ติด Timeout
+        // ประมวลผลทีละ 60 รายการเพื่อไม่ให้ Browser ติด Timeout
         const res = await apiFetch('/api/ai-batch-process', {
           method: 'POST',
           body: JSON.stringify({ limit: 60 })
         });
 
-        if (!res.ok) throw new Error('Network response was not ok');
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Network response was not ok');
+        }
 
         const result = await res.json();
 
         if (initialTotal === 0) {
-          initialTotal = result.totalPending;
+          initialTotal = result.totalPending + result.processed + result.errors;
           setProgress(prev => ({ ...prev, total: initialTotal }));
         }
 
         totalProcessed += result.processed;
-        setProgress(prev => ({ ...prev, current: totalProcessed }));
+        totalErrors += result.errors;
+        setProgress(prev => ({ ...prev, current: totalProcessed + totalErrors }));
 
         // Update Dashboard Data periodically
         fetchData();
 
-        if (result.totalPending <= result.processed || result.processed === 0) {
+        if (result.totalPending === 0 || (result.processed === 0 && result.errors === 0)) {
           keepProcessing = false;
         }
       }
 
-      success('ประมวลผลเสร็จสิ้น', `วิเคราะห์ข้อมูลทั้งหมด ${totalProcessed} รายการเรียบร้อยแล้ว`);
+      success('ประมวลผลเสร็จสิ้น', `วิเคราะห์สำเร็จ ${totalProcessed} รายการ, ล้มเหลว ${totalErrors} รายการ`);
     } catch (err: any) {
       toastError('เกิดข้อผิดพลาด', `การประมวลผลหยุดชะงัก: ${err.message}`);
     } finally {
@@ -806,16 +816,26 @@ export default function AiAnalyticsDashboard() {
                         </TableCell>
                         <TableCell>{insight.group}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700">
-                            {insight.category}
-                          </Badge>
+                          {insight.category === 'FAILED' ? (
+                            <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-50">
+                              วิเคราะห์ไม่สำเร็จ
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700">
+                              {insight.category}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-medium ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
-                              {insight.severityScore}/10
-                            </span>
-                          </div>
+                          {insight.category === 'FAILED' ? (
+                            <span className="text-gray-400 font-medium">-</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+                                {insight.severityScore}/10
+                              </span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="max-w-[250px] truncate" title={insight.observedWork}>
                           {insight.observedWork}
@@ -909,42 +929,58 @@ export default function AiAnalyticsDashboard() {
                                     <Sparkles className="w-5 h-5" />
                                     ผลการวิเคราะห์จาก AI
                                   </h3>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 border rounded-lg">
-                                      <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
-                                      <p className="font-medium text-indigo-700">{insight.category}</p>
-                                    </div>
-                                    <div className="p-4 border rounded-lg">
-                                      <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
-                                      <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
-                                        {insight.severityScore} / 10
+                                  {insight.category === 'FAILED' ? (
+                                    <div className="p-4 border border-red-200 bg-red-50 rounded-lg space-y-2">
+                                      <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4" /> เกิดข้อผิดพลาดในการวิเคราะห์ด้วย AI
+                                      </h4>
+                                      <p className="text-red-950 text-sm font-mono bg-red-100/50 p-3 rounded border border-red-200/50 whitespace-pre-wrap">
+                                        {insight.rootCause}
+                                      </p>
+                                      <p className="text-xs text-red-700">
+                                        * หมายเหตุ: คุณสามารถกดปุ่ม "วิเคราะห์ใหม่" ด้านล่างเพื่อส่งข้อมูลให้ AI วิเคราะห์ใหม่อีกครั้ง
                                       </p>
                                     </div>
-                                  </div>
-                                  <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
-                                      <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
-                                    </h4>
-                                    <p className="text-rose-900 text-sm">{insight.rootCause}</p>
-                                  </div>
-                                  <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
-                                    <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
-                                      {Array.isArray(insight.recommendations) ? (
-                                        insight.recommendations.map((rec: string, i: number) => (
-                                          <li key={i}>{rec}</li>
-                                        ))
-                                      ) : (
-                                        <li>{String(insight.recommendations || '-')}</li>
-                                      )}
-                                    </ul>
-                                  </div>
-                                  <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
-                                      <ShieldAlert className="h-4 w-4" /> Predictive Warning
-                                    </h4>
-                                    <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
-                                  </div>
+                                  ) : (
+                                    <>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 border rounded-lg">
+                                          <h4 className="text-sm font-semibold text-gray-500 mb-1">หมวดหมู่</h4>
+                                          <p className="font-medium text-indigo-700">{insight.category}</p>
+                                        </div>
+                                        <div className="p-4 border rounded-lg">
+                                          <h4 className="text-sm font-semibold text-gray-500 mb-1">ระดับความรุนแรง (Severity)</h4>
+                                          <p className={`font-bold text-lg ${insight.severityScore >= 8 ? 'text-red-600' : insight.severityScore >= 5 ? 'text-orange-500' : 'text-green-600'}`}>
+                                            {insight.severityScore} / 10
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="p-4 border border-rose-100 bg-rose-50 rounded-lg">
+                                        <h4 className="text-sm font-semibold text-rose-700 mb-2 flex items-center gap-2">
+                                          <AlertTriangle className="h-4 w-4" /> Root Cause Analysis
+                                        </h4>
+                                        <p className="text-rose-900 text-sm">{insight.rootCause}</p>
+                                      </div>
+                                      <div className="p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                                        <h4 className="text-sm font-semibold text-blue-700 mb-2">คำแนะนำ / Recommendations</h4>
+                                        <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
+                                          {Array.isArray(insight.recommendations) ? (
+                                            insight.recommendations.map((rec: string, i: number) => (
+                                              <li key={i}>{rec}</li>
+                                            ))
+                                          ) : (
+                                            <li>{String(insight.recommendations || '-')}</li>
+                                          )}
+                                        </ul>
+                                      </div>
+                                      <div className="p-4 border border-amber-100 bg-amber-50 rounded-lg">
+                                        <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                                          <ShieldAlert className="h-4 w-4" /> Predictive Warning
+                                        </h4>
+                                        <p className="text-amber-900 text-sm">{insight.predictiveWarning}</p>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex justify-between items-center mt-6">

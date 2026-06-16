@@ -53,6 +53,30 @@ export async function POST(req: Request) {
       }
     }
 
+    // ดึงข้อมูลจริงจากฐานข้อมูลเพื่อความถูกต้องแม่นยำ (ป้องกันการส่งฟิลด์ไม่ครบจาก Frontend)
+    let dbRecord: any = null;
+    try {
+      if (recordType === 'SHE') {
+        dbRecord = await prisma.recordShe.findUnique({
+          where: { id: recordId }
+        });
+      } else {
+        dbRecord = await prisma.record.findUnique({
+          where: { id: recordId }
+        });
+      }
+    } catch (dbErr) {
+      console.error('Failed to query record from DB in ai-evaluation:', dbErr);
+    }
+
+    const finalObservedWork = dbRecord?.observedWork || observedWork || '-';
+    const finalDepartNotice = dbRecord?.departNotice || departNotice || '-';
+    const finalSafetyCategory = dbRecord?.safetyCategory || safetyCategory || '-';
+    const finalSubSafetyCategory = dbRecord?.subSafetyCategory || subSafetyCategory || '-';
+    const finalSafeActionCount = dbRecord?.safeActionCount ?? safeActionCount ?? 0;
+    const finalUnsafeActionCount = dbRecord?.unsafeActionCount ?? unsafeActionCount ?? 0;
+    const finalActionTypeUnsafe = dbRecord?.actionTypeUnsafe || actionTypeUnsafe || '-';
+
     // 2. ถ้ายังไม่มี ให้เตรียมข้อความส่งไปให้ Ollama AI
     const prompt = `
 คุณคือผู้เชี่ยวชาญด้านความปลอดภัยและพฤติกรรมศาสตร์ในเหมืองแร่และโรงงานอุตสาหกรรมหนัก (Mining & Heavy Industry Safety Expert)
@@ -73,15 +97,15 @@ export async function POST(req: Request) {
 - predictive_warning: คาดการณ์เชิงบวก (เช่น "หากรักษามาตรฐานนี้ไว้ จะเป็นแบบอย่างที่ดีและเกิดวัฒนธรรมความปลอดภัยอย่างยั่งยืน")
 
 [ข้อมูลการสังเกตการณ์]
-1. งานที่สังเกต: "${observedWork || '-'}"
-2. แผนกที่ถูกสังเกต: "${departNotice || '-'}"
-3. หมวดหมู่หลักความปลอดภัย: "${safetyCategory || '-'}"
-4. หมวดหมู่ย่อย: "${subSafetyCategory || '-'}"
+1. งานที่สังเกต: "${finalObservedWork}"
+2. แผนกที่ถูกสังเกต: "${finalDepartNotice}"
+3. หมวดหมู่หลักความปลอดภัย: "${finalSafetyCategory}"
+4. หมวดหมู่ย่อย: "${finalSubSafetyCategory}"
 
 [ข้อมูลพฤติกรรมและการจัดการ]
-5. จำนวนพนักงานที่ปฏิบัติถูกต้อง (Safe Actions): ${safeActionCount || 0} คน
-6. จำนวนพนักงานที่ปฏิบัติไม่ถูกต้อง (Unsafe Actions): ${unsafeActionCount || 0} คน
-7. การดำเนินการเบื้องต้นของผู้แจ้ง (Action Taken): "${actionTypeUnsafe || '-'}"
+5. จำนวนพนักงานที่ปฏิบัติถูกต้อง (Safe Actions): ${finalSafeActionCount} คน
+6. จำนวนพนักงานที่ปฏิบัติไม่ถูกต้อง (Unsafe Actions): ${finalUnsafeActionCount} คน
+7. การดำเนินการเบื้องต้นของผู้แจ้ง (Action Taken): "${finalActionTypeUnsafe}"
 
 [รูปแบบ JSON ที่ต้องการให้ตอบกลับ]
 {

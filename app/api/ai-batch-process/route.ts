@@ -106,10 +106,31 @@ async function analyzeWithOllama(record: any) {
   return insightData;
 }
 
+async function isOllamaOnline(): Promise<boolean> {
+  try {
+    const response = await fetch(`${OLLAMA_URL}/api/tags`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(2500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const limit = body.limit || 50; // จำนวนสูงสุดที่จะ process ต่อครั้ง
+
+    // ตรวจสอบความพร้อมใช้งานของ Ollama AI Server
+    const online = await isOllamaOnline();
+    if (!online) {
+      return NextResponse.json(
+        { error: 'Ollama AI Server is offline or unreachable' },
+        { status: 503 }
+      );
+    }
 
     // 1. หา Records ของพนักงานทั่วไป (BBS) ที่ยังไม่มี AI Insight
     const unprocessedBBS = await prisma.record.findMany({
@@ -214,6 +235,30 @@ export async function POST(req: Request) {
         errors++;
         errorDetails.push(`BBS ${record.id}: ${err.message}`);
         console.error(`❌ [BBS] Error processing ${record.id}:`, err.message);
+
+        // บันทึกสถานะการประมวลผลล้มเหลวเพื่อป้องกันการค้างในคิว
+        try {
+          await prisma.aiInsight.upsert({
+            where: { recordId: record.id },
+            update: {
+              category: 'FAILED',
+              severityScore: 0,
+              rootCause: `Failed to analyze: ${err.message}`,
+              recommendations: [],
+              predictiveWarning: 'N/A',
+            },
+            create: {
+              recordId: record.id,
+              category: 'FAILED',
+              severityScore: 0,
+              rootCause: `Failed to analyze: ${err.message}`,
+              recommendations: [],
+              predictiveWarning: 'N/A',
+            },
+          });
+        } catch (dbErr: any) {
+          console.error(`❌ [BBS] Failed to write fallback error status for ${record.id}:`, dbErr.message);
+        }
       }
     }
 
@@ -250,14 +295,52 @@ export async function POST(req: Request) {
         errors++;
         errorDetails.push(`SHE ${record.id}: ${err.message}`);
         console.error(`❌ [SHE] Error processing ${record.id}:`, err.message);
+
+        // บันทึกสถานะการประมวลผลล้มเหลวเพื่อป้องกันการค้างในคิว
+        try {
+          await prisma.aiInsight.upsert({
+            where: { recordSheId: record.id },
+            update: {
+              category: 'FAILED',
+              severityScore: 0,
+              rootCause: `Failed to analyze: ${err.message}`,
+              recommendations: [],
+              predictiveWarning: 'N/A',
+            },
+            create: {
+              recordSheId: record.id,
+              category: 'FAILED',
+              severityScore: 0,
+              rootCause: `Failed to analyze: ${err.message}`,
+              recommendations: [],
+              predictiveWarning: 'N/A',
+            },
+          });
+        } catch (dbErr: any) {
+          console.error(`❌ [SHE] Failed to write fallback error status for ${record.id}:`, dbErr.message);
+        }
       }
     }
 
+    // คำนวณจำนวนที่เหลือจริงๆ หลังจากการรันรอบนี้ (ลบรายการที่เพิ่งทำสำเร็จหรือล้มเหลวออกไป)
+    const postPendingBBS = await prisma.record.count({
+      where: {
+        aiInsight: null,
+        observedWork: { not: null },
+      }
+    });
+    const postPendingSHE = await prisma.recordShe.count({
+      where: {
+        aiInsight: null,
+        observedWork: { not: null },
+      }
+    });
+
     return NextResponse.json({
-      message: `ประมวลผลเสร็จสิ้น`,
+      message: `ประมวลผลเสร็จสิ้น (สำเร็จ ${processed} รายการ, ล้มเหลว ${errors} รายการ)`,
       processed,
       errors,
-      totalPending,
+      totalPending: postPendingBBS + postPendingSHE,
       errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
     });
 

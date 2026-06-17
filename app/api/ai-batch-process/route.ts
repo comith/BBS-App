@@ -73,23 +73,25 @@ async function analyzeWithOllama(record: any) {
 }
 `;
 
-  const response = await fetch(`${OLLAMA_URL}/api/chat`, {
+  const response = await fetch(`${OLLAMA_URL}/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.API_HERMES_KEY || 'API_HERMES_KEY'}`,
+      'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7'
+    },
     body: JSON.stringify({
       model: OLLAMA_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      format: 'json',
+      messages: [{ role: 'user', content: prompt }]
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`Ollama API error: ${response.statusText}`);
+    throw new Error(`AI API error: ${response.statusText}`);
   }
 
   const data = await response.json();
-  const aiResponseText = data.message.content;
+  const aiResponseText = data.choices?.[0]?.message?.content || data.message?.content;
 
   let insightData;
   try {
@@ -108,8 +110,11 @@ async function analyzeWithOllama(record: any) {
 
 async function isOllamaOnline(): Promise<boolean> {
   try {
-    const response = await fetch(`${OLLAMA_URL}/api/tags`, {
+    const response = await fetch(`${OLLAMA_URL}/models`, {
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.API_HERMES_KEY || 'API_HERMES_KEY'}`
+      },
       signal: AbortSignal.timeout(2500),
     });
     return response.ok;

@@ -121,24 +121,26 @@ export async function POST(req: Request) {
 }
 `;
 
-    // 3. ส่ง Request ไปยัง Ollama
-    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
+    // 3. ส่ง Request ไปยัง AI Server (OpenAI Compatible)
+    const response = await fetch(`${OLLAMA_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.API_HERMES_KEY || 'API_HERMES_KEY'}`,
+        'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7'
+      },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        stream: false,
-        format: 'json', // บังคับให้ตอบเป็น JSON (ฟีเจอร์ของ Ollama สำหรับบางโมเดล)
+        messages: [{ role: 'user', content: prompt }]
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
+      throw new Error(`AI API error: ${response.statusText}`);
     }
 
     const data = await response.json();
-    const aiResponseText = data.message.content;
+    const aiResponseText = data.choices?.[0]?.message?.content || data.message?.content;
 
     // 4. แปลงข้อความจาก AI เป็น JSON Object
     let insightData;

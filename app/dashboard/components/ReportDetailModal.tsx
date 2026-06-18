@@ -232,7 +232,7 @@ export function ReportDetailModal({
               </div>
             )}
 
-            {(report.status === "pending" || report.aiInsight) && (
+            {(report.status === "pending" || report.status === "approved" || report.aiInsight) && (
               <div className="mt-6 flex flex-wrap gap-3">
                 {report.status === "pending" && isSheOrManager && (
                   <>
@@ -252,7 +252,7 @@ export function ReportDetailModal({
                     </Button>
                   </>
                 )}
-                {report.aiInsight && (
+                {(report.status === "approved" || report.aiInsight) && (
                   <Button 
                     variant="outline" 
                     onClick={() => onAiView(report)}

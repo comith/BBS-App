@@ -12,23 +12,64 @@ import {
 } from "@/components/ui/dialog";
 import { AlertCircle, BrainCircuit, Clock } from "lucide-react";
 import { type Report } from "../types";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Props {
   report: Report | null;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-export function AiInsightDialog({ report, onClose }: Props) {
+export function AiInsightDialog({ report, onClose, onRefresh }: Props) {
   const [insight, setInsight] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (!report) return;
+    setIsGenerating(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/ai-evaluation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: report.recordId,
+          recordType: "Record",
+          observedWork: report.observedWork,
+          departNotice: report.observedDepartment,
+          safetyCategory: report.safetyCategory,
+          subSafetyCategory: report.subCategory,
+          safeActionCount: report.safeCount,
+          unsafeActionCount: report.unsafeCount,
+          forceReanalyze: true,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate AI insight");
+      }
+
+      const data = await res.json();
+      setInsight(data);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error("Error generating AI insight:", err);
+      setError("ไม่สามารถสั่งวิเคราะห์ด้วย AI ได้ในขณะนี้");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (report && report.aiInsight) {
       // If report.aiInsight only has updatedAt, or we just want to fetch the full object
       setIsLoading(true);
       setError(null);
-      fetch(`/api/ai-insight/${report.recordId}`)
+      apiFetch(`/api/ai-insight/${report.recordId}`)
         .then((res) => {
           if (!res.ok) throw new Error("Failed to load insight");
           return res.json();
@@ -84,6 +125,12 @@ export function AiInsightDialog({ report, onClose }: Props) {
           <div className="flex flex-col items-center justify-center py-10 space-y-4">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p className="text-sm text-gray-500">กำลังโหลดข้อมูลวิเคราะห์...</p>
+          </div>
+        ) : isGenerating ? (
+          <div className="flex flex-col items-center justify-center py-10 space-y-4">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="text-sm text-gray-500">กำลังวิเคราะห์พฤติกรรมและความเสี่ยงด้วย AI (Ollama)...</p>
+            <p className="text-xs text-slate-400">กรุณารอสักครู่ ขั้นตอนนี้อาจใช้เวลา 10-15 วินาที</p>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 rounded-lg border border-red-200">
@@ -172,7 +219,18 @@ export function AiInsightDialog({ report, onClose }: Props) {
               </>
             )}
           </div>
-        ) : null}
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-4 border border-dashed rounded-2xl bg-slate-50/50 mt-4">
+            <BrainCircuit className="h-10 w-10 text-slate-400" />
+            <div>
+              <p className="font-semibold text-slate-700 text-sm">ยังไม่มีผลวิเคราะห์ของรายงานนี้</p>
+              <p className="text-xs text-slate-500 mt-1">รายงานนี้ได้รับการอนุมัติแล้ว แต่ยังไม่ได้สร้างบทวิเคราะห์จาก AI</p>
+            </div>
+            <Button onClick={handleGenerate} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm text-xs px-4 py-2">
+              เริ่มวิเคราะห์ด้วย AI ตอนนี้
+            </Button>
+          </div>
+        )}
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>

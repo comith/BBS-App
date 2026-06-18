@@ -113,13 +113,13 @@ export function ReportCard({
         )}
       </div>
 
-      {/* Action Bar for Pending Items or AI Insights */}
-      {(report.status === "pending" || report.aiInsight) && (
+      {/* Action Bar for Pending Items, Approved Items, or AI Insights */}
+      {(report.status === "pending" || report.status === "approved" || report.aiInsight) && (
         <div 
           className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {report.aiInsight && (
+          {(report.status === "approved" || report.aiInsight) && (
             <Button
               size="sm"
               variant="outline"

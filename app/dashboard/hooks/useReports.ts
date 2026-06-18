@@ -25,6 +25,7 @@ export interface ReportsState {
   reports: Report[];
   setReports: React.Dispatch<React.SetStateAction<Report[]>>;
   isLoading: boolean;
+  isBackgroundLoading: boolean;
   error: string | null;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
@@ -61,6 +62,7 @@ export interface ReportStats {
 export function useReports(sessionLoaded: boolean): ReportsState {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [employeeList, setEmployeeList] = useState<EmployeeInfo[]>([]);
@@ -72,9 +74,12 @@ export function useReports(sessionLoaded: boolean): ReportsState {
       setIsLoading(true);
       setError(null);
 
+      // Fetch page 1 (50 items) first for instant render
       const params = new URLSearchParams({
         type: "record",
         year: selectedYear.toString(),
+        page: "1",
+        limit: "50",
       });
 
       const cached = staticDataRef.current;
@@ -135,6 +140,36 @@ export function useReports(sessionLoaded: boolean): ReportsState {
           subCategoryData
         )
       );
+      setIsLoading(false); // Done loading page 1!
+
+      // Now fetch all records of the year in the background
+      setIsBackgroundLoading(true);
+      const bgParams = new URLSearchParams({
+        type: "record",
+        year: selectedYear.toString(),
+      });
+
+      apiFetch(`/api/get?${bgParams.toString()}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Background fetch failed");
+          return res.json();
+        })
+        .then((bgData) => {
+          setReports(
+            transformApiDataToDashboardReport(
+              bgData ?? [],
+              categoryData,
+              subCategoryData
+            )
+          );
+        })
+        .catch((err) => {
+          console.warn("Background fetch warning:", err);
+        })
+        .finally(() => {
+          setIsBackgroundLoading(false);
+        });
+
     } catch (err) {
       console.error("Error fetching reports:", err);
       if (err instanceof TypeError) {
@@ -144,7 +179,6 @@ export function useReports(sessionLoaded: boolean): ReportsState {
       } else {
         setError("ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่");
       }
-    } finally {
       setIsLoading(false);
     }
   }, [selectedYear]);
@@ -299,6 +333,7 @@ export function useReports(sessionLoaded: boolean): ReportsState {
     reports,
     setReports,
     isLoading,
+    isBackgroundLoading,
     error,
     selectedYear,
     setSelectedYear,

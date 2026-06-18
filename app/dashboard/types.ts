@@ -61,6 +61,7 @@ export interface Report {
   other?: string;
   comment?: string;
   aiInsight?: any;
+  searchString: string;
 }
 
 export const getStatusInfo = (status: string) => {
@@ -159,6 +160,12 @@ export const transformApiDataToDashboardReport = (
         })
       : [];
 
+    const catName = category?.name || `Category ID: ${item.safetycategory_id}`;
+    const subCatName = subCategory?.name || "";
+    const observedWorkVal = item.observed_Work || "ไม่ระบุ";
+    const deptVal = item.depart || "";
+    const searchString = `${item.fullname} ${item.employee_id} ${catName} ${subCatName} ${observedWorkVal} ${deptVal}`.toLowerCase();
+
     return {
       id: index + 1,
       recordId: item.record_id,
@@ -167,10 +174,9 @@ export const transformApiDataToDashboardReport = (
       employeeName: item.fullname,
       department: item.depart,
       group: item.group,
-      safetyCategory:
-        category?.name || `Category ID: ${item.safetycategory_id}`,
+      safetyCategory: catName,
       subCategory: subCategory?.name || null,
-      observedWork: item.observed_Work || "ไม่ระบุ",
+      observedWork: observedWorkVal,
       observedDepartment: item.department_notice || item.group || "ไม่ระบุ",
       status:
         item.status && item.status.trim() !== ""
@@ -190,6 +196,7 @@ export const transformApiDataToDashboardReport = (
       other: item.other || "",
       comment: item.comment || "",
       aiInsight: item.aiInsight || null,
+      searchString,
     };
   });
 };

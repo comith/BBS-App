@@ -63,6 +63,7 @@ function AdminDashboard() {
     reports,
     setReports,
     isLoading,
+    isBackgroundLoading,
     error,
     selectedYear,
     setSelectedYear,
@@ -315,6 +316,13 @@ function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="reports" className="space-y-6">
+            {isBackgroundLoading && (
+              <div className="bg-orange-50 border border-orange-100 text-orange-700 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 animate-pulse shadow-sm">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+                <span>กำลังโหลดข้อมูลทั้งหมดสถิติรายปีในเบื้องหลังเพื่อให้รายงานอัปเดตครบถ้วน...</span>
+              </div>
+            )}
+
             <StatsCards stats={stats} isLoading={isLoading} />
 
             <ReportFilters
@@ -377,6 +385,13 @@ function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
+            {isBackgroundLoading && (
+              <div className="bg-orange-50 border border-orange-100 text-orange-700 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 animate-pulse shadow-sm">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+                <span>กำลังดาวน์โหลดและวิเคราะห์สถิติทั้งหมดในระบบ ข้อมูลวิเคราะห์ด้านล่างจะสมบูรณ์ในสักครู่...</span>
+              </div>
+            )}
+
             <AnalyticsTab
               reports={reports}
               employeeList={employeeList}
@@ -436,6 +451,7 @@ function AdminDashboard() {
       <AiInsightDialog
         report={selectedAiReport}
         onClose={() => setSelectedAiReport(null)}
+        onRefresh={() => fetchReports()}
       />
     </div>
   );

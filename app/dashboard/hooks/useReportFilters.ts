@@ -90,14 +90,7 @@ export function useReportFilters(reports: Report[]): ReportFiltersState {
 
     if (deferredSearchTerm) {
       const q = deferredSearchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.employeeName.toLowerCase().includes(q) ||
-          r.employeeId.toLowerCase().includes(q) ||
-          r.safetyCategory.toLowerCase().includes(q) ||
-          r.observedWork.toLowerCase().includes(q) ||
-          r.department.toLowerCase().includes(q)
-      );
+      filtered = filtered.filter((r) => r.searchString.includes(q));
     }
 
     filtered.sort((a, b) => {

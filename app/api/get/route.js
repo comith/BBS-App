@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { apiLogger } from '@/lib/logger'
+import { getCached } from '@/lib/staticCache'
 
 function recordToApiFormat(r) {
   return {
@@ -39,7 +40,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '9999')
+    const limit = parseInt(searchParams.get('limit') || '800')
 
     if (!type) {
       return NextResponse.json({ message: 'Type parameter is required' }, { status: 400 })
@@ -70,61 +71,65 @@ export async function GET(request) {
       }
 
       case 'employee': {
-        const employees = await prisma.employee.findMany({
-          orderBy: { id: 'asc' },
-        })
+        const employees = await getCached('employee', () =>
+          prisma.employee.findMany({ orderBy: { id: 'asc' } })
+        )
         return NextResponse.json(employees)
       }
 
       case 'category': {
-        const categories = await prisma.category.findMany({
-          orderBy: { id: 'asc' },
-        })
+        const categories = await getCached('category', () =>
+          prisma.category.findMany({ orderBy: { id: 'asc' } })
+        )
         return NextResponse.json(categories)
       }
 
       case 'subcategory': {
-        const [subCategories, departments] = await Promise.all([
-          prisma.subCategory.findMany({
-            include: { options: true },
-            orderBy: { id: 'asc' },
-          }),
-          prisma.department.findMany({ orderBy: { id: 'asc' } }),
-        ])
-        const deptById = Object.fromEntries(departments.map((d) => [d.id, d.name]))
+        const formatted = await getCached('subcategory', async () => {
+          const [subCategories, departments] = await Promise.all([
+            prisma.subCategory.findMany({
+              include: { options: true },
+              orderBy: { id: 'asc' },
+            }),
+            prisma.department.findMany({ orderBy: { id: 'asc' } }),
+          ])
+          const deptById = Object.fromEntries(departments.map((d) => [d.id, d.name]))
 
-        const formatted = subCategories.map((sub) => {
-          let departcategory_id = []
-          if (Array.isArray(sub.departcategory)) {
-            departcategory_id = sub.departcategory
-              .map((item) => {
-                if (typeof item === 'object' && item !== null) {
-                  return { id: item.id, shortname: item.name || item.shortname || '' }
-                }
-                const num = parseInt(String(item), 10)
-                return { id: num, shortname: deptById[num] || String(item) }
-              })
-              .filter((d) => d.shortname)
-          }
-          return {
-            id: sub.id,
-            category_id: sub.categoryId,
-            name: sub.name,
-            imagePath: sub.imagePath || '',
-            alt: sub.alt || '',
-            type: sub.type || '',
-            subject: sub.subject || '',
-            placeholder: sub.placeholder || '',
-            title: sub.title || '',
-            departcategory_id,
-            option: sub.options.map((o) => ({ id: o.id, name: o.name })),
-          }
+          return subCategories.map((sub) => {
+            let departcategory_id = []
+            if (Array.isArray(sub.departcategory)) {
+              departcategory_id = sub.departcategory
+                .map((item) => {
+                  if (typeof item === 'object' && item !== null) {
+                    return { id: item.id, shortname: item.name || item.shortname || '' }
+                  }
+                  const num = parseInt(String(item), 10)
+                  return { id: num, shortname: deptById[num] || String(item) }
+                })
+                .filter((d) => d.shortname)
+            }
+            return {
+              id: sub.id,
+              category_id: sub.categoryId,
+              name: sub.name,
+              imagePath: sub.imagePath || '',
+              alt: sub.alt || '',
+              type: sub.type || '',
+              subject: sub.subject || '',
+              placeholder: sub.placeholder || '',
+              title: sub.title || '',
+              departcategory_id,
+              option: sub.options.map((o) => ({ id: o.id, name: o.name })),
+            }
+          })
         })
         return NextResponse.json(formatted)
       }
 
       case 'department': {
-        const departments = await prisma.department.findMany({ orderBy: { id: 'asc' } })
+        const departments = await getCached('department', () =>
+          prisma.department.findMany({ orderBy: { id: 'asc' } })
+        )
         return NextResponse.json(
           departments.map((d) => ({
             id: d.id,
@@ -136,7 +141,9 @@ export async function GET(request) {
       }
 
       case 'group': {
-        const groups = await prisma.group.findMany({ orderBy: { id: 'asc' } })
+        const groups = await getCached('group', () =>
+          prisma.group.findMany({ orderBy: { id: 'asc' } })
+        )
         return NextResponse.json(
           groups.map((g) => ({
             id: g.id,

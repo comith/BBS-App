@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { apiLogger } from '@/lib/logger'
+import { invalidateCached } from '@/lib/staticCache'
 
 export async function PUT(request) {
   try {
@@ -41,6 +42,7 @@ export async function PUT(request) {
       },
     })
 
+    invalidateCached('employee')
     return NextResponse.json({ message: 'Employee updated successfully', data: updated })
   } catch (error) {
     apiLogger.error('Error updating employee:', error)

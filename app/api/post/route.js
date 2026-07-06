@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { apiLogger } from '@/lib/logger'
 import { sendNotificationToTargets } from '@/lib/notificationService'
+import { invalidateCached } from '@/lib/staticCache'
 
 export async function POST(request) {
   try {
@@ -20,6 +21,7 @@ export async function POST(request) {
           position: data.data.position || null,
         },
       })
+      invalidateCached('employee')
       return NextResponse.json({ message: 'Employee data added successfully' }, { status: 201 })
     }
 

@@ -29,10 +29,24 @@ export async function POST(request) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
+    // ดึงวันที่ปัจจุบันตามโซนเวลาประเทศไทย (GMT+7) เพื่อแยกโฟลเดอร์ตามวัน
+    const now = new Date()
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(now)
+
+    const year = parts.find(p => p.type === 'year').value
+    const month = parts.find(p => p.type === 'month').value
+    const day = parts.find(p => p.type === 'day').value
+    const dateStr = `${year}-${month}-${day}`
+
     // ใช้ timestamp เพื่อป้องกันชื่อซ้ำ
     const timestamp = Date.now()
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const storagePath = `uploads/${timestamp}_${safeName}`
+    const storagePath = `uploads/${dateStr}/${timestamp}_${safeName}`
 
     // ตรวจสอบ bucket ว่ามีอยู่หรือยัง ถ้าไม่มีให้สร้างใหม่
     const { data: buckets } = await supabase.storage.listBuckets()

@@ -112,11 +112,18 @@ export function useReports(sessionLoaded: boolean): ReportsState {
         categoryData = cached.categories;
         subCategoryData = cached.subCategories;
       } else {
+        const failedStatic = staticResponses.find((r) => !r.ok);
+        if (failedStatic) {
+          const err = new Error("server") as Error & { status: number };
+          err.status = failedStatic.status;
+          throw err;
+        }
+
         const [catData, subCatData, empData] = await Promise.all(
           staticResponses.map((r) => r.json())
         );
-        categoryData = catData;
-        subCategoryData = subCatData;
+        categoryData = Array.isArray(catData) ? catData : [];
+        subCategoryData = Array.isArray(subCatData) ? subCatData : [];
         staticDataRef.current = {
           categories: catData,
           subCategories: subCatData,

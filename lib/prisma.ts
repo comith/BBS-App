@@ -16,7 +16,7 @@ function createPrismaClient() {
     connectionString: rawUrl.toString(),
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 30000,
-    max: 10,
+    max: 50,
   })
 
   // Prevent unhandled 'error' event from crashing the process

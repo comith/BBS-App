@@ -3,7 +3,7 @@
 import { BarChart3, Calendar, TrendingUp, Users } from "lucide-react";
 import { AnalyticsDashboard } from "../AnalyticsDashboard";
 import { MonthlyReportSummary } from "../MonthlyReportSummary";
-import { type EmployeeInfo, type ReportStats } from "../hooks/useReports";
+import { type EmployeeInfo, type ReportStats, type AnalyticsExtras } from "../hooks/useReports";
 import { type Report } from "../types";
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
   stats: ReportStats;
   departmentList: string[];
   topDepartments: [string, number][];
+  analytics: AnalyticsExtras;
 }
 
 export function AnalyticsTab({
@@ -20,6 +21,7 @@ export function AnalyticsTab({
   stats,
   departmentList,
   topDepartments,
+  analytics,
 }: Props) {
   return (
     <div className="space-y-8 pb-8">
@@ -144,10 +146,10 @@ export function AnalyticsTab({
           <p className="text-xs text-slate-500">ข้อมูลการวิเคราะห์และอันดับการเข้าร่วมของพนักงาน</p>
         </div>
         <AnalyticsDashboard
-          reports={reports}
           employeeList={employeeList}
           stats={stats}
           departmentList={departmentList}
+          analytics={analytics}
         />
       </section>
     </div>

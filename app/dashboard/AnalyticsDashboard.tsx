@@ -15,19 +15,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-
-interface Report {
-    id: number;
-    employeeId: string;
-    employeeName: string;
-    department: string;
-    safetyCategory: string;
-    safeCount: number;
-    unsafeCount: number;
-    status: "approved" | "pending" | "rejected";
-    submittedDate: Date;
-    [key: string]: any;
-}
+import { type AnalyticsExtras } from "./hooks/useReports";
 
 interface Employee {
     employeeId: string;
@@ -38,7 +26,6 @@ interface Employee {
 }
 
 interface AnalyticsDashboardProps {
-    reports: Report[];
     employeeList: Employee[];
     stats: {
         total: number;
@@ -47,110 +34,54 @@ interface AnalyticsDashboardProps {
         rejected: number;
     };
     departmentList: string[];
+    analytics: AnalyticsExtras;
 }
 
 export function AnalyticsDashboard({
-    reports,
     employeeList,
     stats,
     departmentList,
+    analytics,
 }: AnalyticsDashboardProps) {
     const {
         currentMonthCount,
-        safeCount,
-        unsafeCount,
+        safeReportsCount: safeCount,
+        unsafeReportsCount: unsafeCount,
         nearMissCount,
-        categoryTotal,
-        countByEmployee,
-        countByDepartment,
-        topDepartment,
+        departmentCounts,
+        topContributors: rawTopContributors,
         recentReports,
-    } = useMemo(() => {
-        const now = new Date();
-        const curMonth = now.getMonth();
-        const curYear = now.getFullYear();
+    } = analytics;
 
-        let currentMonthCount = 0;
-        let safeCount = 0;
-        let unsafeCount = 0;
-        let nearMissCount = 0;
-        const countByEmployee = new Map<string, number>();
-        const countByDepartment = new Map<string, number>();
-        const approved: Report[] = [];
+    const categoryTotal = safeCount + unsafeCount + nearMissCount || 1;
 
-        for (const r of reports) {
-            const d = new Date(r.submittedDate);
-            if (d.getMonth() === curMonth && d.getFullYear() === curYear) {
-                currentMonthCount++;
-            }
-            if (r.safeCount > 0) safeCount++;
-            if (r.unsafeCount > 0) unsafeCount++;
-            if (r.safetyCategory?.toLowerCase().includes("near miss")) {
-                nearMissCount++;
-            }
-
-            const empId = r.employeeId || r.employeerId || "";
-            if (empId) {
-                countByEmployee.set(empId, (countByEmployee.get(empId) ?? 0) + 1);
-            }
-            countByDepartment.set(
-                r.department,
-                (countByDepartment.get(r.department) ?? 0) + 1
-            );
-
-            if (r.status === "approved") approved.push(r);
-        }
-
-        let topDepartment = "-";
-        let topCount = -1;
-        for (const [dept, count] of countByDepartment) {
-            if (count > topCount) {
-                topCount = count;
-                topDepartment = dept;
-            }
-        }
-
-        const recentReports = approved
-            .sort(
-                (a, b) =>
-                    new Date(b.submittedDate).getTime() -
-                    new Date(a.submittedDate).getTime()
-            )
-            .slice(0, 5);
-
-        return {
-            currentMonthCount,
-            safeCount,
-            unsafeCount,
-            nearMissCount,
-            categoryTotal: safeCount + unsafeCount + nearMissCount || 1,
-            countByEmployee,
-            countByDepartment,
-            topDepartment,
-            recentReports,
-        };
-    }, [reports]);
+    const countByDepartment = useMemo(
+        () => new Map(departmentCounts),
+        [departmentCounts]
+    );
 
     const topContributors = useMemo(() => {
-        return employeeList
-            .map((emp) => {
-                const empId = emp.employeeId || emp.employeerId || "";
+        const employeeById = new Map(
+            employeeList.map((emp) => [emp.employeeId || emp.employeerId || "", emp])
+        );
+        return rawTopContributors
+            .map((c) => {
+                const emp = employeeById.get(c.employeeId);
                 return {
-                    ...emp,
-                    employeeId: empId,
-                    reportCount: countByEmployee.get(empId) ?? 0,
+                    employeeId: c.employeeId,
+                    reportCount: c.count,
+                    employeeName: emp?.employeeName || emp?.fullName || c.employeeId,
+                    department: emp?.department || "",
                 };
             })
-            .filter((emp) => emp.reportCount > 0)
-            .sort((a, b) => b.reportCount - a.reportCount)
             .slice(0, 5);
-    }, [employeeList, countByEmployee]);
+    }, [rawTopContributors, employeeList]);
 
     const maxDeptCount = useMemo(() => {
         let max = 0;
-        for (const c of countByDepartment.values()) if (c > max) max = c;
+        for (const [, c] of departmentCounts) if (c > max) max = c;
         return max || 1;
-    }, [countByDepartment]);
+    }, [departmentCounts]);
 
     return (
         <div className="space-y-6">
@@ -186,7 +117,7 @@ export function AnalyticsDashboard({
                                 </p>
                                 <p className="text-3xl font-bold text-green-600 mt-2">
                                     {employeeList.length > 0
-                                        ? (reports.length / employeeList.length).toFixed(1)
+                                        ? (stats.total / employeeList.length).toFixed(1)
                                         : "0"}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">รายงาน/พนักงาน</p>
@@ -206,7 +137,7 @@ export function AnalyticsDashboard({
                                     แผนกที่ดีที่สุด
                                 </p>
                                 <p className="text-2xl font-bold text-purple-600 mt-2">
-                                    {topDepartment}
+                                    {departmentCounts[0]?.[0] || "-"}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">ส่งรายงานมากที่สุด</p>
                             </div>
@@ -225,13 +156,13 @@ export function AnalyticsDashboard({
                                     อัตราการอนุมัติ
                                 </p>
                                 <p className="text-3xl font-bold text-orange-600 mt-2">
-                                    {reports.length > 0
-                                        ? Math.round((stats.approved / reports.length) * 100)
+                                    {stats.total > 0
+                                        ? Math.round((stats.approved / stats.total) * 100)
                                         : 0}
                                     %
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                    {stats.approved} / {reports.length} รายงาน
+                                    {stats.approved} / {stats.total} รายงาน
                                 </p>
                             </div>
                             <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -380,7 +311,7 @@ export function AnalyticsDashboard({
                                         </div>
                                         <div>
                                             <p className="font-medium text-sm">
-                                                {emp.employeeName || emp.fullName}
+                                                {emp.employeeName}
                                             </p>
                                             <p className="text-xs text-gray-500">{emp.department}</p>
                                         </div>

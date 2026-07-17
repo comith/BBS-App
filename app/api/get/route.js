@@ -70,6 +70,142 @@ export async function GET(request) {
         return NextResponse.json(records.map(recordToApiFormat))
       }
 
+      case 'stats': {
+        const year = searchParams.get('year')
+        const where = year
+          ? { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } }
+          : {}
+        const todayStr = new Date().toISOString().slice(0, 10)
+        const currentMonthStr = new Date().toISOString().slice(0, 7)
+
+        const categories = await getCached('category', () =>
+          prisma.category.findMany({ orderBy: { id: 'asc' } })
+        )
+        const nearMissCategoryIds = categories
+          .filter((c) => c.name?.toLowerCase().includes('near miss'))
+          .map((c) => String(c.id))
+
+        const [
+          statusCounts,
+          categoryAgg,
+          totalActionsAgg,
+          highPriorityCount,
+          todayCount,
+          deptCounts,
+          currentMonthCount,
+          safeReportsCount,
+          unsafeReportsCount,
+          nearMissCount,
+          contributorCounts,
+          recentApproved,
+        ] = await Promise.all([
+          prisma.record.groupBy({ by: ['status'], where, _count: { _all: true } }),
+          prisma.record.groupBy({
+            by: ['safetyCategory'],
+            where: { ...where, status: 'approved' },
+            _count: { _all: true },
+            _sum: { safeActionCount: true, unsafeActionCount: true },
+          }),
+          prisma.record.aggregate({
+            where,
+            _sum: { safeActionCount: true, unsafeActionCount: true },
+          }),
+          prisma.record.count({
+            where: { ...where, status: 'pending', unsafeActionCount: { gte: 3 } },
+          }),
+          prisma.record.count({ where: { ...where, date: { startsWith: todayStr } } }),
+          prisma.record.groupBy({ by: ['type'], where, _count: { _all: true } }),
+          prisma.record.count({ where: { date: { startsWith: currentMonthStr } } }),
+          prisma.record.count({ where: { ...where, safeActionCount: { gt: 0 } } }),
+          prisma.record.count({ where: { ...where, unsafeActionCount: { gt: 0 } } }),
+          nearMissCategoryIds.length > 0
+            ? prisma.record.count({ where: { ...where, safetyCategory: { in: nearMissCategoryIds } } })
+            : Promise.resolve(0),
+          prisma.record.groupBy({
+            by: ['employeeId'],
+            where,
+            _count: { _all: true },
+            orderBy: { _count: { employeeId: 'desc' } },
+            take: 5,
+          }),
+          prisma.record.findMany({
+            where: { ...where, status: 'approved' },
+            orderBy: { date: 'desc' },
+            take: 5,
+            select: { id: true, username: true, type: true, date: true, safeActionCount: true },
+          }),
+        ])
+
+        const statusMap = Object.fromEntries(
+          statusCounts.map((s) => [s.status, s._count._all])
+        )
+        const categoryMap = Object.fromEntries(
+          categoryAgg.map((c) => [c.safetyCategory, c])
+        )
+        const catBucket = (id) =>
+          categoryMap[id] || {
+            _count: { _all: 0 },
+            _sum: { safeActionCount: 0, unsafeActionCount: 0 },
+          }
+        const ppe = catBucket('1')
+        const tools = catBucket('2')
+        const unsafeActions = catBucket('3')
+        const unsafeCondition = catBucket('4')
+        const total = statusCounts.reduce((sum, s) => sum + s._count._all, 0)
+
+        const departmentList = deptCounts
+          .map((d) => d.type)
+          .filter(Boolean)
+          .sort()
+        const departmentCounts = deptCounts
+          .filter((d) => d.type)
+          .map((d) => [d.type, d._count._all])
+          .sort((a, b) => b[1] - a[1])
+        const topDepartments = departmentCounts.slice(0, 5)
+
+        return NextResponse.json({
+          stats: {
+            total,
+            pending: statusMap.pending || 0,
+            approved: statusMap.approved || 0,
+            rejected: statusMap.rejected || 0,
+            highPriority: highPriorityCount,
+            totalSafeActions: totalActionsAgg._sum.safeActionCount || 0,
+            totalUnsafeActions: totalActionsAgg._sum.unsafeActionCount || 0,
+            todayReports: todayCount,
+            ppe: ppe._count._all,
+            ppe_safe: ppe._sum.safeActionCount || 0,
+            ppe_unsafe: ppe._sum.unsafeActionCount || 0,
+            tools: tools._count._all,
+            tools_safe: tools._sum.safeActionCount || 0,
+            tools_unsafe: tools._sum.unsafeActionCount || 0,
+            unsafe_actions: unsafeActions._count._all,
+            unsafe_actions_safe: unsafeActions._sum.safeActionCount || 0,
+            unsafe_actions_unsafe: unsafeActions._sum.unsafeActionCount || 0,
+            unsafe_condition: unsafeCondition._count._all,
+            unsafe_condition_safe: unsafeCondition._sum.safeActionCount || 0,
+            unsafe_condition_unsafe: unsafeCondition._sum.unsafeActionCount || 0,
+          },
+          departmentList,
+          topDepartments,
+          departmentCounts,
+          currentMonthCount,
+          safeReportsCount,
+          unsafeReportsCount,
+          nearMissCount,
+          topContributors: contributorCounts
+            .filter((c) => c.employeeId)
+            .map((c) => ({ employeeId: c.employeeId, count: c._count._all })),
+          recentReports: recentApproved.map((r) => ({
+            id: r.id,
+            employeeName: r.username || '',
+            department: r.type || '',
+            submittedDate: r.date,
+            safeCount: r.safeActionCount,
+          })),
+        })
+      }
+
       case 'employee': {
         const employees = await getCached('employee', () =>
           prisma.employee.findMany({ orderBy: { id: 'asc' } })

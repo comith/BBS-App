@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-fetch";
-import { startOfDay } from "date-fns";
 import {
   type Report,
   transformApiDataToDashboardReport,
@@ -21,19 +20,50 @@ interface StaticData {
   subCategories: any[];
 }
 
+export interface RecentReport {
+  id: number;
+  employeeName: string;
+  department: string;
+  submittedDate: Date;
+  safeCount: number;
+}
+
+export interface AnalyticsExtras {
+  departmentCounts: [string, number][];
+  currentMonthCount: number;
+  safeReportsCount: number;
+  unsafeReportsCount: number;
+  nearMissCount: number;
+  topContributors: { employeeId: string; count: number }[];
+  recentReports: RecentReport[];
+}
+
+const EMPTY_ANALYTICS: AnalyticsExtras = {
+  departmentCounts: [],
+  currentMonthCount: 0,
+  safeReportsCount: 0,
+  unsafeReportsCount: 0,
+  nearMissCount: 0,
+  topContributors: [],
+  recentReports: [],
+};
+
 export interface ReportsState {
   reports: Report[];
   setReports: React.Dispatch<React.SetStateAction<Report[]>>;
   isLoading: boolean;
   isBackgroundLoading: boolean;
+  isStatsLoading: boolean;
   error: string | null;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
   fetchReports: () => Promise<void>;
+  refreshStats: () => Promise<void>;
   employeeList: EmployeeInfo[];
   departmentList: string[];
   topDepartments: [string, number][];
   stats: ReportStats;
+  analytics: AnalyticsExtras;
 }
 
 export interface ReportStats {
@@ -59,6 +89,29 @@ export interface ReportStats {
   unsafe_condition_unsafe: number;
 }
 
+const EMPTY_STATS: ReportStats = {
+  total: 0,
+  pending: 0,
+  approved: 0,
+  rejected: 0,
+  highPriority: 0,
+  totalSafeActions: 0,
+  totalUnsafeActions: 0,
+  todayReports: 0,
+  ppe: 0,
+  ppe_safe: 0,
+  ppe_unsafe: 0,
+  tools: 0,
+  tools_safe: 0,
+  tools_unsafe: 0,
+  unsafe_actions: 0,
+  unsafe_actions_safe: 0,
+  unsafe_actions_unsafe: 0,
+  unsafe_condition: 0,
+  unsafe_condition_safe: 0,
+  unsafe_condition_unsafe: 0,
+};
+
 export function useReports(sessionLoaded: boolean): ReportsState {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,12 +120,57 @@ export function useReports(sessionLoaded: boolean): ReportsState {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [employeeList, setEmployeeList] = useState<EmployeeInfo[]>([]);
 
+  // Whole-year summary (cards) — comes from a dedicated DB-side aggregate query,
+  // decoupled from the (much heavier) full record list so cards show correct
+  // totals immediately instead of waiting for/depending on the list to finish loading.
+  const [stats, setStats] = useState<ReportStats>(EMPTY_STATS);
+  const [departmentList, setDepartmentList] = useState<string[]>([]);
+  const [topDepartments, setTopDepartments] = useState<[string, number][]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsExtras>(EMPTY_ANALYTICS);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+
   const staticDataRef = useRef<StaticData | null>(null);
+
+  const refreshStats = useCallback(async () => {
+    try {
+      setIsStatsLoading(true);
+      const res = await apiFetch(
+        `/api/get?type=stats&year=${selectedYear}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setStats(data.stats ?? EMPTY_STATS);
+      setDepartmentList(Array.isArray(data.departmentList) ? data.departmentList : []);
+      setTopDepartments(Array.isArray(data.topDepartments) ? data.topDepartments : []);
+      setAnalytics({
+        departmentCounts: Array.isArray(data.departmentCounts) ? data.departmentCounts : [],
+        currentMonthCount: data.currentMonthCount ?? 0,
+        safeReportsCount: data.safeReportsCount ?? 0,
+        unsafeReportsCount: data.unsafeReportsCount ?? 0,
+        nearMissCount: data.nearMissCount ?? 0,
+        topContributors: Array.isArray(data.topContributors) ? data.topContributors : [],
+        recentReports: Array.isArray(data.recentReports)
+          ? data.recentReports.map((r: any) => ({
+              id: r.id,
+              employeeName: r.employeeName || "",
+              department: r.department || "",
+              submittedDate: new Date(r.submittedDate),
+              safeCount: Number(r.safeCount) || 0,
+            }))
+          : [],
+      });
+    } catch (err) {
+      console.warn("Stats fetch warning:", err);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  }, [selectedYear]);
 
   const fetchReports = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
+      refreshStats();
 
       // Fetch page 1 (50 items) first for instant render
       const params = new URLSearchParams({
@@ -149,33 +247,46 @@ export function useReports(sessionLoaded: boolean): ReportsState {
       );
       setIsLoading(false); // Done loading page 1!
 
-      // Now fetch all records of the year in the background
+      // Now fetch the rest of the year's records in the background, page by page
+      // (a single unbounded request would defeat the DB connection-pool limits set
+      // elsewhere, but a single capped request would silently drop older records —
+      // so keep requesting pages until a short page tells us we've reached the end).
       setIsBackgroundLoading(true);
-      const bgParams = new URLSearchParams({
-        type: "record",
-        year: selectedYear.toString(),
-      });
+      const BG_PAGE_SIZE = 800;
+      (async () => {
+        try {
+          let page = 1;
+          let allBgData: any[] = [];
+          while (true) {
+            const bgParams = new URLSearchParams({
+              type: "record",
+              year: selectedYear.toString(),
+              page: page.toString(),
+              limit: BG_PAGE_SIZE.toString(),
+            });
+            const res = await apiFetch(`/api/get?${bgParams.toString()}`);
+            if (!res.ok) throw new Error("Background fetch failed");
+            const pageData = await res.json();
+            const pageArray = Array.isArray(pageData) ? pageData : [];
+            allBgData = allBgData.concat(pageArray);
 
-      apiFetch(`/api/get?${bgParams.toString()}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Background fetch failed");
-          return res.json();
-        })
-        .then((bgData) => {
-          setReports(
-            transformApiDataToDashboardReport(
-              bgData ?? [],
-              categoryData,
-              subCategoryData
-            )
-          );
-        })
-        .catch((err) => {
+            setReports(
+              transformApiDataToDashboardReport(
+                allBgData,
+                categoryData,
+                subCategoryData
+              )
+            );
+
+            if (pageArray.length < BG_PAGE_SIZE) break;
+            page++;
+          }
+        } catch (err) {
           console.warn("Background fetch warning:", err);
-        })
-        .finally(() => {
+        } finally {
           setIsBackgroundLoading(false);
-        });
+        }
+      })();
 
     } catch (err) {
       console.error("Error fetching reports:", err);
@@ -188,7 +299,7 @@ export function useReports(sessionLoaded: boolean): ReportsState {
       }
       setIsLoading(false);
     }
-  }, [selectedYear]);
+  }, [selectedYear, refreshStats]);
 
   // Initial load — once session is ready
   useEffect(() => {
@@ -235,120 +346,22 @@ export function useReports(sessionLoaded: boolean): ReportsState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const departmentList = useMemo(
-    () => [...new Set(reports.map((r) => r.department))].sort(),
-    [reports]
-  );
-
-  const topDepartments = useMemo<[string, number][]>(() => {
-    const counts = new Map<string, number>();
-    for (const r of reports) {
-      counts.set(r.department, (counts.get(r.department) ?? 0) + 1);
-    }
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-  }, [reports]);
-
-  const stats = useMemo<ReportStats>(() => {
-    const todayStart = startOfDay(new Date()).getTime();
-    let pending = 0,
-      approved = 0,
-      rejected = 0,
-      highPriority = 0;
-    let totalSafeActions = 0,
-      totalUnsafeActions = 0,
-      todayReports = 0;
-    let ppe = 0,
-      ppe_safe = 0,
-      ppe_unsafe = 0;
-    let tools = 0,
-      tools_safe = 0,
-      tools_unsafe = 0;
-    let unsafe_actions = 0,
-      unsafe_actions_safe = 0,
-      unsafe_actions_unsafe = 0;
-    let unsafe_condition = 0,
-      unsafe_condition_safe = 0,
-      unsafe_condition_unsafe = 0;
-
-    for (const r of reports) {
-      if (r.status === "pending") pending++;
-      else if (r.status === "approved") approved++;
-      else if (r.status === "rejected") rejected++;
-
-      if (r.priority === "high" && r.status === "pending") highPriority++;
-      totalSafeActions += r.safeCount;
-      totalUnsafeActions += r.unsafeCount;
-      if (startOfDay(r.submittedDate).getTime() === todayStart) todayReports++;
-
-      if (r.status === "approved") {
-        const cat = r.safetyCategory;
-        if (cat === "การสวมใส่อุปกรณ์คุ้มครองส่วนบุคคล PPE") {
-          ppe++;
-          ppe_safe += r.safeCount;
-          ppe_unsafe += r.unsafeCount;
-        } else if (
-          cat ===
-          "การใช้อุปกรณ์ เครื่องมือ เครื่องจักร และยานพาหนะต่างๆ ในการทำงาน Tool / Equipment / Machine / Vehicle"
-        ) {
-          tools++;
-          tools_safe += r.safeCount;
-          tools_unsafe += r.unsafeCount;
-        } else if (
-          cat ===
-          "การกระทำที่ไม่ปลอดภัย และการจับชิ้นส่วน Unsafe Action / Driving / Line of fire"
-        ) {
-          unsafe_actions++;
-          unsafe_actions_safe += r.safeCount;
-          unsafe_actions_unsafe += r.unsafeCount;
-        } else if (
-          cat === "สภาพแวดล้อมที่ไม่ปลอดภัย Plant / Unsafe Condition (UC)"
-        ) {
-          unsafe_condition++;
-          unsafe_condition_safe += r.safeCount;
-          unsafe_condition_unsafe += r.unsafeCount;
-        }
-      }
-    }
-
-    return {
-      total: reports.length,
-      pending,
-      approved,
-      rejected,
-      highPriority,
-      totalSafeActions,
-      totalUnsafeActions,
-      todayReports,
-      ppe,
-      ppe_safe,
-      ppe_unsafe,
-      tools,
-      tools_safe,
-      tools_unsafe,
-      unsafe_actions,
-      unsafe_actions_safe,
-      unsafe_actions_unsafe,
-      unsafe_condition,
-      unsafe_condition_safe,
-      unsafe_condition_unsafe,
-    };
-  }, [reports]);
-
   return {
     reports,
     setReports,
     isLoading,
     isBackgroundLoading,
+    isStatsLoading,
     error,
     selectedYear,
     setSelectedYear,
     fetchReports,
+    refreshStats,
     employeeList,
     departmentList,
     topDepartments,
     stats,
+    analytics,
   };
 }
 

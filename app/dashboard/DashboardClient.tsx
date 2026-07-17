@@ -64,14 +64,17 @@ function AdminDashboard() {
     setReports,
     isLoading,
     isBackgroundLoading,
+    isStatsLoading,
     error,
     selectedYear,
     setSelectedYear,
     fetchReports,
+    refreshStats,
     employeeList,
     departmentList,
     topDepartments,
     stats,
+    analytics,
   } = useReports(session.loaded);
 
   const filters = useReportFilters(reports);
@@ -187,6 +190,7 @@ function AdminDashboard() {
             : report,
         ),
       );
+      refreshStats();
       setIsApprovalModalOpen(false);
       setSelectedReport(null);
       setApprovalAction(null);
@@ -323,7 +327,7 @@ function AdminDashboard() {
               </div>
             )}
 
-            <StatsCards stats={stats} isLoading={isLoading} />
+            <StatsCards stats={stats} isLoading={isStatsLoading} />
 
             <ReportFilters
               searchTerm={filters.searchTerm}
@@ -398,6 +402,7 @@ function AdminDashboard() {
               stats={stats}
               departmentList={departmentList}
               topDepartments={topDepartments}
+              analytics={analytics}
             />
           </TabsContent>
 

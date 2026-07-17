@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Ban, BrainCircuit, Check, FileImage } from "lucide-react";
+import { Ban, BrainCircuit, Check, FileImage, Paperclip } from "lucide-react";
 import { type Report, getStatusInfo } from "../types";
-import { isImageFile } from "../utils/fileHelpers";
+import { isImageFile, isGoogleDriveUrl } from "../utils/fileHelpers";
 
 interface Props {
   report: Report | null;
@@ -153,35 +154,70 @@ export function ReportDetailModal({
             <div className="mt-6">
               <h3 className="font-semibold mb-2">ไฟล์แนบ</h3>
               <div className="bg-gray-50 p-3 rounded">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mb-3">
                   มีไฟล์แนบทั้งหมด {report.attachment.length} ไฟล์
                 </p>
-                <div className="mt-2 space-y-2">
-                  {report.attachment.map((file, index) => {
-                    const isImg = isImageFile(file.name);
-                    return (
-                      <div key={index} className="flex items-center gap-2">
-                        {isImg ? (
-                          <button
-                            onClick={() => onViewImage(file.webViewLink)}
-                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer inline-flex items-center gap-1 text-left max-w-full"
-                          >
-                            <FileImage className="w-4 h-4 text-blue-500 flex-shrink-0" />{" "}
-                            <span className="break-all">{file.name}</span> (คลิกเพื่อดูรูป)
-                          </button>
-                        ) : (
-                          <a
-                            href={file.webViewLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1 max-w-full"
-                          >
-                            <span className="flex-shrink-0">📎</span> <span className="break-all">{file.name}</span>
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
+
+                {report.attachment.some(
+                  (file) => isImageFile(file.name) && !isGoogleDriveUrl(file.webViewLink)
+                ) && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
+                    {report.attachment
+                      .filter(
+                        (file) =>
+                          isImageFile(file.name) && !isGoogleDriveUrl(file.webViewLink)
+                      )
+                      .map((file, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => onViewImage(file.webViewLink)}
+                          aria-label={`ดูรูปภาพ ${file.name}`}
+                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-white cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <Image
+                            src={file.webViewLink}
+                            alt={file.name}
+                            fill
+                            sizes="(max-width: 640px) 33vw, 150px"
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        </button>
+                      ))}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {report.attachment
+                    .filter(
+                      (file) => !isImageFile(file.name) || isGoogleDriveUrl(file.webViewLink)
+                    )
+                    .map((file, index) => {
+                      const isImg = isImageFile(file.name);
+                      return (
+                        <div key={index} className="flex items-center gap-2">
+                          {isImg ? (
+                            <button
+                              onClick={() => onViewImage(file.webViewLink)}
+                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer inline-flex items-center gap-1 text-left max-w-full"
+                            >
+                              <FileImage className="w-4 h-4 text-blue-500 flex-shrink-0" />{" "}
+                              <span className="break-all">{file.name}</span> (คลิกเพื่อดูรูป)
+                            </button>
+                          ) : (
+                            <a
+                              href={file.webViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline cursor-pointer inline-flex items-center gap-1 max-w-full"
+                            >
+                              <Paperclip className="w-4 h-4 flex-shrink-0" />{" "}
+                              <span className="break-all">{file.name}</span>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             </div>

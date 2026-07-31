@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "deploy": "npm run build && pm2 reload bbs-web-1",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",

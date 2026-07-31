@@ -75,10 +75,10 @@ async function analyzeWithOllama(record: any) {
 
   const response = await fetch(`${OLLAMA_URL}/chat/completions`, {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.API_HERMES_KEY || 'API_HERMES_KEY'}`,
-      'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7'
+      // 'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7'  //ปิดเพราะ session มันบวมแล้วจะทำให้การติดต่อกับ ai ช้าขึ้น
     },
     body: JSON.stringify({
       model: OLLAMA_MODEL,

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     // 1. ตรวจสอบว่ามีข้อมูล Insight ในระบบแล้วหรือยัง
     if (!forceReanalyze) {
       const existingInsight = await prisma.aiInsight.findFirst({
-        where: recordType === 'SHE' 
+        where: recordType === 'SHE'
           ? { recordSheId: recordId }
           : { recordId: recordId },
       });
@@ -124,10 +124,10 @@ export async function POST(req: Request) {
     // 3. ส่ง Request ไปยัง AI Server (OpenAI Compatible)
     const response = await fetch(`${OLLAMA_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.API_HERMES_KEY || 'API_HERMES_KEY'}`,
-        'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7'
+        // 'X-Hermes-Session-Id': 'api-d8a144e45bfb7cd7' //ปิดเพราะ session มันบวมแล้วจะทำให้การติดต่อกับ ai ช้าขึ้น
       },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
@@ -157,8 +157,8 @@ export async function POST(req: Request) {
     }
 
     // 5. บันทึกผลลัพธ์ลง Database (ใช้ upsert เพื่อป้องกัน Race Condition จาก React Strict Mode)
-    const whereClause = recordType === 'SHE' 
-      ? { recordSheId: recordId } 
+    const whereClause = recordType === 'SHE'
+      ? { recordSheId: recordId }
       : { recordId: recordId };
 
     const sanitizedData = sanitizeInsight(insightData);
